@@ -1,0 +1,443 @@
+<!-- apps/orders/templates/orders/partials/cart_panel.html -->
+{% load static %}
+<div id="cartPanel" class="cart-panel">
+    <!-- Cart Header -->
+    <div class="cart-header">
+        <div class="cart-title-section">
+            <i class="fas fa-shopping-cart"></i>
+            <h3 class="cart-title">Order</h3>
+            {% if items|length > 0 %}
+                <span class="cart-badge">{{ items|length }}</span>
+            {% else %}
+                <span class="cart-badge">0</span>
+            {% endif %}
+        </div>
+
+        {% if items|length > 0 %}
+            <button
+                class="btn-clear-cart"
+                hx-post="{% url 'orders:cart_clear' %}"
+                hx-target="#cartPanel"
+                hx-swap="outerHTML"
+                hx-confirm="Clear all items from cart?"
+                title="Clear cart"
+            >
+                <i class="fas fa-trash-alt"></i>
+                <span class="btn-text">Clear</span>
+            </button>
+        {% endif %}
+    </div>
+
+    <!-- Customer Section -->
+    <div class="cart-customer-section">
+        {% if order and order.customer %}
+            <!-- Customer linked -->
+            <div class="customer-linked">
+                <div class="customer-linked-info">
+                    <div class="customer-avatar">
+                        {{ order.customer.full_name|slice:":1"|upper }}
+                    </div>
+                    <div class="customer-linked-details">
+                        <span class="customer-linked-name">{{ order.customer.full_name }}</span>
+                        {% if order.customer.phone %}
+                            <span class="customer-linked-phone">{{ order.customer.phone }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <button
+                    class="btn-remove-customer"
+                    hx-post="{% url 'orders:cart_remove_customer' %}"
+                    hx-target="#cartPanel"
+                    hx-swap="outerHTML"
+                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                    title="Remove customer"
+                >
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        {% else %}
+            <!-- Customer search -->
+            <div class="customer-search-wrapper">
+                <div class="customer-search-box">
+                    <i class="fas fa-user-plus customer-search-icon"></i>
+                    <input
+                        type="text"
+                        id="customerSearchInput"
+                        class="customer-search-input"
+                        placeholder="Search or add customer..."
+                        autocomplete="off"
+                        hx-get="{% url 'orders:cart_customer_search' %}"
+                        hx-trigger="keyup changed delay:300ms, focus"
+                        hx-target="#customerSearchResults"
+                        hx-include="this"
+                        name="q"
+                    >
+                    <button
+                        class="btn-walkin"
+                        hx-post="{% url 'orders:cart_set_walkin' %}"
+                        hx-target="#cartPanel"
+                        hx-swap="outerHTML"
+                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                        title="Walk-in customer"
+                    >
+                        Walk-in
+                    </button>
+                </div>
+                <!-- Search results dropdown -->
+                <div id="customerSearchResults" class="customer-search-results"></div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Status Messages -->
+    {% if message %}
+        <div class="cart-alert cart-alert-{{ message_type }}">
+            <i class="fas fa-{% if message_type == 'success' %}check-circle{% else %}exclamation-circle{% endif %}"></i>
+            <span>{{ message }}</span>
+        </div>
+    {% endif %}
+
+    <!-- Cart Items -->
+    <div class="cart-items">
+        {% if items|length > 0 %}
+            {% for item in items %}
+                <div class="cart-item-toggle" data-item-id="{{ item.id }}">
+                    <!-- Item Header (Always Visible) -->
+                    <div class="item-header" onclick="toggleItem({{ item.id }})">
+                        <button class="expand-toggle">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+
+                        <div class="item-summary">
+                            <span class="item-number">{{ forloop.counter }}</span>
+                            <span class="cart-item-name">{{ item.variant_name }}</span>
+                            <span class="cart-item-quantity-badge">
+                                {{ item.quantity }}
+                            </span>
+                        </div>
+
+                        <!-- Line Total -->
+                        <div class="cart-item-total">
+                            <span class="total-amount">₦{{ item.line_total|floatformat:2 }}</span>
+                        </div>
+
+                        <button
+                            class="btn-remove"
+                            hx-post="{% url 'orders:cart_remove_item' item.id %}"
+                            hx-target="#cartPanel"
+                            hx-swap="outerHTML"
+                            hx-confirm="Remove {{ item.product_name }}?"
+                            onclick="event.stopPropagation()"
+                        >
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="cart-item">
+                        <!-- Product Details -->
+                        <div class="cart-item-details">
+                            <div class="cart-item-details-name">
+                                <div class="cart-item-header">
+                                    <h4 class="cart-item-name">{{ item.product_name }}</h4>
+                                    {% if item.variant_name %}
+                                        <span class="cart-item-variant">{{ item.variant_name }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="cart-item-meta">
+                                    <span class="cart-item-price">₦{{ item.unit_price|floatformat:2 }} each</span>
+                                    {% if item.discount_amount > 0 %}
+                                        <span class="cart-item-discount">-₦{{ item.discount_amount|floatformat:2 }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="quantity-discount-control">
+                                <!-- Quantity Controls -->
+                               <div class="cart-item-actions">
+                                    <div class="quantity-selector">
+                                        <button
+                                            class="qty-btn qty-decrease"
+                                            hx-post="{% url 'orders:cart_update_quantity' item.id %}"
+                                            hx-vals='{"quantity": {{ item.quantity|add:"-1" }}}'
+                                            hx-target="#cartPanel"
+                                            hx-swap="outerHTML"
+                                            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                                            {% if item.quantity <= 1 %}disabled{% endif %}
+                                            aria-label="Decrease quantity"
+                                        >
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+
+                                        <input
+                                            type="number"
+                                            class="qty-input"
+                                            value="{{ item.quantity }}"
+                                            min="1"
+                                            max="999"
+                                            hx-post="{% url 'orders:cart_update_quantity' item.id %}"
+                                            hx-trigger="change"
+                                            hx-include="this"
+                                            hx-target="#cartPanel"
+                                            hx-swap="outerHTML"
+                                            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                                            name="quantity"
+                                            aria-label="Quantity"
+                                        >
+
+                                        <button
+                                            class="qty-btn qty-increase"
+                                            hx-post="{% url 'orders:cart_update_quantity' item.id %}"
+                                            hx-vals='{"quantity": {{ item.quantity|add:"1" }}}'
+                                            hx-target="#cartPanel"
+                                            hx-swap="outerHTML"
+                                            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                                            aria-label="Increase quantity"
+                                        >
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+
+                                    <button
+                                        class="btn-remove-item"
+                                        hx-post="{% url 'orders:cart_remove_item' item.id %}"
+                                        hx-target="#cartPanel"
+                                        hx-swap="outerHTML"
+                                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                                        hx-confirm="Remove {{ item.product_name }} from cart?"
+                                        aria-label="Remove item"
+                                    >
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Discount Section -->
+                                <div class="cart-item-actions discount-div">
+                                    <div class="discount-control">
+                                        <button class="discount-type" title="DISCOUNT">%</button>
+                                        <input
+                                            type="number"
+                                            class="discount-input"
+                                            value="{% if item.discount_amount > 0 %}{{ item.discount_amount }}{% else %}0{% endif %}"
+                                            min="0"
+                                            placeholder="0"
+                                        >
+                                    </div>
+                                    <button class="btn-apply-discount">
+                                        <i class="fas fa-check-circle"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <!-- Empty Cart State -->
+            <div class="cart-empty">
+                <div class="empty-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <h4 class="empty-title">Your cart is empty</h4>
+                <p class="empty-message">Browse products and add items to get started</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Cart Totals -->
+    {% include 'orders/partials/cart_totals.html' %}
+
+    <!-- Checkout Section -->
+    {% if items|length > 0 %}
+        <div class="cart-footer">
+            <button
+                class="btn-checkout"
+                onclick="openCheckoutModal()"
+            >
+                <i class="fas fa-lock"></i>
+                <span>Proceed to Checkout</span>
+                <span class="checkout-amount">₦{{ order.total|floatformat:2 }}</span>
+            </button>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    /* ── Customer Section ── */
+    .cart-customer-section {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border, #e4e7ed);
+        background: var(--bg-card, #fff);
+    }
+
+    /* Linked state */
+    .customer-linked {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.625rem 0.875rem;
+        background: #eef1fb;
+        border: 1.5px solid #0033A0;
+        border-radius: 10px;
+    }
+
+    .customer-linked-info {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        min-width: 0;
+    }
+
+    .customer-avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: #0033A0;
+        color: #fff;
+        font-size: 0.875rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .customer-linked-details {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .customer-linked-name {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #0033A0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .customer-linked-phone {
+        font-size: 0.75rem;
+        color: #5566aa;
+    }
+
+    .btn-remove-customer {
+        width: 28px;
+        height: 28px;
+        background: rgba(0, 51, 160, 0.12);
+        border: none;
+        border-radius: 6px;
+        color: #0033A0;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        flex-shrink: 0;
+        transition: background 0.18s;
+    }
+
+    .btn-remove-customer:hover { background: rgba(0, 51, 160, 0.22); }
+
+    /* Search state */
+    .customer-search-wrapper { position: relative; }
+
+    .customer-search-box {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0 0.5rem 0 0.875rem;
+        background: #f8f9fc;
+        border: 1.5px solid #e4e7ed;
+        border-radius: 10px;
+        transition: border-color 0.18s;
+    }
+
+    .customer-search-box:focus-within {
+        border-color: #0033A0;
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(0, 51, 160, 0.08);
+    }
+
+    .customer-search-icon {
+        color: #aab;
+        font-size: 0.875rem;
+        flex-shrink: 0;
+    }
+
+    .customer-search-input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        padding: 0.625rem 0;
+        font-size: 0.875rem;
+        color: #1a1a1a;
+        outline: none;
+        min-width: 0;
+    }
+
+    .customer-search-input::placeholder { color: #aab; }
+
+    .btn-walkin {
+        padding: 0.375rem 0.75rem;
+        background: #f0f2f5;
+        color: #555;
+        border: 1px solid #dde0e8;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.18s;
+        flex-shrink: 0;
+    }
+
+    .btn-walkin:hover {
+        background: #e2e5eb;
+        color: #0033A0;
+        border-color: #0033A0;
+    }
+
+    /* Search Results Dropdown */
+    .customer-search-results {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1.5px solid #e4e7ed;
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        z-index: 500;
+        max-height: 240px;
+        overflow-y: auto;
+    }
+
+    .customer-search-results:empty { display: none; }
+</style>
+
+<script>
+    function toggleItem(itemId) {
+        const item = document.querySelector(`[data-item-id="${itemId}"]`);
+        if (item) {
+            item.classList.toggle('expanded');
+        }
+    }
+
+    function openCheckoutModal() {
+        htmx.ajax('GET', '{% url "orders:checkout_modal" %}', {
+            target: 'body',
+            swap: 'beforeend'
+        });
+    }
+
+    // Close customer search results when clicking outside
+    document.addEventListener('click', function (e) {
+        const wrapper = document.querySelector('.customer-search-wrapper');
+        const results = document.getElementById('customerSearchResults');
+        if (wrapper && results && !wrapper.contains(e.target)) {
+            results.innerHTML = '';
+        }
+    });
+</script>

@@ -1,0 +1,358 @@
+<!-- apps/orders/templates/orders/draft_orders_list.html -->
+<!-- Held/Draft Orders List -->
+
+{% extends "base.html" %}
+
+{% block title %}Held Orders{% endblock %}
+
+{% block content %}
+<div class="draft-orders-page">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <h1>
+                <i class="fas fa-pause-circle"></i>
+                Held Orders
+            </h1>
+            <p class="subtitle">Resume or manage on-hold orders</p>
+        </div>
+
+        <div class="header-actions">
+            <a href="{% url 'pos:pos_interface' %}" class="btn-secondary">
+                <i class="fas fa-arrow-left"></i>
+                Back to POS
+            </a>
+        </div>
+    </div>
+
+    <!-- Draft Orders List -->
+    {% if drafts %}
+        <div class="drafts-grid">
+            {% for draft in drafts %}
+            <div class="draft-card">
+                <div class="draft-header">
+                    <div class="draft-number">{{ draft.order_number }}</div>
+                    <div class="draft-time">{{ draft.created_at|timesince }} ago</div>
+                </div>
+
+                <div class="draft-details">
+                    <div class="detail-row">
+                        <span class="detail-label">Items:</span>
+                        <span class="detail-value">{{ draft.item_count }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Total:</span>
+                        <span class="detail-value amount">₦{{ draft.total|floatformat:2 }}</span>
+                    </div>
+                    {% if draft.customer %}
+                        <div class="detail-row">
+                            <span class="detail-label">Customer:</span>
+                            <span class="detail-value">{{ draft.customer.name }}</span>
+                        </div>
+                    {% endif %}
+                </div>
+
+                {% if draft.notes %}
+                    <div class="draft-notes">
+                        <i class="fas fa-sticky-note"></i>
+                        {{ draft.notes|truncatewords:20 }}
+                    </div>
+                {% endif %}
+
+                <div class="draft-actions">
+                    <form method="post" action="{% url 'orders:draft_order_resume' draft.pk %}" style="flex: 1;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-resume">
+                            <i class="fas fa-play-circle"></i>
+                            Resume
+                        </button>
+                    </form>
+                    <a href="{% url 'orders:draft_order_detail' draft.pk %}" class="btn-view">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                    <button
+                        class="btn-delete"
+                        onclick="confirmDelete('{{ draft.order_number }}', '{% url 'orders:draft_order_delete' draft.pk %}')"
+                    >
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fas fa-pause-circle"></i>
+            </div>
+            <h3>No held orders</h3>
+            <p>Orders you put on hold will appear here</p>
+            <a href="{% url 'pos:pos_interface' %}" class="btn-primary">
+                <i class="fas fa-cash-register"></i>
+                Go to POS
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    .draft-orders-page {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2rem;
+    }
+
+    .header-left h1 {
+        margin: 0 0 0.5rem 0;
+        font-size: 2rem;
+        color: #1A1A1A;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .subtitle {
+        margin: 0;
+        color: #666;
+    }
+
+    .btn-secondary, .btn-primary {
+        padding: 0.875rem 1.5rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-secondary {
+        background: #F5F5F5;
+        color: #666;
+    }
+
+    .btn-secondary:hover {
+        background: #E8E8E8;
+    }
+
+    .btn-primary {
+        background: #0033A0;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #0047D1;
+        transform: translateY(-2px);
+    }
+
+    /* Drafts Grid */
+    .drafts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .draft-card {
+        background: white;
+        border: 1px solid #E8E8E8;
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .draft-card:hover {
+        border-color: #0033A0;
+        box-shadow: 0 4px 12px rgba(0, 51, 160, 0.1);
+    }
+
+    .draft-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #F5F5F5;
+    }
+
+    .draft-number {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #1A1A1A;
+        font-family: monospace;
+    }
+
+    .draft-time {
+        font-size: 0.875rem;
+        color: #999;
+    }
+
+    .draft-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9375rem;
+    }
+
+    .detail-label {
+        color: #666;
+    }
+
+    .detail-value {
+        font-weight: 600;
+        color: #1A1A1A;
+    }
+
+    .detail-value.amount {
+        color: #10B981;
+        font-family: monospace;
+    }
+
+    .draft-notes {
+        padding: 0.75rem;
+        background: #FFFBEB;
+        border: 1px solid #FEF3C7;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        color: #92400E;
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .draft-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: auto;
+    }
+
+    .btn-resume {
+        flex: 1;
+        padding: 0.75rem;
+        background: #10B981;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-resume:hover {
+        background: #059669;
+        transform: translateY(-1px);
+    }
+
+    .btn-view, .btn-delete {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+
+    .btn-view {
+        background: #F5F5F5;
+        color: #666;
+        border: 1px solid #E8E8E8;
+    }
+
+    .btn-view:hover {
+        background: #0033A0;
+        color: white;
+        border-color: #0033A0;
+    }
+
+    .btn-delete {
+        background: #FFF5F5;
+        color: #EF4444;
+        border: 1px solid #FED7D7;
+    }
+
+    .btn-delete:hover {
+        background: #FEE2E2;
+        border-color: #EF4444;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border: 1px solid #E8E8E8;
+        border-radius: 12px;
+    }
+
+    .empty-icon {
+        width: 100px;
+        height: 100px;
+        background: #F5F5F5;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+    }
+
+    .empty-icon i {
+        font-size: 3rem;
+        color: #D0D0D0;
+    }
+
+    .empty-state h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.5rem;
+        color: #1A1A1A;
+    }
+
+    .empty-state p {
+        margin: 0 0 1.5rem 0;
+        color: #666;
+    }
+</style>
+
+<script>
+function confirmDelete(orderNumber, deleteUrl) {
+    if (confirm(`Delete order ${orderNumber}? This cannot be undone.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = deleteUrl;
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+
+{% csrf_token %}
+{% endblock %}

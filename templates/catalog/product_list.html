@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Products - EJ Global Services{% endblock %}
+{% block page_title %}Product Catalog{% endblock %}
+
+{% block extra_css %}
+<style>
+    .catalog-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .catalog-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .catalog-count {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        margin-left: 0.5rem;
+    }
+
+    .btn-create {
+        padding: 0.75rem 1.5rem;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-create:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 51, 160, 0.3);
+    }
+
+    /* Filters */
+    .filters-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .search-input, .filter-select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 2px solid var(--border);
+        border-radius: 10px;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+    }
+
+    .search-input:focus, .filter-select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(0, 51, 160, 0.1);
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+
+    .btn-filter {
+        padding: 0.625rem 1.25rem;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-filter:hover {
+        background: var(--primary-light);
+    }
+
+    .btn-clear {
+        padding: 0.625rem 1.25rem;
+        background: white;
+        color: var(--text-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+
+    .btn-clear:hover {
+        background: var(--bg-main);
+    }
+
+    /* Products Grid */
+    .products-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .product-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .product-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        border-color: var(--primary);
+    }
+
+    .product-image {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        background: var(--bg-main);
+    }
+
+    .product-image-placeholder {
+        width: 100%;
+        height: 200px;
+        background: linear-gradient(135deg, var(--bg-main) 0%, #E0E0E0 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        font-size: 2.5rem;
+    }
+
+    .product-body {
+        padding: 1.25rem;
+    }
+
+    .product-category {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }
+
+    .product-name {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .product-sku {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        font-family: 'JetBrains Mono', monospace;
+        margin-bottom: 1rem;
+    }
+
+    .product-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .stat-item {
+        text-align: center;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--primary);
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-value.stock-low {
+        color: var(--accent-orange);
+    }
+
+    .stat-value.stock-out {
+        color: var(--danger);
+    }
+
+    .product-badges {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
+
+    .badge {
+        padding: 0.25rem 0.625rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .badge-active {
+        background: rgba(127, 186, 0, 0.15);
+        color: #5A9300;
+    }
+
+    .badge-inactive {
+        background: rgba(231, 76, 60, 0.15);
+        color: #C0392B;
+    }
+
+    .badge-featured {
+        background: rgba(255, 193, 7, 0.15);
+        color: #D68400;
+    }
+
+    .product-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-action {
+        flex: 1;
+        padding: 0.625rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        text-align: center;
+    }
+
+    .btn-view {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-view:hover {
+        background: var(--primary-light);
+    }
+
+    .btn-edit {
+        background: white;
+        color: var(--primary);
+        border: 1px solid var(--primary);
+    }
+
+    .btn-edit:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    /* Pagination */
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 2rem;
+    }
+
+    .page-link {
+        padding: 0.625rem 1rem;
+        background: white;
+        color: var(--primary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .page-link:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .page-link.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .page-link.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: var(--bg-card);
+        border: 2px dashed var(--border);
+        border-radius: 16px;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        color: var(--text-muted);
+        opacity: 0.3;
+        margin-bottom: 1rem;
+    }
+
+    .empty-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-text {
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="catalog-header">
+    <div>
+        <h1 class="catalog-title">
+            Products
+            <span class="catalog-count">({{ total_count }})</span>
+        </h1>
+    </div>
+    <a href="{% url 'catalog:product_create' %}" class="btn-create">
+        <i class="fas fa-plus"></i> New Product
+    </a>
+</div>
+
+<!-- Filters -->
+<form method="get" action="{% url 'catalog:product_list' %}">
+    <div class="filters-section">
+        <div class="filters-grid">
+            {{ form.search }}
+            {{ form.category }}
+            {{ form.status }}
+            {{ form.stock_status }}
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn-filter">
+                <i class="fas fa-filter"></i> Apply Filters
+            </button>
+            <a href="{% url 'catalog:product_list' %}" class="btn-clear">
+                <i class="fas fa-times"></i> Clear
+            </a>
+        </div>
+    </div>
+</form>
+
+<!-- Products Grid -->
+{% if products %}
+<div class="products-grid">
+    {% for product in products %}
+    <div class="product-card">
+        {% if product.image %}
+            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-image">
+        {% else %}
+            <div class="product-image-placeholder">
+                <i class="fas fa-box-open"></i>
+            </div>
+        {% endif %}
+        
+        <div class="product-body">
+            <div class="product-category">{{ product.category.name }}</div>
+            <h3 class="product-name">{{ product.name }}</h3>
+            <div class="product-sku">SKU: {{ product.sku }}</div>
+            
+            <div class="product-stats">
+                <div class="stat-item">
+                    <div class="stat-label">Price Range</div>
+                    <div class="stat-value">
+                        {% with price_range=product.get_price_range %}
+                            {% if price_range.0 == price_range.1 %}
+                                ₦{{ price_range.0|floatformat:2 }}
+                            {% else %}
+                                ₦{{ price_range.0|floatformat:2 }}-₦{{ price_range.1|floatformat:2 }}
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Stock</div>
+                    {% with total_stock=product.get_total_stock %}
+                        {% if product.track_inventory %}
+                            {% if total_stock == 0 %}
+                                <div class="stat-value stock-out">Out</div>
+                            {% elif total_stock <= 20 %}
+                                <div class="stat-value stock-low">{{ total_stock }}</div>
+                            {% else %}
+                                <div class="stat-value">{{ total_stock }}</div>
+                            {% endif %}
+                        {% else %}
+                            <div class="stat-value">—</div>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            
+            <div class="product-badges">
+                {% if product.is_active %}
+                    <span class="badge badge-active">Active</span>
+                {% else %}
+                    <span class="badge badge-inactive">Inactive</span>
+                {% endif %}
+                {% if product.is_featured %}
+                    <span class="badge badge-featured">Featured</span>
+                {% endif %}
+                <span class="badge badge-active">{{ product.variants.count }} variant{{ product.variants.count|pluralize }}</span>
+            </div>
+            
+            <div class="product-actions">
+                <a href="{% url 'catalog:product_detail' product.pk %}" class="btn-action btn-view">
+                    <i class="fas fa-eye"></i> View
+                </a>
+                <a href="{% url 'catalog:product_edit' product.pk %}" class="btn-action btn-edit">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if products.has_other_pages %}
+<div class="pagination">
+    {% if products.has_previous %}
+        <a href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" class="page-link">
+            <i class="fas fa-angle-double-left"></i>
+        </a>
+        <a href="?page={{ products.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" class="page-link">
+            <i class="fas fa-angle-left"></i>
+        </a>
+    {% endif %}
+    
+    <span class="page-link active">
+        Page {{ products.number }} of {{ products.paginator.num_pages }}
+    </span>
+    
+    {% if products.has_next %}
+        <a href="?page={{ products.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" class="page-link">
+            <i class="fas fa-angle-right"></i>
+        </a>
+        <a href="?page={{ products.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" class="page-link">
+            <i class="fas fa-angle-double-right"></i>
+        </a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">
+        <i class="fas fa-box-open"></i>
+    </div>
+    <h2 class="empty-title">No Products Found</h2>
+    <p class="empty-text">
+        {% if request.GET.search %}
+            No products match your search criteria. Try different filters.
+        {% else %}
+            Start by creating your first product to build your catalog.
+        {% endif %}
+    </p>
+    <a href="{% url 'catalog:product_create' %}" class="btn-create">
+        <i class="fas fa-plus"></i> Create First Product
+    </a>
+</div>
+{% endif %}
+{% endblock %}

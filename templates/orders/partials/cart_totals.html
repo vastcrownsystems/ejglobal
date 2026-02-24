@@ -1,0 +1,58 @@
+<!-- apps/orders/templates/orders/partials/cart_totals.html -->
+{% load static %}
+
+{% if items|length > 0 %}
+<div class="cart-totals-section">
+    <div class="totals-body">
+        <!-- Subtotal -->
+        <div class="total-line">
+            <span class="total-line-label">
+                <i class="fas fa-receipt"></i>
+                Subtotal
+            </span>
+            <span class="total-line-value">₦{{ order.subtotal|floatformat:2 }}</span>
+        </div>
+
+        <!-- Discount (if any) -->
+{#        {% if order.discount_amount > 0 %}#}
+        <div class="total-line total-line-discount">
+            <span class="total-line-label">
+                <i class="fas fa-tag"></i>
+                Discount
+            </span>
+            <span class="total-line-value discount-amount">₦{{ order.discount_amount|floatformat:2 }}</span>
+        </div>
+{#        {% endif %}#}
+
+        <!-- Tax (if any) -->
+{#        {% if order.tax_amount > 0 %}#}
+        <div class="total-line">
+            <span class="total-line-label">
+                <i class="fas fa-percentage"></i>
+                Tax
+            </span>
+            <span class="total-line-value">₦{{ order.tax_amount|floatformat:2 }}</span>
+        </div>
+{#        {% endif %}#}
+
+        <div class="total-line">
+            <span class="total-line-label">
+                <i class="fas fa-calculator"></i>
+                <strong>Total</strong>
+            </span>
+            <span class="total-line-value grand-total">₦{{ order.total|floatformat:2 }}</span>
+        </div>
+        <!-- Summary Info -->
+        <div class="order-summary-info">
+            <div class="summary-item">
+                <i class="fas fa-shopping-bag"></i>
+                <span>{{ items|length }} item{{ items|length|pluralize }}</span>
+            </div>
+            <div class="summary-item">
+                <i class="fas fa-boxes"></i>
+                <span>{{ order.item_count }} unit{{ order.item_count|pluralize }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}

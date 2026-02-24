@@ -1,0 +1,384 @@
+<!-- apps/orders/templates/orders/order_list.html -->
+<!-- Orders List Page -->
+
+{% extends "base.html" %}
+
+{% block title %}Orders{% endblock %}
+
+{% block content %}
+<div class="orders-page">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <h1>
+                <i class="fas fa-shopping-bag"></i>
+                Orders
+            </h1>
+            <p class="subtitle">View and manage all orders</p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+        <form method="get" class="filters-form">
+            <select name="status" class="filter-select" onchange="this.form.submit()">
+                <option value="">All Statuses</option>
+                <option value="CONFIRMED" {% if request.GET.status == 'CONFIRMED' %}selected{% endif %}>Confirmed</option>
+                <option value="PROCESSING" {% if request.GET.status == 'PROCESSING' %}selected{% endif %}>Processing</option>
+                <option value="COMPLETED" {% if request.GET.status == 'COMPLETED' %}selected{% endif %}>Completed</option>
+                <option value="CANCELLED" {% if request.GET.status == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
+            </select>
+
+            {% if request.GET %}
+                <a href="{% url 'orders:order_list' %}" class="btn-clear">
+                    <i class="fas fa-times"></i>
+                    Clear
+                </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Orders Table -->
+    {% if orders %}
+        <div class="orders-table-wrapper">
+            <table class="orders-table">
+                <thead>
+                    <tr>
+                        <th>Order Number</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th class="text-center">Items</th>
+                        <th class="text-right">Total</th>
+                        <th class="text-center">Payment</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'orders:order_detail' order.pk %}" class="order-number">
+                                {{ order.order_number }}
+                            </a>
+                        </td>
+                        <td>
+                            <div class="date">{{ order.created_at|date:"M d, Y" }}</div>
+                            <div class="time">{{ order.created_at|date:"g:i A" }}</div>
+                        </td>
+                        <td>
+                            <div class="customer-name">{{ order.customer_display_name }}</div>
+                        </td>
+                        <td class="text-center">
+                            <strong>{{ order.item_count }}</strong>
+                        </td>
+                        <td class="text-right">
+                            <strong class="amount">₦{{ order.total|floatformat:2 }}</strong>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge badge-payment-{{ order.payment_status|lower }}">
+                                {{ order.get_payment_status_display }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge badge-status-{{ order.status|lower }}">
+                                {{ order.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <a href="{% url 'orders:order_detail' order.pk %}" class="btn-icon" title="View">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% if order.status == 'COMPLETED' and order.receipt %}
+                                <a href="{% url 'receipts:receipt_detail' order.receipt.pk %}" class="btn-icon" title="Receipt">
+                                    <i class="fas fa-receipt"></i>
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+                <div class="pagination">
+                    {% if page_obj.has_previous %}
+                        <a href="?page=1{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="page-link">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                        <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="page-link">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    {% endif %}
+
+                    <span class="page-info">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="page-link">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                        <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="page-link">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fas fa-shopping-bag"></i>
+            </div>
+            <h3>No orders found</h3>
+            {% if request.GET %}
+                <p>Try adjusting your filters</p>
+                <a href="{% url 'orders:order_list' %}" class="btn-secondary">Clear Filters</a>
+            {% else %}
+                <p>Orders will appear here once completed</p>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    .orders-page {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .page-header {
+        margin-bottom: 2rem;
+    }
+
+    .page-header h1 {
+        margin: 0 0 0.5rem 0;
+        font-size: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .subtitle {
+        margin: 0;
+        color: #666;
+    }
+
+    .filters-section {
+        background: white;
+        border: 1px solid #E8E8E8;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .filters-form {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .filter-select {
+        padding: 0.875rem 1rem;
+        border: 1px solid #E8E8E8;
+        border-radius: 8px;
+        font-size: 0.9375rem;
+        min-width: 180px;
+    }
+
+    .btn-clear {
+        padding: 0.875rem 1.25rem;
+        background: #F5F5F5;
+        color: #666;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .orders-table-wrapper {
+        background: white;
+        border: 1px solid #E8E8E8;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .orders-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .orders-table th {
+        background: #FAFAFA;
+        padding: 1rem 1.25rem;
+        text-align: left;
+        font-weight: 700;
+        font-size: 0.8125rem;
+        color: #666;
+        text-transform: uppercase;
+        border-bottom: 2px solid #E8E8E8;
+    }
+
+    .orders-table td {
+        padding: 1.25rem;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .orders-table tr:hover {
+        background: #FAFAFA;
+    }
+
+    .order-number {
+        font-weight: 700;
+        color: #0033A0;
+        text-decoration: none;
+        font-family: monospace;
+    }
+
+    .order-number:hover {
+        text-decoration: underline;
+    }
+
+    .date {
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .time {
+        font-size: 0.75rem;
+        color: #999;
+    }
+
+    .customer-name {
+        font-size: 0.9375rem;
+        color: #1A1A1A;
+    }
+
+    .amount {
+        color: #10B981;
+        font-family: monospace;
+    }
+
+    .badge {
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        display: inline-block;
+    }
+
+    .badge-payment-paid { background: #D1FAE5; color: #065F46; }
+    .badge-payment-partial { background: #FEF3C7; color: #92400E; }
+    .badge-payment-unpaid { background: #FEE2E2; color: #991B1B; }
+
+    .badge-status-confirmed { background: #DBEAFE; color: #1E40AF; }
+    .badge-status-processing { background: #FEF3C7; color: #92400E; }
+    .badge-status-completed { background: #D1FAE5; color: #065F46; }
+    .badge-status-cancelled { background: #FEE2E2; color: #991B1B; }
+
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        background: #F5F5F5;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        margin: 0 0.25rem;
+    }
+
+    .btn-icon:hover {
+        background: #0033A0;
+        color: white;
+    }
+
+    .pagination {
+        padding: 1.5rem;
+        border-top: 1px solid #E8E8E8;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .page-link {
+        width: 36px;
+        height: 36px;
+        background: #F5F5F5;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+        text-decoration: none;
+    }
+
+    .page-link:hover {
+        background: #0033A0;
+        color: white;
+    }
+
+    .page-info {
+        padding: 0 1rem;
+        font-weight: 600;
+        color: #666;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border: 1px solid #E8E8E8;
+        border-radius: 12px;
+    }
+
+    .empty-icon {
+        width: 100px;
+        height: 100px;
+        background: #F5F5F5;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+    }
+
+    .empty-icon i {
+        font-size: 3rem;
+        color: #D0D0D0;
+    }
+
+    .empty-state h3 {
+        margin: 0 0 0.5rem 0;
+    }
+
+    .empty-state p {
+        margin: 0 0 1.5rem 0;
+        color: #666;
+    }
+
+    .btn-secondary {
+        padding: 0.875rem 1.5rem;
+        background: #F5F5F5;
+        color: #666;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+</style>
+{% endblock %}

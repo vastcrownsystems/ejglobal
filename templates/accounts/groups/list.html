@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Group Management - EJ Global Services{% endblock %}
+{% block page_title %}Group Management{% endblock %}
+
+{% block content %}
+<div class="management-container" style="max-width: 1400px; margin: 0 auto; padding: 2rem;">
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+            <h1 style="margin: 0; font-size: 1.75rem;">Groups & Roles</h1>
+            <p style="margin: 0.5rem 0 0 0; color: #666;">Manage user roles and permissions</p>
+        </div>
+        <a href="{% url 'accounts:group_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Create Group
+        </a>
+    </div>
+
+    <!-- Groups Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
+        {% for group in groups %}
+        <div class="group-card">
+            <div class="group-header">
+                <div class="group-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div>
+                    <h3 class="group-name">{{ group.name }}</h3>
+                    <p class="group-meta">{{ group.user_set.count }} member{{ group.user_set.count|pluralize }}</p>
+                </div>
+            </div>
+
+            <div class="group-stats">
+                <div class="stat-item">
+                    <i class="fas fa-key"></i>
+                    <span>{{ group.permissions.count }} permission{{ group.permissions.count|pluralize }}</span>
+                </div>
+            </div>
+
+            {% if group.user_set.exists %}
+            <div class="group-members">
+                <strong>Members:</strong>
+                <div class="member-list">
+                    {% for user in group.user_set.all|slice:":3" %}
+                        <span class="member-badge">{{ user.username }}</span>
+                    {% endfor %}
+                    {% if group.user_set.count > 3 %}
+                        <span class="member-badge">+{{ group.user_set.count|add:"-3" }} more</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="group-actions">
+                <a href="{% url 'accounts:group_edit' group.pk %}" class="btn-action">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+                <form method="post" action="{% url 'accounts:group_delete' group.pk %}" style="display: inline;" 
+                      onsubmit="return confirm('Delete group {{ group.name }}?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-action danger">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+            <i class="fas fa-users" style="font-size: 3rem; color: #ccc; margin-bottom: 1rem;"></i>
+            <p style="color: #999;">No groups created yet</p>
+            <a href="{% url 'accounts:group_create' %}" class="btn btn-primary" style="margin-top: 1rem;">
+                Create Your First Group
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+    .group-card {
+        background: white;
+        border: 1px solid #e8e8e8;
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition: all 0.2s;
+    }
+
+    .group-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .group-header {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .group-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #0033A0 0%, #0047D1 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .group-name {
+        margin: 0;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #1a1a1a;
+    }
+
+    .group-meta {
+        margin: 0.25rem 0 0 0;
+        font-size: 0.875rem;
+        color: #666;
+    }
+
+    .group-stats {
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    .stat-item i {
+        color: #0033A0;
+    }
+
+    .group-members {
+        padding-top: 1rem;
+        border-top: 1px solid #f0f0f0;
+        margin-bottom: 1rem;
+    }
+
+    .group-members strong {
+        font-size: 0.875rem;
+        color: #666;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .member-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .member-badge {
+        padding: 0.25rem 0.75rem;
+        background: #e8f0fe;
+        color: #0033A0;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .group-actions {
+        display: flex;
+        gap: 0.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid #f0f0f0;
+    }
+
+    .btn-action {
+        flex: 1;
+        padding: 0.625rem 1rem;
+        border: 2px solid #e8e8e8;
+        background: white;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+        text-decoration: none;
+        color: #0033A0;
+    }
+
+    .btn-action:hover {
+        border-color: #0033A0;
+        background: #f8f9fa;
+    }
+
+    .btn-action.danger {
+        color: #e74c3c;
+    }
+
+    .btn-action.danger:hover {
+        border-color: #e74c3c;
+        background: rgba(231, 76, 60, 0.05);
+    }
+
+    .btn-primary {
+        padding: 0.75rem 1.5rem;
+        background: #0033A0;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+        background: #002a85;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 51, 160, 0.3);
+    }
+</style>
+{% endblock %}

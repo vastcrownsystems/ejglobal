@@ -1,0 +1,596 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Inventory Management - EJ Global Services{% endblock %}
+{% block page_title %}Inventory Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Stats Cards */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        flex-shrink: 0;
+    }
+
+    .stat-icon.total {
+        background: rgba(0, 51, 160, 0.1);
+        color: var(--primary);
+    }
+
+    .stat-icon.out {
+        background: rgba(231, 76, 60, 0.1);
+        color: var(--danger);
+    }
+
+    .stat-icon.low {
+        background: rgba(255, 140, 0, 0.1);
+        color: var(--accent-orange);
+    }
+
+    .stat-icon.ok {
+        background: rgba(127, 186, 0, 0.1);
+        color: var(--accent-green);
+    }
+
+    .stat-info {
+        flex: 1;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+
+    /* Content Grid - Single Column Layout */
+    .content-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    /* Stock Table */
+    .stock-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        overflow: hidden;
+    }
+
+    /* Movements Section */
+    .movements-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        overflow: hidden;
+    }
+
+    .section-header {
+        padding: 1.5rem;
+        border-bottom: 2px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .btn-adjust {
+        padding: 0.75rem 1.5rem;
+        background: linear-gradient(135deg, var(--accent-green) 0%, #6BA500 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-adjust:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(127, 186, 0, 0.3);
+    }
+
+    /* Search and Filters */
+    .filters-section {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .filter-input,
+    .filters-section input[type="text"],
+    .filters-section input[type="search"] {
+        flex: 1;
+        min-width: 250px;
+        padding: 0.875rem 1.25rem;
+        border: 2px solid #e8e8e8;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        background: white;
+        transition: all 0.2s;
+    }
+
+    .filter-input:focus,
+    .filters-section input:focus {
+        outline: none;
+        border-color: #0033A0;
+        box-shadow: 0 0 0 3px rgba(0, 51, 160, 0.1);
+    }
+
+    .filter-input::placeholder,
+    .filters-section input::placeholder {
+        color: #999;
+    }
+
+    .filter-select,
+    .filters-section select {
+        padding: 0.875rem 1.25rem;
+        padding-right: 2.5rem;
+        border: 2px solid #e8e8e8;
+        border-radius: 12px;
+        min-width: 200px;
+        font-size: 0.95rem;
+        background: white;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        background-size: 12px;
+        appearance: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .filter-select:focus,
+    .filters-section select:focus {
+        outline: none;
+        border-color: #0033A0;
+        box-shadow: 0 0 0 3px rgba(0, 51, 160, 0.1);
+    }
+
+    .filter-select:hover,
+    .filters-section select:hover {
+        border-color: #ccc;
+    }
+
+    /* Search Button */
+    .filters-section button[type="submit"] {
+        padding: 0.875rem 1.75rem;
+        background: #0033A0;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .filters-section button[type="submit"]:hover {
+        background: #002a85;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 51, 160, 0.2);
+    }
+
+    .filters-section button[type="submit"]:active {
+        transform: translateY(0);
+    }
+
+    /* Stock Table */
+    .stock-table-container {
+        overflow-x: auto;
+    }
+
+    .stock-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .stock-table th {
+        background: var(--bg-main);
+        padding: 1rem 1.5rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        white-space: nowrap;
+    }
+
+    .stock-table td {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .stock-table tr:hover {
+        background: var(--bg-main);
+    }
+
+    .product-cell {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .product-image {
+        width: 50px;
+        height: 50px;
+        border-radius: 8px;
+        object-fit: cover;
+        background: var(--bg-main);
+    }
+
+    .product-info {
+        flex: 1;
+    }
+
+    .product-name {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .product-sku {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        font-family: 'JetBrains Mono', monospace;
+        margin-top: 0.25rem;
+    }
+
+    .stock-badge {
+        padding: 0.375rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        font-family: 'JetBrains Mono', monospace;
+        white-space: nowrap;
+    }
+
+    .stock-badge.out {
+        background: rgba(231, 76, 60, 0.1);
+        color: var(--danger);
+    }
+
+    .stock-badge.low {
+        background: rgba(255, 140, 0, 0.1);
+        color: var(--accent-orange);
+    }
+
+    .stock-badge.ok {
+        background: rgba(127, 186, 0, 0.1);
+        color: var(--accent-green);
+    }
+
+    .btn-action {
+        padding: 0.5rem 1rem;
+        background: white;
+        color: var(--primary);
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-action:hover {
+        border-color: var(--primary);
+        background: var(--bg-main);
+    }
+
+    /* Recent Movements */
+    .movements-list {
+        padding: 1.5rem;
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .movement-item {
+        padding: 1rem;
+        background: var(--bg-main);
+        border-radius: 12px;
+        margin-bottom: 0.75rem;
+    }
+
+    .movement-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 0.5rem;
+    }
+
+    .movement-product {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .movement-qty {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+
+    .movement-qty.increase {
+        color: var(--accent-green);
+    }
+
+    .movement-qty.decrease {
+        color: var(--danger);
+    }
+
+    .movement-meta {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+        .content-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filters-section {
+            flex-direction: column;
+        }
+
+        .filter-select {
+            min-width: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon total">
+            <i class="fas fa-boxes"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ stats.total }}</div>
+            <div class="stat-label">Total Products</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon out">
+            <i class="fas fa-exclamation-circle"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ stats.out_of_stock }}</div>
+            <div class="stat-label">Out of Stock</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon low">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ stats.low_stock }}</div>
+            <div class="stat-label">Low Stock</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon ok">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-value">{{ stats.in_stock }}</div>
+            <div class="stat-label">In Stock</div>
+        </div>
+    </div>
+</div>
+
+<!-- Content Grid -->
+<div class="content-grid">
+    <!-- Stock List -->
+    <div class="stock-section">
+        <div class="section-header">
+            <h2 class="section-title">Stock Levels</h2>
+            <a href="{% url 'inventory:adjust_stock' %}" class="btn-adjust">
+                <i class="fas fa-plus-circle"></i> Adjust Stock
+            </a>
+        </div>
+
+        <!-- Filters -->
+        <form method="get" class="filters-section">
+            {{ search_form.search }}
+            {{ search_form.stock_status }}
+            {{ search_form.category }}
+            <button type="submit" class="btn-action">
+                <i class="fas fa-search"></i> Search
+            </button>
+        </form>
+
+        <!-- Stock Table -->
+        <div class="stock-table-container">
+            <table class="stock-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>SKU</th>
+                        <th>Current Stock</th>
+                        <th>Threshold</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for variant in variants %}
+                    <tr>
+                        <td>
+                            <div class="product-cell">
+                                {% if variant.image %}
+                                    <img src="{{ variant.image.url }}" alt="{{ variant.product.name }}" class="product-image">
+                                {% elif variant.product.image %}
+                                    <img src="{{ variant.product.image.url }}" alt="{{ variant.product.name }}" class="product-image">
+                                {% else %}
+                                    <div class="product-image">
+                                        <i class="fas fa-box"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="product-info">
+                                    <div class="product-name">{{ variant.product.name }}</div>
+                                    <div class="product-sku">{{ variant.name|default:variant }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">
+                                {{ variant.sku }}
+                            </span>
+                        </td>
+                        <td>
+                            <strong style="font-family: 'JetBrains Mono', monospace; font-size: 1.1rem;">
+                                {{ variant.stock_quantity }}
+                            </strong>
+                        </td>
+                        <td>
+                            <span style="color: var(--text-muted);">
+                                {{ variant.low_stock_threshold }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if variant.stock_quantity == 0 %}
+                                <span class="stock-badge out">
+                                    <i class="fas fa-times-circle"></i> Out of Stock
+                                </span>
+                            {% elif variant.stock_quantity <= variant.low_stock_threshold %}
+                                <span class="stock-badge low">
+                                    <i class="fas fa-exclamation-triangle"></i> Low Stock
+                                </span>
+                            {% else %}
+                                <span class="stock-badge ok">
+                                    <i class="fas fa-check-circle"></i> In Stock
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'inventory:variant_detail' variant.pk %}" class="btn-action">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                            <i class="fas fa-box-open" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                            <p>No products found</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if variants.has_other_pages %}
+        <div style="padding: 1.5rem; border-top: 1px solid var(--border); text-align: center;">
+            {% if variants.has_previous %}
+                <a href="?page={{ variants.previous_page_number }}" class="btn-action">Previous</a>
+            {% endif %}
+            <span style="margin: 0 1rem;">Page {{ variants.number }} of {{ variants.paginator.num_pages }}</span>
+            {% if variants.has_next %}
+                <a href="?page={{ variants.next_page_number }}" class="btn-action">Next</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Movements -->
+    <div class="movements-section">
+        <div class="section-header">
+            <h2 class="section-title">Recent Movements</h2>
+            <a href="{% url 'inventory:movement_log' %}" class="btn-action">
+                <i class="fas fa-history"></i> View All
+            </a>
+        </div>
+
+        <div class="movements-list">
+            {% for movement in recent_movements %}
+            <div class="movement-item">
+                <div class="movement-header">
+                    <div>
+                        <div class="movement-product">{{ movement.variant.product.name }}</div>
+                        <div class="product-sku">{{ movement.variant.sku }}</div>
+                    </div>
+                    <div class="movement-qty {% if movement.quantity >= 0 %}increase{% else %}decrease{% endif %}">
+                        {{ movement.quantity_display }}
+                    </div>
+                </div>
+                <div class="movement-meta">
+                    <span><i class="fas fa-tag"></i> {{ movement.get_movement_type_display }}</span>
+                    <span><i class="fas fa-user"></i> {{ movement.user.get_full_name|default:movement.user.username }}</span>
+                    <span><i class="fas fa-clock"></i> {{ movement.created_at|timesince }} ago</span>
+                </div>
+                {% if movement.notes %}
+                    <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                        {{ movement.notes }}
+                    </div>
+                {% endif %}
+            </div>
+            {% empty %}
+            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                <p>No recent movements</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

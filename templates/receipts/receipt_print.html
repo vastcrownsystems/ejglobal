@@ -1,0 +1,375 @@
+<!-- apps/receipts/templates/receipts/receipt_print.html -->
+<!-- Printable Receipt Template -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt {{ receipt.receipt_number }}</title>
+    <style>
+        /* ===== Print-Optimized Styles ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: 80mm auto; /* Thermal printer width */
+            margin: 0;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #000;
+            background: #fff;
+            padding: 10mm;
+            width: 80mm;
+        }
+
+        .receipt {
+            width: 100%;
+        }
+
+        /* ===== Header ===== */
+        .receipt-header {
+            text-align: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px dashed #000;
+        }
+
+        .company-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .company-info {
+            font-size: 11px;
+            margin-bottom: 3px;
+        }
+
+        .receipt-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+
+        .receipt-number {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* ===== Info Section ===== */
+        .receipt-info {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #000;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+            font-size: 11px;
+        }
+
+        .info-label {
+            font-weight: bold;
+        }
+
+        /* ===== Items Table ===== */
+        .items-section {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #000;
+        }
+
+        .items-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #000;
+        }
+
+        .item-row {
+            margin-bottom: 8px;
+        }
+
+        .item-name {
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .item-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+        }
+
+        .item-qty-price {
+            flex: 1;
+        }
+
+        .item-total {
+            font-weight: bold;
+            text-align: right;
+        }
+
+        /* ===== Totals Section ===== */
+        .totals-section {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px dashed #000;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .total-label {
+            font-size: 12px;
+        }
+
+        .total-value {
+            font-weight: bold;
+            text-align: right;
+        }
+
+        .grand-total {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 2px solid #000;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* ===== Payment Section ===== */
+        .payment-section {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #000;
+        }
+
+        .payment-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 11px;
+        }
+
+        /* ===== Footer ===== */
+        .receipt-footer {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .footer-line {
+            margin-bottom: 5px;
+            font-size: 11px;
+        }
+
+        .thank-you {
+            font-size: 13px;
+            font-weight: bold;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+
+        .barcode {
+            margin-top: 10px;
+            text-align: center;
+            font-size: 10px;
+            letter-spacing: 2px;
+        }
+
+        /* ===== Print Specific ===== */
+        @media print {
+            body {
+                padding: 5mm;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        /* ===== Print Button (Screen Only) ===== */
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background: #10B981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+        }
+
+        .print-button:hover {
+            background: #059669;
+        }
+
+        @media print {
+            .print-button {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Print Button -->
+    <button class="print-button no-print" onclick="window.print()">
+        🖨️ Print Receipt
+    </button>
+
+    <div class="receipt">
+        <!-- Header -->
+        <div class="receipt-header">
+            <div class="company-name">EJ GLOBAL SERVICES</div>
+            <div class="company-info">Your trusted partner</div>
+            <div class="company-info">Tel: +234-XXX-XXX-XXXX</div>
+            <div class="company-info">Email: info@ejglobal.com</div>
+
+            <div class="receipt-title">SALES RECEIPT</div>
+            <div class="receipt-number">{{ receipt.receipt_number }}</div>
+        </div>
+
+        <!-- Receipt Info -->
+        <div class="receipt-info">
+            <div class="info-row">
+                <span class="info-label">Date:</span>
+                <span>{{ receipt.issued_at|date:"M d, Y g:i A" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Order:</span>
+                <span>{{ data.order.order_number }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Cashier:</span>
+                <span>{{ data.cashier.name }}</span>
+            </div>
+            {% if data.customer.name %}
+            <div class="info-row">
+                <span class="info-label">Customer:</span>
+                <span>{{ data.customer.name }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Items -->
+        <div class="items-section">
+            <div class="items-header">ITEMS</div>
+
+            {% for item in data.items %}
+            <div class="item-row">
+                <div class="item-name">{{ item.product_name }}</div>
+                <div class="item-details">
+                    <div class="item-qty-price">
+                        {{ item.quantity }} x ₦{{ item.unit_price|floatformat:2 }}
+                        {% if item.discount_amount > 0 %}
+                            (-₦{{ item.discount_amount|floatformat:2 }})
+                        {% endif %}
+                    </div>
+                    <div class="item-total">₦{{ item.line_total|floatformat:2 }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Totals -->
+        <div class="totals-section">
+            <div class="total-row">
+                <span class="total-label">Subtotal:</span>
+                <span class="total-value">₦{{ data.totals.subtotal|floatformat:2 }}</span>
+            </div>
+
+            {% if data.totals.discount_amount > 0 %}
+            <div class="total-row">
+                <span class="total-label">Discount:</span>
+                <span class="total-value">-₦{{ data.totals.discount_amount|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+
+            {% if data.totals.tax_amount > 0 %}
+            <div class="total-row">
+                <span class="total-label">Tax:</span>
+                <span class="total-value">₦{{ data.totals.tax_amount|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+
+            <div class="total-row grand-total">
+                <span class="total-label">TOTAL:</span>
+                <span class="total-value">₦{{ data.totals.total|floatformat:2 }}</span>
+            </div>
+        </div>
+
+        <!-- Payments -->
+        <div class="payment-section">
+            <div class="total-row">
+                <span style="font-weight: bold;">PAYMENT</span>
+            </div>
+            {% for payment in data.payments %}
+            <div class="payment-row">
+                <span>{{ payment.payment_method_display }}:</span>
+                <span>₦{{ payment.amount|floatformat:2 }}</span>
+            </div>
+            {% endfor %}
+
+            <div class="total-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #000;">
+                <span class="total-label">Paid:</span>
+                <span class="total-value">₦{{ data.totals.paid_amount|floatformat:2 }}</span>
+            </div>
+
+            {% if data.totals.balance_due > 0 %}
+            <div class="total-row">
+                <span class="total-label">Balance:</span>
+                <span class="total-value">₦{{ data.totals.balance_due|floatformat:2 }}</span>
+            </div>
+            {% else %}
+            <div class="total-row">
+                <span class="total-label">Change:</span>
+                <span class="total-value">₦0.00</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Footer -->
+        <div class="receipt-footer">
+            <div class="thank-you">THANK YOU!</div>
+            <div class="footer-line">Please come again</div>
+            <div class="footer-line">Goods sold are not returnable</div>
+
+            <div class="barcode">
+                {{ receipt.receipt_number }}
+            </div>
+
+            <div class="footer-line" style="margin-top: 10px; font-size: 10px;">
+                Print #{{ receipt.print_count }}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-print on load (optional)
+        // window.onload = function() { window.print(); }
+
+        // Close window after printing
+        window.onafterprint = function() {
+            // Optionally redirect back
+            // window.close();
+        }
+    </script>
+</body>
+</html>

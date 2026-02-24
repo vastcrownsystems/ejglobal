@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block page_title %}Access: {{ target.username }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 900px;">
+  <div class="card-header">
+    <div class="card-title">Update Access — {{ target.username }}</div>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <div style="margin-bottom: 16px;">
+      <label>{{ form.is_active.label }}</label>
+      {{ form.is_active }}
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <h4>Roles (Groups)</h4>
+      {{ form.groups }}
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <h4>Extra Permissions</h4>
+      <small style="color: var(--text-muted);">
+        Use this only when a user needs exceptions beyond their role.
+      </small>
+      <div style="margin-top: 8px;">
+        {{ form.user_permissions }}
+      </div>
+    </div>
+
+    <div style="display:flex; gap: 12px;">
+      <button class="btn btn-primary" type="submit">Save</button>
+      <a class="btn" href="{% url 'accounts:user_list' %}">Back</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

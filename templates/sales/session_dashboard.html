@@ -1,0 +1,372 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Session Dashboard - EJ Global Services POS{% endblock %}
+
+{% block page_title %}Cashier Sessions{% endblock %}
+
+{% block extra_css %}
+<style>
+    .session-dashboard {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    /* Current Session Card */
+    .current-session-card {
+        background: linear-gradient(135deg, var(--accent-green) 0%, #6BA500 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .current-session-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 200px;
+        height: 200px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+    }
+
+    .session-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .session-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .session-title {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .session-badge {
+        width: 50px;
+        height: 50px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+    }
+
+    .session-title h2 {
+        font-size: 1.75rem;
+        margin: 0;
+    }
+
+    .close-btn {
+        padding: 0.75rem 1.5rem;
+        background: white;
+        color: var(--accent-green);
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .close-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .session-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .session-detail-item {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        padding: 1rem;
+        border-radius: 12px;
+    }
+
+    .detail-label {
+        font-size: 0.85rem;
+        opacity: 0.9;
+        margin-bottom: 0.5rem;
+    }
+
+    .detail-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* No Active Session */
+    .no-session-card {
+        background: var(--bg-card);
+        border: 2px dashed var(--border);
+        padding: 3rem;
+        border-radius: 20px;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .no-session-icon {
+        width: 80px;
+        height: 80px;
+        background: var(--bg-main);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: var(--text-muted);
+        margin: 0 auto 1.5rem;
+    }
+
+    .no-session-card h2 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+    }
+
+    .no-session-card p {
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+    }
+
+    .start-session-btn {
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .start-session-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 51, 160, 0.3);
+    }
+
+    /* Recent Sessions */
+    .recent-sessions-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .recent-sessions-table thead {
+        background: var(--bg-main);
+    }
+
+    .recent-sessions-table th {
+        padding: 1rem;
+        text-align: left;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .recent-sessions-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .recent-sessions-table tr:hover {
+        background: var(--bg-card-hover);
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .status-badge.closed {
+        background: rgba(231, 76, 60, 0.15);
+        color: #C0392B;
+    }
+
+    .cash-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+    }
+
+    .cash-value.positive {
+        color: var(--accent-green);
+    }
+
+    .cash-value.negative {
+        color: var(--danger);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="session-dashboard">
+    <!-- Current Session -->
+    {% if current_session %}
+    <div class="current-session-card">
+        <div class="session-content">
+            <div class="session-header-row">
+                <div class="session-title">
+                    <div class="session-badge">
+                        <i class="fas fa-circle-notch fa-spin"></i>
+                    </div>
+                    <div>
+                        <h2>Active Session</h2>
+                        <p style="margin: 0; opacity: 0.9;">{{ current_session.register.name }} - {{ current_session.store.name }}</p>
+                    </div>
+                </div>
+                <a href="{% url 'sales:close_session' current_session.id %}" class="close-btn">
+                    <i class="fas fa-stop"></i> Close Session
+                </a>
+
+                <a class="btn btn-primary" href="{% url 'orders:pos' %}">
+                  Go to POS
+                </a>
+
+            </div>
+
+            <div class="session-details">
+                <div class="session-detail-item">
+                    <div class="detail-label">Opening Cash</div>
+                    <div class="detail-value">₦{{ current_session.opening_cash|floatformat:2 }}</div>
+                </div>
+
+                <div class="session-detail-item">
+                    <div class="detail-label">Started At</div>
+                    <div class="detail-value">{{ current_session.opened_at|date:"h:i A" }}</div>
+                </div>
+
+                <div class="session-detail-item">
+                    <div class="detail-label">Duration</div>
+                    <div class="detail-value" id="sessionDuration">--</div>
+                </div>
+
+                <div class="session-detail-item">
+                    <div class="detail-label">Register Code</div>
+                    <div class="detail-value">{{ current_session.register.code }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- No Active Session -->
+    <div class="no-session-card">
+        <div class="no-session-icon">
+            <i class="fas fa-cash-register"></i>
+        </div>
+        <h2>No Active Session</h2>
+        <p>Start a new session to begin processing transactions</p>
+        <a href="{% url 'sales:start_session' %}" class="start-session-btn">
+            <i class="fas fa-play"></i> Start New Session
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Recent Sessions -->
+    {% if recent_sessions %}
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Recent Sessions</h2>
+        </div>
+
+        <table class="recent-sessions-table">
+            <thead>
+                <tr>
+                    <th>Register</th>
+                    <th>Opened</th>
+                    <th>Closed</th>
+                    <th>Duration</th>
+                    <th>Opening Cash</th>
+                    <th>Closing Cash</th>
+                    <th>Difference</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for session in recent_sessions %}
+                <tr>
+                    <td>
+                        <strong>{{ session.register.name }}</strong><br>
+                        <small style="color: var(--text-muted);">{{ session.register.code }}</small>
+                    </td>
+                    <td>{{ session.opened_at|date:"M d, Y h:i A" }}</td>
+                    <td>{{ session.closed_at|date:"M d, Y h:i A" }}</td>
+                    <td>{{ session.duration_display }}</td>
+                    <td class="cash-value">₦{{ session.opening_cash|floatformat:2 }}</td>
+                    <td class="cash-value">₦{{ session.closing_cash|floatformat:2 }}</td>
+                    <td class="cash-value {% if session.cash_difference >= 0 %}positive{% else %}negative{% endif %}">
+                      {% if session.cash_difference >= 0 %}+{% endif %}₦{{ session.cash_difference|floatformat:2 }}
+                    </td>
+                    <td>
+                        <span class="status-badge closed">
+                            <i class="fas fa-check"></i> Closed
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+{% if current_session %}
+<script>
+    // Update session duration in real-time
+    function updateDuration() {
+        const openedAt = new Date('{{ current_session.opened_at|date:"c" }}');
+        const now = new Date();
+        const diff = now - openedAt;
+
+        const hours = Math.floor(diff / 3600000);
+        const minutes = Math.floor((diff % 3600000) / 60000);
+
+        document.getElementById('sessionDuration').textContent = `${hours}h ${minutes}m`;
+    }
+
+    // Update immediately and then every minute
+    updateDuration();
+    setInterval(updateDuration, 60000);
+</script>
+{% endif %}
+{% endblock %}

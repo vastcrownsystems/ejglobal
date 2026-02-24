@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} - EJ Global Services{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .form-header {
+        margin-bottom: 2rem;
+    }
+
+    .form-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .form-subtitle {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+    }
+
+    .form-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+    }
+
+    .required {
+        color: var(--danger);
+        margin-left: 0.25rem;
+    }
+
+    .form-input,
+    .form-select {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 2px solid var(--border);
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-family: 'DM Sans', sans-serif;
+        transition: all 0.3s ease;
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+        outline: none;
+        border-color: var(--primary);
+        background: white;
+        box-shadow: 0 0 0 4px rgba(0, 51, 160, 0.1);
+    }
+
+    .form-help-text {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-top: 0.5rem;
+    }
+
+    .info-box {
+        background: rgba(0, 191, 179, 0.1);
+        border: 1px solid rgba(0, 191, 179, 0.3);
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .info-icon {
+        color: var(--accent-cyan);
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .info-content {
+        flex: 1;
+    }
+
+    .info-title {
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .info-text {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    .example-box {
+        background: var(--bg-main);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .example-title {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .example-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .example-tag {
+        padding: 0.375rem 0.75rem;
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        font-size: 0.85rem;
+        color: var(--text-primary);
+    }
+
+    .errorlist {
+        list-style: none;
+        padding: 0;
+        margin: 0.5rem 0 0 0;
+    }
+
+    .errorlist li {
+        color: var(--danger);
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(231, 76, 60, 0.1);
+        border-left: 3px solid var(--danger);
+        border-radius: 4px;
+        margin-top: 0.5rem;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        padding-top: 2rem;
+        border-top: 2px solid var(--border);
+    }
+
+    .btn-submit {
+        flex: 1;
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, var(--accent-green) 0%, #6BA500 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 16px rgba(127, 186, 0, 0.3);
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(127, 186, 0, 0.4);
+    }
+
+    .btn-cancel {
+        padding: 1rem 2rem;
+        background: white;
+        color: var(--text-secondary);
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        text-decoration: none;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+
+    .btn-cancel:hover {
+        background: var(--bg-main);
+        border-color: var(--text-secondary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <!-- Form Header -->
+    <div class="form-header">
+        <h1 class="form-title">{{ title }}</h1>
+        <p class="form-subtitle">
+            {% if value %}
+                Update attribute value
+            {% else %}
+                Add a new value to an attribute
+            {% endif %}
+        </p>
+    </div>
+
+    <!-- Info Box -->
+    {% if not value %}
+    <div class="info-box">
+        <div class="info-icon">
+            <i class="fas fa-info-circle"></i>
+        </div>
+        <div class="info-content">
+            <div class="info-title">Adding Values</div>
+            <p class="info-text">
+                Add specific options for an attribute. For example, for a "Size" attribute, you might add values like Small, Medium, and Large.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Form -->
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-card">
+            <div class="form-group">
+                <label class="form-label" for="id_attribute">
+                    Attribute <span class="required">*</span>
+                </label>
+                {{ form.attribute }}
+                {% if form.attribute.errors %}
+                    {{ form.attribute.errors }}
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_value">
+                    Value <span class="required">*</span>
+                </label>
+                {{ form.value }}
+                <div class="form-help-text">
+                    Enter a specific value for this attribute
+                </div>
+                {% if form.value.errors %}
+                    {{ form.value.errors }}
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_display_order">
+                    Display Order
+                </label>
+                {{ form.display_order }}
+                <div class="form-help-text">
+                    {{ form.display_order.help_text }}
+                </div>
+                {% if form.display_order.errors %}
+                    {{ form.display_order.errors }}
+                {% endif %}
+            </div>
+
+            <!-- Examples -->
+            <div class="example-box">
+                <div class="example-title">
+                    <i class="fas fa-info-circle"></i> Example Values
+                </div>
+                <div style="margin-bottom: 0.75rem;">
+                    <strong style="font-size: 0.85rem; color: var(--text-muted);">Size:</strong>
+                    <div class="example-tags">
+                        <span class="example-tag">Small</span>
+                        <span class="example-tag">Medium</span>
+                        <span class="example-tag">Large</span>
+                        <span class="example-tag">Extra Large</span>
+                    </div>
+                </div>
+                <div style="margin-bottom: 0.75rem;">
+                    <strong style="font-size: 0.85rem; color: var(--text-muted);">Color:</strong>
+                    <div class="example-tags">
+                        <span class="example-tag">Red</span>
+                        <span class="example-tag">Blue</span>
+                        <span class="example-tag">Green</span>
+                        <span class="example-tag">Black</span>
+                    </div>
+                </div>
+                <div>
+                    <strong style="font-size: 0.85rem; color: var(--text-muted);">Material:</strong>
+                    <div class="example-tags">
+                        <span class="example-tag">Cotton</span>
+                        <span class="example-tag">Polyester</span>
+                        <span class="example-tag">Silk</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-save"></i> {{ submit_text }}
+                </button>
+                <a href="{% if value %}{% url 'catalog:attribute_detail' value.attribute.pk %}{% else %}{% url 'catalog:attribute_list' %}{% endif %}" class="btn-cancel">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

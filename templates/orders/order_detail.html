@@ -1,0 +1,773 @@
+<!-- apps/orders/templates/orders/order_detail.html -->
+<!-- Order Detail Page -->
+
+{% extends "base.html" %}
+
+{% block title %}{{ order.order_number }} - Order Detail{% endblock %}
+
+{% block content %}
+<div class="order-detail-page">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <a href="{% url 'orders:order_list' %}" class="back-link">
+                <i class="fas fa-arrow-left"></i>
+                Back to Orders
+            </a>
+            <h1>{{ order.order_number }}</h1>
+            <div class="order-meta">
+                <span class="badge badge-status-{{ order.status|lower }}">
+                    {{ order.get_status_display }}
+                </span>
+                <span class="badge badge-payment-{{ order.payment_status|lower }}">
+                    {{ order.get_payment_status_display }}
+                </span>
+                <span class="order-time">
+                    <i class="fas fa-calendar"></i>
+                    {{ order.created_at|date:"M d, Y g:i A" }}
+                </span>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            {% if order.status == 'COMPLETED' and order.receipt %}
+                <a href="{% url 'receipts:receipt_detail' order.receipt.pk %}" class="btn-secondary">
+                    <i class="fas fa-receipt"></i>
+                    View Receipt
+                </a>
+            {% endif %}
+            {% if order.status not in 'COMPLETED,CANCELLED' %}
+                <button
+                    class="btn-cancel"
+                    onclick="showCancelModal()"
+                >
+                    <i class="fas fa-ban"></i>
+                    Cancel Order
+                </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Order Info Grid -->
+    <div class="info-grid">
+        <!-- Order Details Card -->
+        <div class="info-card">
+            <h3>
+                <i class="fas fa-info-circle"></i>
+                Order Information
+            </h3>
+
+            <div class="info-rows">
+                <div class="info-row">
+                    <span class="info-label">Order Number</span>
+                    <span class="info-value">{{ order.order_number }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Status</span>
+                    <span class="badge badge-status-{{ order.status|lower }}">
+                        {{ order.get_status_display }}
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Created</span>
+                    <span class="info-value">{{ order.created_at|date:"M d, Y g:i A" }}</span>
+                </div>
+                {% if order.completed_at %}
+                    <div class="info-row">
+                        <span class="info-label">Completed</span>
+                        <span class="info-value">{{ order.completed_at|date:"M d, Y g:i A" }}</span>
+                    </div>
+                {% endif %}
+                <div class="info-row">
+                    <span class="info-label">Cashier</span>
+                    <span class="info-value">{{ order.created_by.get_full_name|default:order.created_by.username }}</span>
+                </div>
+                {% if order.cashier_session %}
+                    <div class="info-row">
+                        <span class="info-label">Session</span>
+                        <span class="info-value">{{ order.cashier_session.session_id }}</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Customer Card -->
+        <div class="info-card">
+            <h3>
+                <i class="fas fa-user"></i>
+                Customer Information
+            </h3>
+
+            <div class="info-rows">
+                <div class="info-row">
+                    <span class="info-label">Name</span>
+                    <span class="info-value">
+                        {% if order.customer %}
+                            <a href="{% url 'customers:customer_detail' order.customer.pk %}">
+                                {{ order.customer.full_name }}
+                            </a>
+                        {% elif order.customer_name %}
+                            {{ order.customer_name }}
+                        {% else %}
+                            Walk-in Customer
+                        {% endif %}
+                    </span>
+                </div>
+                {% if order.customer %}
+                    {% if order.customer.phone %}
+                        <div class="info-row">
+                            <span class="info-label">Phone</span>
+                            <span class="info-value">{{ order.customer.phone }}</span>
+                        </div>
+                    {% endif %}
+                    {% if order.customer.email %}
+                        <div class="info-row">
+                            <span class="info-label">Email</span>
+                            <span class="info-value">{{ order.customer.email }}</span>
+                        </div>
+                    {% endif %}
+                    <div class="info-row">
+                        <span class="info-label">Customer Number</span>
+                        <span class="info-value">{{ order.customer.customer_number }}</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Items -->
+    <div class="items-card">
+        <h3>
+            <i class="fas fa-shopping-bag"></i>
+            Order Items ({{ items|length }})
+        </h3>
+
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th class="text-center">Quantity</th>
+                    <th class="text-right">Unit Price</th>
+                    <th class="text-right">Discount</th>
+                    <th class="text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>
+                        <div class="product-name">{{ item.product_name }}</div>
+                        {% if item.variant_name %}
+                            <div class="variant-name">{{ item.variant_name }}</div>
+                        {% endif %}
+                        {% if item.sku %}
+                            <div class="product-sku">SKU: {{ item.sku }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <strong>{{ item.quantity }}</strong>
+                    </td>
+                    <td class="text-right">
+                        ₦{{ item.unit_price|floatformat:2 }}
+                    </td>
+                    <td class="text-right">
+                        {% if item.discount_amount > 0 %}
+                            <span class="discount">-₦{{ item.discount_amount|floatformat:2 }}</span>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        <strong class="line-total">₦{{ item.line_total|floatformat:2 }}</strong>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Bottom Grid -->
+    <div class="bottom-grid">
+        <!-- Payments Card -->
+        <div class="payments-card">
+            <h3>
+                <i class="fas fa-credit-card"></i>
+                Payments ({{ payments|length }})
+            </h3>
+
+            {% if payments %}
+                <div class="payments-list">
+                    {% for payment in payments %}
+                    <div class="payment-item">
+                        <div class="payment-method">
+                            <i class="fas fa-{% if payment.payment_method == 'CASH' %}money-bill-wave{% elif payment.payment_method == 'CARD' %}credit-card{% elif payment.payment_method == 'TRANSFER' %}exchange-alt{% else %}mobile-alt{% endif %}"></i>
+                            <span>{{ payment.get_payment_method_display }}</span>
+                        </div>
+                        <div class="payment-details">
+                            {% if payment.reference_number %}
+                                <div class="payment-ref">Ref: {{ payment.reference_number }}</div>
+                            {% endif %}
+                            <div class="payment-time">{{ payment.created_at|date:"M d, g:i A" }}</div>
+                        </div>
+                        <div class="payment-amount">₦{{ payment.amount|floatformat:2 }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-message">No payments recorded</div>
+            {% endif %}
+        </div>
+
+        <!-- Order Summary Card -->
+        <div class="summary-card">
+            <h3>
+                <i class="fas fa-calculator"></i>
+                Order Summary
+            </h3>
+
+            <div class="summary-rows">
+                <div class="summary-row">
+                    <span class="summary-label">Subtotal</span>
+                    <span class="summary-value">₦{{ order.subtotal|floatformat:2 }}</span>
+                </div>
+
+                {% if order.discount_amount > 0 %}
+                    <div class="summary-row discount">
+                        <span class="summary-label">Discount</span>
+                        <span class="summary-value">-₦{{ order.discount_amount|floatformat:2 }}</span>
+                    </div>
+                {% endif %}
+
+                {% if order.tax_amount > 0 %}
+                    <div class="summary-row">
+                        <span class="summary-label">Tax</span>
+                        <span class="summary-value">₦{{ order.tax_amount|floatformat:2 }}</span>
+                    </div>
+                {% endif %}
+
+                <div class="summary-divider"></div>
+
+                <div class="summary-row total">
+                    <span class="summary-label">Total</span>
+                    <span class="summary-value">₦{{ order.total|floatformat:2 }}</span>
+                </div>
+
+                <div class="summary-row">
+                    <span class="summary-label">Paid</span>
+                    <span class="summary-value paid">₦{{ order.paid_amount|floatformat:2 }}</span>
+                </div>
+
+                <div class="summary-row">
+                    <span class="summary-label">Balance</span>
+                    <span class="summary-value {% if order.balance_due > 0 %}balance-due{% else %}paid{% endif %}">
+                        ₦{{ order.balance_due|floatformat:2 }}
+                    </span>
+                </div>
+
+                {% if order.is_paid %}
+                    <div class="paid-badge">
+                        <i class="fas fa-check-circle"></i>
+                        Fully Paid
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes -->
+    {% if order.notes %}
+        <div class="notes-card">
+            <h3>
+                <i class="fas fa-sticky-note"></i>
+                Notes
+            </h3>
+            <p>{{ order.notes }}</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Cancel Order Modal -->
+<div id="cancelModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Cancel Order</h3>
+            <button onclick="hideCancelModal()" class="btn-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="post" action="{% url 'orders:order_cancel' order.pk %}">
+            {% csrf_token %}
+            <div class="modal-body">
+                <p>Are you sure you want to cancel order <strong>{{ order.order_number }}</strong>?</p>
+                <div class="form-group">
+                    <label for="reason">Cancellation Reason</label>
+                    <textarea
+                        name="reason"
+                        id="reason"
+                        class="form-textarea"
+                        rows="3"
+                        placeholder="Enter reason for cancellation..."
+                        required
+                    ></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" onclick="hideCancelModal()" class="btn-secondary">
+                    No, Keep Order
+                </button>
+                <button type="submit" class="btn-danger">
+                    <i class="fas fa-ban"></i>
+                    Yes, Cancel Order
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .order-detail-page {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2rem;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #666;
+        text-decoration: none;
+        margin-bottom: 1rem;
+        font-size: 0.875rem;
+    }
+
+    .back-link:hover {
+        color: #0033A0;
+    }
+
+    .header-left h1 {
+        margin: 0 0 0.75rem 0;
+        font-size: 2rem;
+        font-family: monospace;
+    }
+
+    .order-meta {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .badge {
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .badge-status-confirmed { background: #DBEAFE; color: #1E40AF; }
+    .badge-status-processing { background: #FEF3C7; color: #92400E; }
+    .badge-status-completed { background: #D1FAE5; color: #065F46; }
+    .badge-status-cancelled { background: #FEE2E2; color: #991B1B; }
+
+    .badge-payment-paid { background: #D1FAE5; color: #065F46; }
+    .badge-payment-partial { background: #FEF3C7; color: #92400E; }
+    .badge-payment-unpaid { background: #FEE2E2; color: #991B1B; }
+
+    .order-time {
+        font-size: 0.875rem;
+        color: #999;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .btn-secondary, .btn-cancel {
+        padding: 0.875rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        border: none;
+    }
+
+    .btn-secondary {
+        background: #F5F5F5;
+        color: #666;
+    }
+
+    .btn-secondary:hover {
+        background: #E8E8E8;
+    }
+
+    .btn-cancel {
+        background: #FFF5F5;
+        color: #EF4444;
+        border: 1px solid #FED7D7;
+    }
+
+    .btn-cancel:hover {
+        background: #FEE2E2;
+        border-color: #EF4444;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .info-card, .items-card, .payments-card, .summary-card, .notes-card {
+        background: white;
+        border: 1px solid #E8E8E8;
+        border-radius: 12px;
+        padding: 1.5rem;
+    }
+
+    .info-card h3, .items-card h3, .payments-card h3, .summary-card h3, .notes-card h3 {
+        margin: 0 0 1.5rem 0;
+        font-size: 1.125rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #F5F5F5;
+    }
+
+    .info-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .info-label {
+        font-weight: 600;
+        color: #666;
+        font-size: 0.875rem;
+    }
+
+    .info-value {
+        font-weight: 600;
+        color: #1A1A1A;
+    }
+
+    .info-value a {
+        color: #0033A0;
+        text-decoration: none;
+    }
+
+    .info-value a:hover {
+        text-decoration: underline;
+    }
+
+    .items-card {
+        margin-bottom: 1.5rem;
+    }
+
+    .items-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .items-table th {
+        text-align: left;
+        padding: 0.75rem;
+        background: #FAFAFA;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #666;
+        text-transform: uppercase;
+        border-bottom: 2px solid #E8E8E8;
+    }
+
+    .items-table td {
+        padding: 1rem 0.75rem;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .product-name {
+        font-weight: 600;
+        color: #1A1A1A;
+        margin-bottom: 0.25rem;
+    }
+
+    .variant-name {
+        font-size: 0.875rem;
+        color: #666;
+    }
+
+    .product-sku {
+        font-size: 0.75rem;
+        color: #999;
+        font-family: monospace;
+    }
+
+    .discount {
+        color: #10B981;
+    }
+
+    .line-total {
+        color: #0033A0;
+        font-family: monospace;
+    }
+
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+
+    .bottom-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .payments-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .payment-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: #FAFAFA;
+        border-radius: 8px;
+    }
+
+    .payment-method {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+    }
+
+    .payment-details {
+        flex: 1;
+        font-size: 0.875rem;
+        color: #666;
+    }
+
+    .payment-amount {
+        font-weight: 700;
+        font-family: monospace;
+        color: #10B981;
+    }
+
+    .summary-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .summary-label {
+        font-weight: 600;
+        color: #666;
+    }
+
+    .summary-value {
+        font-weight: 700;
+        font-family: monospace;
+    }
+
+    .summary-row.discount .summary-label,
+    .summary-row.discount .summary-value {
+        color: #10B981;
+    }
+
+    .summary-divider {
+        height: 2px;
+        background: #E8E8E8;
+        margin: 0.5rem 0;
+    }
+
+    .summary-row.total {
+        padding-top: 0.75rem;
+    }
+
+    .summary-row.total .summary-label {
+        font-size: 1.125rem;
+        color: #1A1A1A;
+    }
+
+    .summary-row.total .summary-value {
+        font-size: 1.5rem;
+        color: #0033A0;
+    }
+
+    .summary-value.paid {
+        color: #10B981;
+    }
+
+    .summary-value.balance-due {
+        color: #EF4444;
+    }
+
+    .paid-badge {
+        margin-top: 1rem;
+        padding: 0.75rem;
+        background: #D1FAE5;
+        border: 1px solid #6EE7B7;
+        border-radius: 8px;
+        color: #065F46;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .notes-card p {
+        margin: 0;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .empty-message {
+        text-align: center;
+        padding: 2rem;
+        color: #999;
+    }
+
+    /* Modal */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+    }
+
+    .modal-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #E8E8E8;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+    }
+
+    .btn-close {
+        width: 32px;
+        height: 32px;
+        background: #F5F5F5;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .form-group {
+        margin-top: 1rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+
+    .form-textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #E8E8E8;
+        border-radius: 8px;
+        font-family: inherit;
+    }
+
+    .modal-footer {
+        padding: 1.5rem;
+        border-top: 1px solid #E8E8E8;
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+    }
+
+    .btn-danger {
+        padding: 0.75rem 1.5rem;
+        background: #EF4444;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-danger:hover {
+        background: #DC2626;
+    }
+
+    @media (max-width: 1024px) {
+        .info-grid,
+        .bottom-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<script>
+function showCancelModal() {
+    document.getElementById('cancelModal').style.display = 'flex';
+}
+
+function hideCancelModal() {
+    document.getElementById('cancelModal').style.display = 'none';
+}
+</script>
+
+{% endblock %}

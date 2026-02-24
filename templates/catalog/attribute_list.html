@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Variant Attributes - EJ Global Services{% endblock %}
+{% block page_title %}Variant Attributes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .attributes-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .attributes-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .btn-create {
+        padding: 0.75rem 1.5rem;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-create:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 51, 160, 0.4);
+    }
+
+    .attributes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .attribute-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .attribute-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        border-color: var(--primary);
+    }
+
+    .attribute-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 1rem;
+    }
+
+    .attribute-icon {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .attribute-info {
+        flex: 1;
+        margin-left: 1rem;
+    }
+
+    .attribute-name {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .attribute-internal {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .values-section {
+        background: var(--bg-main);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .values-title {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+    }
+
+    .values-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .value-tag {
+        padding: 0.375rem 0.75rem;
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        font-size: 0.85rem;
+        color: var(--text-primary);
+    }
+
+    .values-count {
+        padding: 0.375rem 0.75rem;
+        background: var(--primary);
+        color: white;
+        border-radius: 16px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .no-values {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        font-style: italic;
+    }
+
+    .attribute-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-small {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        transition: all 0.2s ease;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-view {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-view:hover {
+        background: var(--primary-light);
+    }
+
+    .btn-add {
+        background: var(--accent-green);
+        color: white;
+    }
+
+    .btn-add:hover {
+        background: #6BA500;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: var(--bg-card);
+        border: 2px dashed var(--border);
+        border-radius: 16px;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        color: var(--text-muted);
+        opacity: 0.3;
+        margin-bottom: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .attributes-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="attributes-header">
+    <h1 class="attributes-title">Variant Attributes</h1>
+    <a href="{% url 'catalog:attribute_create' %}" class="btn-create">
+        <i class="fas fa-plus"></i> New Attribute
+    </a>
+</div>
+
+{% if attributes %}
+<div class="attributes-grid">
+    {% for attribute in attributes %}
+    <div class="attribute-card">
+        <div class="attribute-header">
+            <div class="attribute-icon">
+                <i class="fas fa-tag"></i>
+            </div>
+            <div class="attribute-info">
+                <div class="attribute-name">{{ attribute.display_name }}</div>
+                <div class="attribute-internal">{{ attribute.name }}</div>
+            </div>
+        </div>
+
+        <div class="values-section">
+            <div class="values-title">Values ({{ attribute.values_count }})</div>
+            {% if attribute.values.exists %}
+                <div class="values-list">
+                    {% for value in attribute.values.all|slice:":5" %}
+                        <div class="value-tag">{{ value.value }}</div>
+                    {% endfor %}
+                    {% if attribute.values_count > 5 %}
+                        <div class="values-count">+{{ attribute.values_count|add:"-5" }} more</div>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="no-values">No values yet</div>
+            {% endif %}
+        </div>
+
+        <div class="attribute-actions">
+            <a href="{% url 'catalog:attribute_detail' attribute.pk %}" class="btn-small btn-view">
+                <i class="fas fa-eye"></i> View
+            </a>
+            <a href="{% url 'catalog:attribute_value_create_for' attribute.pk %}" class="btn-small btn-add">
+                <i class="fas fa-plus"></i> Add Value
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">
+        <i class="fas fa-tags"></i>
+    </div>
+    <h2>No Attributes Yet</h2>
+    <p>Create variant attributes like Size, Color, Material to organize your product variants.</p>
+    <a href="{% url 'catalog:attribute_create' %}" class="btn-create">
+        <i class="fas fa-plus"></i> Create First Attribute
+    </a>
+</div>
+{% endif %}
+{% endblock %}

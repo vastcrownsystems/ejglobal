@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Adjust Stock - EJ Global Services{% endblock %}
+{% block page_title %}Adjust Stock{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .form-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control,
+    .form-select,
+    .form-textarea {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 2px solid var(--border);
+        border-radius: 10px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.95rem;
+    }
+
+    .form-control:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(0, 51, 160, 0.1);
+    }
+
+    /* Radio Group */
+    .radio-group {
+        display: flex;
+        gap: 1.5rem;
+    }
+
+    .radio-option {
+        flex: 1;
+        padding: 1.25rem;
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .radio-option:hover {
+        border-color: var(--primary);
+        background: var(--bg-main);
+    }
+
+    .radio-option input[type="radio"] {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+
+    .radio-option input[type="radio"]:checked + .radio-label {
+        color: var(--primary);
+        font-weight: 700;
+    }
+
+    .radio-option:has(input:checked) {
+        border-color: var(--primary);
+        background: rgba(0, 51, 160, 0.05);
+    }
+
+    .radio-label {
+        flex: 1;
+        font-weight: 600;
+        font-size: 1.05rem;
+    }
+
+    .radio-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .radio-option:has(input[value="increase"]) .radio-icon {
+        background: rgba(127, 186, 0, 0.1);
+        color: var(--accent-green);
+    }
+
+    .radio-option:has(input[value="decrease"]) .radio-icon {
+        background: rgba(231, 76, 60, 0.1);
+        color: var(--danger);
+    }
+
+    /* Current Stock Display */
+    .current-stock-box {
+        background: rgba(0, 191, 179, 0.1);
+        border: 2px solid var(--accent-cyan);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .current-stock-label {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .current-stock-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--accent-cyan);
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Form Actions */
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        padding-top: 2rem;
+        border-top: 2px solid var(--border);
+    }
+
+    .btn-submit {
+        flex: 1;
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, var(--accent-green) 0%, #6BA500 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(127, 186, 0, 0.3);
+    }
+
+    .btn-cancel {
+        padding: 1rem 2rem;
+        background: white;
+        color: var(--text-secondary);
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        text-align: center;
+    }
+
+    .btn-cancel:hover {
+        background: var(--bg-main);
+    }
+
+    .errorlist {
+        list-style: none;
+        padding: 0;
+        margin: 0.5rem 0 0 0;
+    }
+
+    .errorlist li {
+        color: var(--danger);
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(231, 76, 60, 0.1);
+        border-left: 3px solid var(--danger);
+        border-radius: 4px;
+        margin-top: 0.5rem;
+    }
+
+    .form-help {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-top: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <form method="post" class="form-card" id="adjustmentForm">
+        {% csrf_token %}
+
+        <!-- Variant Selection -->
+        <div class="form-group">
+            <label class="form-label" for="id_variant">
+                Select Product *
+            </label>
+            {{ form.variant }}
+            {% if form.variant.errors %}
+                {{ form.variant.errors }}
+            {% endif %}
+            <div class="form-help">Choose the product variant to adjust</div>
+        </div>
+
+        <!-- Current Stock Display (Updated via JavaScript) -->
+        <div class="current-stock-box" id="currentStockBox" style="display: none;">
+            <div>
+                <div class="current-stock-label">Current Stock:</div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
+                    This will be updated
+                </div>
+            </div>
+            <div class="current-stock-value" id="currentStockValue">-</div>
+        </div>
+
+        <!-- Adjustment Type -->
+        <div class="form-group">
+            <label class="form-label">Adjustment Type *</label>
+            <div class="radio-group">
+                <label class="radio-option">
+                    <input type="radio" name="adjustment_type" value="increase" checked>
+                    <span class="radio-label">Increase Stock</span>
+                    <div class="radio-icon">
+                        <i class="fas fa-plus-circle"></i>
+                    </div>
+                </label>
+                <label class="radio-option">
+                    <input type="radio" name="adjustment_type" value="decrease">
+                    <span class="radio-label">Decrease Stock</span>
+                    <div class="radio-icon">
+                        <i class="fas fa-minus-circle"></i>
+                    </div>
+                </label>
+            </div>
+            {% if form.adjustment_type.errors %}
+                {{ form.adjustment_type.errors }}
+            {% endif %}
+        </div>
+
+        <!-- Quantity -->
+        <div class="form-group">
+            <label class="form-label" for="id_quantity">
+                Quantity *
+            </label>
+            {{ form.quantity }}
+            {% if form.quantity.errors %}
+                {{ form.quantity.errors }}
+            {% endif %}
+            <div class="form-help">Enter the amount to adjust</div>
+        </div>
+
+        <!-- Reason -->
+        <div class="form-group">
+            <label class="form-label" for="id_reason">
+                Reason *
+            </label>
+            {{ form.reason }}
+            {% if form.reason.errors %}
+                {{ form.reason.errors }}
+            {% endif %}
+            <div class="form-help">Why is this adjustment being made?</div>
+        </div>
+
+        <!-- Notes -->
+        <div class="form-group">
+            <label class="form-label" for="id_notes">
+                Additional Notes (Optional)
+            </label>
+            {{ form.notes }}
+            {% if form.notes.errors %}
+                {{ form.notes.errors }}
+            {% endif %}
+            <div class="form-help">Any additional information about this adjustment</div>
+        </div>
+
+        <!-- Non-field errors -->
+        {% if form.non_field_errors %}
+            <div class="errorlist">
+                {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Actions -->
+        <div class="form-actions">
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-check-circle"></i> Adjust Stock
+            </button>
+            <a href="{% url 'inventory:inv_dashboard' %}" class="btn-cancel">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Update current stock when variant is selected
+    document.getElementById('id_variant').addEventListener('change', function() {
+        const variantId = this.value;
+        const stockBox = document.getElementById('currentStockBox');
+        const stockValue = document.getElementById('currentStockValue');
+        
+        if (variantId) {
+            // Get stock via data attribute (you can also fetch via AJAX)
+            const selectedOption = this.options[this.selectedIndex];
+            const stock = selectedOption.dataset.stock || '-';
+            
+            stockValue.textContent = stock;
+            stockBox.style.display = 'flex';
+        } else {
+            stockBox.style.display = 'none';
+        }
+    });
+
+    // Trigger on page load if variant is pre-selected
+    window.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('id_variant').dispatchEvent(new Event('change'));
+    });
+</script>
+{% endblock %}

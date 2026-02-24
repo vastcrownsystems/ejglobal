@@ -1,0 +1,244 @@
+<!-- apps/orders/templates/orders/partials/payment_summary.html -->
+<!-- Payment Summary - HTMX Target for dynamic updates -->
+<!-- Colors: Royal Blue #0033A0 | POS Green #7FBA00 | Error Red #EF4444 -->
+
+<div id="paymentSummary" data-balance="{{ balance_due }}">
+
+    <!-- Flash Message -->
+    {% if message %}
+    <div class="payment-alert payment-alert-{{ message_type }}">
+        <i class="fas fa-{% if message_type == 'success' %}check-circle{% else %}exclamation-circle{% endif %}"></i>
+        <span>{{ message }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Payments List -->
+    {% if payments %}
+    <div class="payments-card">
+        <h3 class="section-title">
+            <i class="fas fa-list-ul"></i>
+            Payments Received
+        </h3>
+        <div class="payments-list">
+            {% for payment in payments %}
+            <div class="payment-item">
+                <div class="payment-method-badge">
+                    <i class="fas fa-{% if payment.payment_method == 'CASH' %}money-bill-wave{% elif payment.payment_method == 'CARD' %}credit-card{% elif payment.payment_method == 'TRANSFER' %}exchange-alt{% else %}mobile-alt{% endif %}"></i>
+                    <span>{{ payment.get_payment_method_display }}</span>
+                </div>
+                <div class="payment-details">
+                    {% if payment.reference_number %}
+                        <span class="payment-ref">{{ payment.reference_number }}</span>
+                    {% endif %}
+                    <span class="payment-time">{{ payment.created_at|date:"g:i A" }}</span>
+                </div>
+                <div class="payment-amount">₦{{ payment.amount|floatformat:2 }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Totals -->
+    <div class="payment-totals">
+        <div class="total-line">
+            <span class="total-label">Total Paid</span>
+            <span class="total-value total-paid">₦{{ order.amount_paid|floatformat:2 }}</span>
+        </div>
+
+        <div class="total-line balance-line">
+            <span class="total-label">Balance Due</span>
+            <span class="total-value total-balance {% if balance_due == 0 %}is-paid{% endif %}">
+                ₦{{ balance_due|floatformat:2 }}
+            </span>
+        </div>
+
+        {% if balance_due == 0 %}
+        <div class="fully-paid-badge">
+            <i class="fas fa-check-circle"></i>
+            Fully Paid — Ready to Complete
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<style>
+    /* ── Flash Alert ── */
+    .payment-alert {
+        padding: 0.875rem 1rem;
+        margin-bottom: 1.25rem;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        animation: psSlideIn 0.3s ease;
+    }
+
+    @keyframes psSlideIn {
+        from { opacity: 0; transform: translateY(-8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Success — POS Green tint */
+    .payment-alert-success {
+        background: #f2fae0;
+        color: #4e7800;
+        border: 1px solid #c6e87a;
+    }
+
+    .payment-alert-success i { color: #7FBA00; }
+
+    /* Error — red */
+    .payment-alert-error {
+        background: #FEF2F2;
+        color: #DC2626;
+        border: 1px solid #FECACA;
+    }
+
+    /* ── Payments Card ── */
+    .payments-card {
+        background: #fff;
+        border: 1px solid #e4e7ed;
+        border-radius: 12px;
+        padding: 1.375rem 1.5rem;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    }
+
+    /* Section title — Royal Blue, matches checkout_modal */
+    .section-title {
+        margin: 0 0 1rem 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #0033A0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* ── Payment Items ── */
+    .payments-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.625rem;
+    }
+
+    .payment-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.875rem 1rem;
+        background: #f8f9fc;
+        border: 1px solid #e4e7ed;
+        border-radius: 8px;
+        transition: border-color 0.18s;
+    }
+
+    .payment-item:hover { border-color: #0033A0; }
+
+    /* Method badge — Royal Blue */
+    .payment-method-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.875rem;
+        background: #eef1fb;
+        border: 1.5px solid #0033A0;
+        border-radius: 6px;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        color: #0033A0;
+        white-space: nowrap;
+    }
+
+    .payment-method-badge i { color: #0033A0; }
+
+    .payment-details {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+
+    .payment-ref  { font-size: 0.875rem; color: #1A1A1A; font-weight: 500; }
+    .payment-time { font-size: 0.75rem;  color: #999; }
+
+    /* Amount — POS Green */
+    .payment-amount {
+        font-size: 1.125rem;
+        font-weight: 800;
+        color: #7FBA00;
+        font-family: monospace;
+        white-space: nowrap;
+    }
+
+    /* ── Totals Block ── */
+    .payment-totals {
+        background: #fff;
+        border: 2px solid #e4e7ed;
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+    }
+
+    .total-line {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.625rem 0;
+    }
+
+    .total-line + .total-line { border-top: 1px solid #f0f2f5; }
+
+    .total-label {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: #555;
+    }
+
+    .total-value {
+        font-size: 1.125rem;
+        font-weight: 800;
+        font-family: monospace;
+    }
+
+    /* "Total Paid" — POS Green */
+    .total-paid { color: #7FBA00; }
+
+    /* Balance separator */
+    .balance-line {
+        padding-top: 0.875rem;
+        margin-top: 0.25rem;
+        border-top: 2px solid #e4e7ed !important;
+    }
+
+    /* Balance — Red when outstanding */
+    .total-balance       { font-size: 1.5rem; color: #EF4444; }
+
+    /* Balance — POS Green when fully paid */
+    .total-balance.is-paid { color: #7FBA00; }
+
+    /* ── Fully Paid Badge — POS Green ── */
+    .fully-paid-badge {
+        margin-top: 1rem;
+        padding: 0.875rem 1rem;
+        background: linear-gradient(135deg, #f2fae0 0%, #e4f5b8 100%);
+        border: 1.5px solid #b8df6a;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.625rem;
+        font-weight: 700;
+        font-size: 0.9375rem;
+        color: #4e7800;
+        animation: psSlideIn 0.3s ease;
+    }
+
+    .fully-paid-badge i {
+        font-size: 1.25rem;
+        color: #7FBA00;
+    }
+</style>

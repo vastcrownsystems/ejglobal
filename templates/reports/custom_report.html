@@ -1,0 +1,530 @@
+<!-- apps/reports/templates/reports/custom_report.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Custom Report - {{ start_date|date:"M d, Y" }} to {{ end_date|date:"M d, Y" }}{% endblock %}
+
+{% block content %}
+<div class="report-container">
+    <!-- Header -->
+    <div class="report-header">
+        <div class="header-left">
+            <a href="{% url 'reports:reports_dashboard' %}" class="btn-back">
+                <i class="fas fa-arrow-left"></i> Back to Reports
+            </a>
+            <h1>
+                <i class="fas fa-calendar-check"></i>
+                Custom Date Range Report
+            </h1>
+            <p class="report-date">
+                {{ start_date|date:"M d, Y" }} - {{ end_date|date:"M d, Y" }}
+                <span class="date-count">({{ days_count }} days)</span>
+            </p>
+        </div>
+        <div class="header-actions">
+            <button onclick="window.print()" class="btn-primary">
+                <i class="fas fa-print"></i> Print
+            </button>
+        </div>
+    </div>
+
+    <!-- Date Range Selector -->
+    <div class="date-range-selector">
+        <form method="get" class="date-range-form">
+            <div class="form-group">
+                <label for="start">Start Date:</label>
+                <input type="date" name="start" id="start" value="{{ start_date|date:'Y-m-d' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="end">End Date:</label>
+                <input type="date" name="end" id="end" value="{{ end_date|date:'Y-m-d' }}" required>
+            </div>
+            <button type="submit" class="btn-generate">
+                <i class="fas fa-sync-alt"></i> Generate Report
+            </button>
+        </form>
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="metrics-grid">
+        <div class="metric-card blue">
+            <div class="metric-icon">
+                <i class="fas fa-naira-sign"></i>
+            </div>
+            <div class="metric-content">
+                <div class="metric-value">₦{{ aggregates.total_sales|default:0|floatformat:2 }}</div>
+                <div class="metric-label">Total Sales</div>
+            </div>
+        </div>
+
+        <div class="metric-card green">
+            <div class="metric-icon">
+                <i class="fas fa-shopping-bag"></i>
+            </div>
+            <div class="metric-content">
+                <div class="metric-value">{{ aggregates.total_orders|default:0 }}</div>
+                <div class="metric-label">Total Orders</div>
+            </div>
+        </div>
+
+        <div class="metric-card purple">
+            <div class="metric-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="metric-content">
+                <div class="metric-value">₦{{ aggregates.avg_order_value|default:0|floatformat:2 }}</div>
+                <div class="metric-label">Avg Order Value</div>
+            </div>
+        </div>
+
+        <div class="metric-card orange">
+            <div class="metric-icon">
+                <i class="fas fa-box"></i>
+            </div>
+            <div class="metric-content">
+                <div class="metric-value">{{ aggregates.total_items|default:0 }}</div>
+                <div class="metric-label">Items Sold</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Methods Breakdown -->
+    <div class="payment-breakdown-card">
+        <h3><i class="fas fa-credit-card"></i> Payment Methods Breakdown</h3>
+        <div class="payment-grid">
+            {% for method, amount in payment_breakdown.items %}
+            <div class="payment-item">
+                <div class="payment-method">
+                    {% if method == "CASH" %}
+                        <i class="fas fa-money-bill-wave"></i>
+                    {% elif method == "CARD" %}
+                        <i class="fas fa-credit-card"></i>
+                    {% elif method == "TRANSFER" %}
+                        <i class="fas fa-exchange-alt"></i>
+                    {% elif method == "POS" %}
+                        <i class="fas fa-cash-register"></i>
+                    {% else %}
+                        <i class="fas fa-wallet"></i>
+                    {% endif %}
+                    <span>{{ method }}</span>
+                </div>
+                <div class="payment-amount">₦{{ amount|floatformat:2 }}</div>
+            </div>
+            {% empty %}
+            <p class="no-data">No payment data available</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Detailed Breakdown -->
+    <div class="detail-card">
+        <h3><i class="fas fa-list"></i> Period Summary</h3>
+
+        <div class="detail-grid">
+            <div class="detail-section">
+                <h4>Sales Summary</h4>
+                <div class="detail-row">
+                    <span>Gross Sales:</span>
+                    <strong>₦{{ aggregates.gross_sales|default:0|floatformat:2 }}</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Discounts:</span>
+                    <strong class="text-red">-₦{{ aggregates.total_discounts|default:0|floatformat:2 }}</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Tax:</span>
+                    <strong>₦{{ aggregates.total_tax|default:0|floatformat:2 }}</strong>
+                </div>
+                <div class="detail-row total">
+                    <span>Net Sales:</span>
+                    <strong>₦{{ aggregates.total_sales|default:0|floatformat:2 }}</strong>
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <h4>Performance Metrics</h4>
+                <div class="detail-row">
+                    <span>Total Orders:</span>
+                    <strong>{{ aggregates.total_orders|default:0 }}</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Avg Order Value:</span>
+                    <strong>₦{{ aggregates.avg_order_value|default:0|floatformat:2 }}</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Items Sold:</span>
+                    <strong>{{ aggregates.total_items|default:0 }}</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Period Length:</span>
+                    <strong>{{ days_count }} days</strong>
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <h4>Averages</h4>
+                {% with daily_avg=aggregates.total_sales|default:0|divisibleby:days_count %}
+                <div class="detail-row">
+                    <span>Daily Average Sales:</span>
+                    <strong>₦{% widthratio aggregates.total_sales|default:0 1 days_count %}</strong>
+                </div>
+                {% endwith %}
+                {% with daily_orders=aggregates.total_orders|default:0|divisibleby:days_count %}
+                <div class="detail-row">
+                    <span>Daily Average Orders:</span>
+                    <strong>{% widthratio aggregates.total_orders|default:0 1 days_count %}</strong>
+                </div>
+                {% endwith %}
+                <div class="detail-row">
+                    <span>Items per Order:</span>
+                    <strong>
+                        {% if aggregates.total_orders > 0 %}
+                            {% widthratio aggregates.total_items 1 aggregates.total_orders %}
+                        {% else %}
+                            0
+                        {% endif %}
+                    </strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Message -->
+    <div class="info-message">
+        <i class="fas fa-info-circle"></i>
+        <div>
+            <strong>Custom Report</strong>
+            <p>This report shows data for the selected date range only. For more detailed insights, view our Daily, Weekly, Monthly, or Yearly reports.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .report-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .report-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #e4e7ed;
+    }
+
+    .header-left h1 {
+        margin: 0.5rem 0;
+        font-size: 2rem;
+        color: #1a1a1a;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .report-date {
+        color: #666;
+        font-size: 1.125rem;
+    }
+
+    .date-count {
+        color: #999;
+        font-size: 0.9375rem;
+    }
+
+    .btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #0033A0;
+        text-decoration: none;
+        font-weight: 600;
+        padding: 0.5rem 0;
+        margin-bottom: 0.5rem;
+    }
+
+    .btn-back:hover { text-decoration: underline; }
+
+    .header-actions {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .btn-primary {
+        padding: 0.75rem 1.25rem;
+        background: #7FBA00;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-primary:hover { background: #6ba500; }
+
+    /* Date Range Selector */
+    .date-range-selector {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .date-range-form {
+        display: flex;
+        align-items: end;
+        gap: 1rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        color: #444;
+        font-size: 0.875rem;
+    }
+
+    .form-group input[type="date"] {
+        padding: 0.625rem 1rem;
+        border: 1.5px solid #e4e7ed;
+        border-radius: 8px;
+        font-size: 0.9375rem;
+        min-width: 160px;
+    }
+
+    .btn-generate {
+        padding: 0.625rem 1.5rem;
+        background: #0033A0;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        white-space: nowrap;
+    }
+
+    .btn-generate:hover { background: #002a85; }
+
+    /* Metrics Grid */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .metric-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        gap: 1rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .metric-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        flex-shrink: 0;
+    }
+
+    .metric-card.blue .metric-icon { background: rgba(0, 51, 160, 0.1); color: #0033A0; }
+    .metric-card.green .metric-icon { background: rgba(127, 186, 0, 0.1); color: #7FBA00; }
+    .metric-card.purple .metric-icon { background: rgba(156, 39, 176, 0.1); color: #9C27B0; }
+    .metric-card.orange .metric-icon { background: rgba(255, 140, 0, 0.1); color: #ff8c00; }
+
+    .metric-value {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: #1a1a1a;
+        font-family: monospace;
+    }
+
+    .metric-label {
+        color: #666;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    /* Payment Breakdown */
+    .payment-breakdown-card {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        margin-bottom: 2rem;
+    }
+
+    .payment-breakdown-card h3 {
+        margin: 0 0 1.5rem 0;
+        font-size: 1.25rem;
+        color: #1a1a1a;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .payment-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+
+    .payment-item {
+        background: #f8f9fc;
+        border: 1.5px solid #e4e7ed;
+        border-radius: 10px;
+        padding: 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .payment-method {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: #444;
+        font-weight: 600;
+    }
+
+    .payment-method i {
+        font-size: 1.25rem;
+        color: #0033A0;
+    }
+
+    .payment-amount {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #7FBA00;
+        font-family: monospace;
+    }
+
+    .no-data {
+        text-align: center;
+        color: #999;
+        padding: 2rem;
+    }
+
+    /* Detail Card */
+    .detail-card {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        margin-bottom: 2rem;
+    }
+
+    .detail-card h3 {
+        margin: 0 0 1.5rem 0;
+        font-size: 1.25rem;
+        color: #1a1a1a;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2rem;
+    }
+
+    .detail-section h4 {
+        margin: 0 0 1rem 0;
+        font-size: 1rem;
+        color: #0033A0;
+        font-weight: 700;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f0f2f5;
+    }
+
+    .detail-row span { color: #666; }
+    .detail-row strong { color: #1a1a1a; font-weight: 600; }
+    .detail-row.total {
+        border-top: 2px solid #e4e7ed;
+        border-bottom: none;
+        padding-top: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .text-red { color: #ef4444 !important; }
+
+    /* Info Message */
+    .info-message {
+        background: #eef7ff;
+        border: 1.5px solid #b3d9ff;
+        border-radius: 10px;
+        padding: 1.25rem;
+        display: flex;
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .info-message i {
+        color: #0066cc;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .info-message strong {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: #003d7a;
+    }
+
+    .info-message p {
+        margin: 0;
+        color: #0066cc;
+        font-size: 0.9375rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+        .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+        .detail-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 768px) {
+        .report-header {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .date-range-form {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .metrics-grid { grid-template-columns: 1fr; }
+        .payment-grid { grid-template-columns: 1fr; }
+    }
+
+    @media print {
+        .btn-back, .header-actions, .date-range-selector, .info-message { display: none; }
+        .report-container { padding: 0; }
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,669 @@
+<!-- apps/customers/templates/customers/customer_dashboard.html -->
+<!-- Customer Management Dashboard -->
+
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Customer Dashboard{% endblock %}
+{% block page_title %}Customer Management{% endblock %}
+
+{% block content %}
+<div class="dashboard-page">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="header-left">
+        </div>
+
+        <div class="header-actions">
+            <a href="{% url 'customers:customer_list' %}" class="btn-secondary">
+                <i class="fas fa-list"></i>
+                View All Customers
+            </a>
+            <a href="{% url 'customers:customer_create' %}" class="btn-primary">
+                <i class="fas fa-user-plus"></i>
+                Add New Customer
+            </a>
+        </div>
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="metrics-grid">
+        <div class="metric-card blue">
+            <div class="metric-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="metric-content">
+                <div class="metric-value">{{ total_customers }}</div>
+                <div class="metric-label">Total Customers</div>
+                <div class="metric-change positive">
+                    <i class="fas fa-arrow-up"></i>
+                    {{ new_this_month }} new this month
+                </div>
+            </div>
+        </div>
+
+        <div class="metric-card green">
+            <div class="metric-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="metric-content">
+                <div class="metric-value">₦{{ total_revenue|floatformat:0 }}</div>
+                <div class="metric-label">Customer Lifetime Value</div>
+                <div class="metric-change">
+                    Average: ₦{{ avg_customer_value|floatformat:0 }}
+                </div>
+            </div>
+        </div>
+
+        <div class="metric-card purple">
+            <div class="metric-icon">
+                <i class="fas fa-star"></i>
+            </div>
+            <div class="metric-content">
+                <div class="metric-value">{{ active_customers }}</div>
+                <div class="metric-label">Active Customers</div>
+                <div class="metric-change">
+                    Last 30 days
+                </div>
+            </div>
+        </div>
+
+        <div class="metric-card orange">
+            <div class="metric-icon">
+                <i class="fas fa-shopping-bag"></i>
+            </div>
+            <div class="metric-content">
+                <div class="metric-value">{{ total_orders }}</div>
+                <div class="metric-label">Total Orders</div>
+                <div class="metric-change">
+                    {{ avg_orders_per_customer|floatformat:1 }} per customer
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Two Column Layout -->
+    <div class="dashboard-grid">
+        <!-- Top Customers -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h2>
+                    <i class="fas fa-trophy"></i>
+                    Top Customers
+                </h2>
+                <a href="{% url 'customers:customer_list' %}?sort=-total_spent" class="view-all">
+                    View All <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+
+            <div class="top-customers-list">
+                {% for customer in top_customers %}
+                <div class="top-customer-item">
+                    <div class="rank">{{ forloop.counter }}</div>
+                    <div class="customer-avatar">
+                        {{ customer.full_name|slice:":2"|upper }}
+                    </div>
+                    <div class="customer-info">
+                        <a href="{% url 'customers:customer_detail' customer.pk %}" class="customer-name">
+                            {{ customer.full_name }}
+                        </a>
+                        <div class="customer-stats">
+                            {{ customer.total_orders }} orders • Last: {{ customer.last_purchase_date|timesince }} ago
+                        </div>
+                    </div>
+                    <div class="customer-spending">
+                        ₦{{ customer.total_spent|floatformat:2 }}
+                    </div>
+                </div>
+                {% empty %}
+                <div class="empty-state-small">
+                    <i class="fas fa-trophy"></i>
+                    <p>No customer data yet</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Recent Customers -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h2>
+                    <i class="fas fa-clock"></i>
+                    Recent Customers
+                </h2>
+                <a href="{% url 'customers:customer_list' %}" class="view-all">
+                    View All <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+
+            <div class="recent-customers-list">
+                {% for customer in recent_customers %}
+                <div class="recent-customer-item">
+                    <div class="customer-avatar">
+                        {{ customer.full_name|slice:":2"|upper }}
+                    </div>
+                    <div class="customer-info">
+                        <a href="{% url 'customers:customer_detail' customer.pk %}" class="customer-name">
+                            {{ customer.full_name }}
+                        </a>
+                        <div class="customer-meta">
+                            <span class="badge badge-{{ customer.customer_type|lower }}">
+                                {{ customer.get_customer_type_display }}
+                            </span>
+                            <span class="join-date">
+                                Joined {{ customer.created_at|timesince }} ago
+                            </span>
+                        </div>
+                    </div>
+                    {% if customer.total_orders > 0 %}
+                        <div class="customer-orders">
+                            <i class="fas fa-shopping-bag"></i>
+                            {{ customer.total_orders }}
+                        </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <div class="empty-state-small">
+                    <i class="fas fa-user-plus"></i>
+                    <p>No recent customers</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <h3>Quick Actions</h3>
+        <div class="actions-grid">
+            <a href="{% url 'customers:customer_create' %}" class="action-card">
+                <i class="fas fa-user-plus"></i>
+                <span>Add New Customer</span>
+            </a>
+            <a href="{% url 'customers:customer_list' %}?sort=-created_at" class="action-card">
+                <i class="fas fa-clock"></i>
+                <span>Recent Customers</span>
+            </a>
+            <a href="{% url 'customers:customer_list' %}?sort=-total_spent" class="action-card">
+                <i class="fas fa-trophy"></i>
+                <span>Top Spenders</span>
+            </a>
+            <a href="{% url 'customers:customer_list' %}" class="action-card">
+                <i class="fas fa-search"></i>
+                <span>Search Customers</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Page Layout */
+    .dashboard-page {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    /* Page Header */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2rem;
+    }
+
+    .header-left h1 {
+        margin: 0 0 0.5rem 0;
+        font-size: 2rem;
+        color: #1A1A1A;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .subtitle {
+        margin: 0;
+        color: #666;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        padding: 0.875rem 1.5rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+        background: #0033A0;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #0047D1;
+        transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+        background: #F5F5F5;
+        color: #666;
+    }
+
+    .btn-secondary:hover {
+        background: #E8E8E8;
+        color: #1A1A1A;
+    }
+
+    /* Metrics Grid */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .metric-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        gap: 1rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .metric-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        color: white;
+    }
+
+    .metric-card.blue .metric-icon {
+        background: linear-gradient(135deg, #0033A0 0%, #0047D1 100%);
+    }
+
+    .metric-card.green .metric-icon {
+        background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    }
+
+    .metric-card.purple .metric-icon {
+        background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+    }
+
+    .metric-card.orange .metric-icon {
+        background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    }
+
+    .metric-content {
+        flex: 1;
+    }
+
+    .metric-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #1A1A1A;
+        margin-bottom: 0.25rem;
+        line-height: 1;
+    }
+
+    .metric-label {
+        font-size: 0.875rem;
+        color: #666;
+        margin-bottom: 0.5rem;
+    }
+
+    .metric-change {
+        font-size: 0.75rem;
+        color: #999;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .metric-change.positive {
+        color: #10B981;
+    }
+
+    /* Dashboard Grid */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .dashboard-card {
+        background: white;
+        border: 1px solid #E8E8E8;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .dashboard-card.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .card-header {
+        padding: 1.5rem;
+        border-bottom: 2px solid #F5F5F5;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .card-header h2 {
+        margin: 0;
+        font-size: 1.125rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .view-all {
+        color: #0033A0;
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .view-all:hover {
+        text-decoration: underline;
+    }
+
+    /* Top Customers */
+    .top-customers-list {
+        padding: 1rem;
+    }
+
+    .top-customer-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s ease;
+    }
+
+    .top-customer-item:hover {
+        background: #FAFAFA;
+    }
+
+    .rank {
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.875rem;
+    }
+
+    .customer-avatar {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #0033A0 0%, #0047D1 100%);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1rem;
+    }
+
+    .customer-info {
+        flex: 1;
+    }
+
+    .customer-name {
+        font-weight: 700;
+        color: #1A1A1A;
+        text-decoration: none;
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    .customer-name:hover {
+        color: #0033A0;
+    }
+
+    .customer-stats {
+        font-size: 0.75rem;
+        color: #999;
+    }
+
+    .customer-spending {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #10B981;
+        font-family: monospace;
+    }
+
+    /* Recent Customers */
+    .recent-customers-list {
+        padding: 1rem;
+    }
+
+    .recent-customer-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s ease;
+    }
+
+    .recent-customer-item:hover {
+        background: #FAFAFA;
+    }
+
+    .customer-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-top: 0.25rem;
+    }
+
+    .badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .badge-individual {
+        background: #E0E7FF;
+        color: #4F46E5;
+    }
+
+    .badge-business {
+        background: #FEF3C7;
+        color: #D97706;
+    }
+
+    .join-date {
+        font-size: 0.75rem;
+        color: #999;
+    }
+
+    .customer-orders {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #10B981;
+        font-weight: 600;
+    }
+
+    /* Groups Grid */
+    .groups-grid {
+        padding: 1.5rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+
+    .group-card {
+        padding: 1.25rem;
+        background: #FAFAFA;
+        border: 1px solid #E8E8E8;
+        border-radius: 8px;
+    }
+
+    .group-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #E8E8E8;
+    }
+
+    .group-name {
+        font-weight: 700;
+        color: #1A1A1A;
+    }
+
+    .group-discount {
+        font-size: 0.75rem;
+        background: #10B981;
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+    }
+
+    .group-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .stat {
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #1A1A1A;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: #666;
+        text-transform: uppercase;
+    }
+
+    /* Quick Actions */
+    .quick-actions {
+        background: white;
+        border: 1px solid #E8E8E8;
+        border-radius: 12px;
+        padding: 1.5rem;
+    }
+
+    .quick-actions h3 {
+        margin: 0 0 1rem 0;
+        font-size: 1.125rem;
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+    }
+
+    .action-card {
+        padding: 1.5rem;
+        background: #FAFAFA;
+        border: 2px dashed #E8E8E8;
+        border-radius: 8px;
+        text-align: center;
+        text-decoration: none;
+        color: #666;
+        transition: all 0.2s ease;
+    }
+
+    .action-card:hover {
+        border-color: #0033A0;
+        border-style: solid;
+        background: white;
+        color: #0033A0;
+    }
+
+    .action-card i {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+        display: block;
+    }
+
+    .action-card span {
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    /* Empty State */
+    .empty-state-small {
+        text-align: center;
+        padding: 2rem;
+        color: #999;
+    }
+
+    .empty-state-small i {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+        opacity: 0.3;
+    }
+
+    .empty-state-small p {
+        margin: 0;
+        font-size: 0.875rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+        .metrics-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .actions-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .metrics-grid,
+        .dashboard-grid,
+        .actions-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .header-actions {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}

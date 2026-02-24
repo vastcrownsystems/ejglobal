@@ -1,0 +1,355 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} - EJ Global Services{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        max-width: 700px;
+        margin: 0 auto;
+    }
+
+    .form-header {
+        margin-bottom: 2rem;
+    }
+
+    .form-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .form-subtitle {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+    }
+
+    .info-box {
+        background: linear-gradient(135deg, rgba(127, 186, 0, 0.1) 0%, rgba(107, 165, 0, 0.1) 100%);
+        border: 1px solid rgba(127, 186, 0, 0.3);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .info-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .info-icon {
+        width: 40px;
+        height: 40px;
+        background: var(--accent-green);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .info-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--accent-green);
+    }
+
+    .info-text {
+        color: var(--text-secondary);
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+
+    .info-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .info-list li {
+        padding: 0.5rem 0;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: start;
+        gap: 0.5rem;
+    }
+
+    .info-list li i {
+        color: var(--accent-green);
+        margin-top: 0.25rem;
+    }
+
+    .form-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+    }
+
+    .required {
+        color: var(--danger);
+        margin-left: 0.25rem;
+    }
+
+    .form-select {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 2px solid var(--border);
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-family: 'DM Sans', sans-serif;
+        transition: all 0.3s ease;
+    }
+
+    .form-select:focus {
+        outline: none;
+        border-color: var(--accent-green);
+        box-shadow: 0 0 0 4px rgba(127, 186, 0, 0.1);
+    }
+
+    .form-textarea {
+        width: 100%;
+        padding: 1rem;
+        border: 2px solid var(--border);
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-family: 'JetBrains Mono', monospace;
+        resize: vertical;
+        min-height: 200px;
+        transition: all 0.3s ease;
+        line-height: 1.8;
+    }
+
+    .form-textarea:focus {
+        outline: none;
+        border-color: var(--accent-green);
+        box-shadow: 0 0 0 4px rgba(127, 186, 0, 0.1);
+    }
+
+    .form-help-text {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-top: 0.5rem;
+    }
+
+    .example-box {
+        background: var(--bg-main);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+
+    .example-title {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.75rem;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .example-content {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 0.75rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.85rem;
+        line-height: 1.8;
+        color: var(--text-secondary);
+    }
+
+    .errorlist {
+        list-style: none;
+        padding: 0;
+        margin: 0.5rem 0 0 0;
+    }
+
+    .errorlist li {
+        color: var(--danger);
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(231, 76, 60, 0.1);
+        border-left: 3px solid var(--danger);
+        border-radius: 4px;
+        margin-top: 0.5rem;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        padding-top: 2rem;
+        border-top: 2px solid var(--border);
+    }
+
+    .btn-submit {
+        flex: 1;
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, var(--accent-green) 0%, #6BA500 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 16px rgba(127, 186, 0, 0.3);
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(127, 186, 0, 0.4);
+    }
+
+    .btn-cancel {
+        padding: 1rem 2rem;
+        background: white;
+        color: var(--text-secondary);
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        text-decoration: none;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+
+    .btn-cancel:hover {
+        background: var(--bg-main);
+        border-color: var(--text-secondary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <!-- Form Header -->
+    <div class="form-header">
+        <h1 class="form-title">{{ title }}</h1>
+        <p class="form-subtitle">
+            Quickly add multiple values at once - perfect for creating size ranges, color palettes, or material options
+        </p>
+    </div>
+
+    <!-- Info Box -->
+    <div class="info-box">
+        <div class="info-header">
+            <div class="info-icon">
+                <i class="fas fa-lightbulb"></i>
+            </div>
+            <div class="info-title">How Bulk Add Works</div>
+        </div>
+        <p class="info-text">
+            Enter your values one per line in the text area below. The system will automatically create all values and assign them sequential display orders.
+        </p>
+        <ul class="info-list">
+            <li>
+                <i class="fas fa-check"></i>
+                <span>Each line becomes one value</span>
+            </li>
+            <li>
+                <i class="fas fa-check"></i>
+                <span>Empty lines are ignored</span>
+            </li>
+            <li>
+                <i class="fas fa-check"></i>
+                <span>Duplicate values are skipped</span>
+            </li>
+            <li>
+                <i class="fas fa-check"></i>
+                <span>Display order is auto-assigned (0, 1, 2, ...)</span>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Form -->
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-card">
+            <div class="form-group">
+                <label class="form-label" for="id_attribute">
+                    Attribute <span class="required">*</span>
+                </label>
+                {{ form.attribute }}
+                <div class="form-help-text">
+                    {{ form.attribute.help_text }}
+                </div>
+                {% if form.attribute.errors %}
+                    {{ form.attribute.errors }}
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_values">
+                    Values <span class="required">*</span>
+                </label>
+                {{ form.values }}
+                <div class="form-help-text">
+                    {{ form.values.help_text }}
+                </div>
+                {% if form.values.errors %}
+                    {{ form.values.errors }}
+                {% endif %}
+            </div>
+
+            <!-- Examples -->
+            <div class="example-box">
+                <div class="example-title">
+                    <i class="fas fa-info-circle"></i> Example for Size Attribute
+                </div>
+                <div class="example-content">Extra Small
+Small
+Medium
+Large
+Extra Large
+XXL</div>
+            </div>
+
+            <div class="example-box" style="margin-top: 1rem;">
+                <div class="example-title">
+                    <i class="fas fa-info-circle"></i> Example for Color Attribute
+                </div>
+                <div class="example-content">Red
+Blue
+Green
+Yellow
+Black
+White
+Gray
+Pink</div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-plus-square"></i> {{ submit_text }}
+                </button>
+                <a href="{% url 'catalog:attribute_detail' attribute.pk %}" class="btn-cancel">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

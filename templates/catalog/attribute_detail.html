@@ -1,0 +1,419 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ attribute.display_name }} - EJ Global Services{% endblock %}
+{% block page_title %}Attribute Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+
+    .breadcrumb a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+        text-decoration: underline;
+    }
+
+    .detail-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .attribute-icon {
+        width: 80px;
+        height: 80px;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        flex-shrink: 0;
+    }
+
+    .attribute-info {
+        flex: 1;
+    }
+
+    .attribute-name {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .attribute-internal {
+        font-family: 'JetBrains Mono', monospace;
+        opacity: 0.9;
+        font-size: 0.95rem;
+    }
+
+    .attribute-stats {
+        display: flex;
+        gap: 2rem;
+        margin-top: 1rem;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .detail-actions {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-action {
+        padding: 0.875rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(0, 51, 160, 0.3);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 51, 160, 0.4);
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, var(--accent-green) 0%, #6BA500 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(127, 186, 0, 0.3);
+    }
+
+    .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(127, 186, 0, 0.4);
+    }
+
+    .btn-secondary {
+        background: white;
+        color: var(--text-secondary);
+        border: 2px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+        background: var(--bg-main);
+    }
+
+    .btn-danger {
+        background: white;
+        color: var(--danger);
+        border: 2px solid var(--danger);
+    }
+
+    .btn-danger:hover {
+        background: var(--danger);
+        color: white;
+    }
+
+    .values-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .values-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .values-table th {
+        text-align: left;
+        padding: 0.875rem 1rem;
+        background: var(--bg-main);
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 0.9rem;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .values-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border);
+        color: var(--text-secondary);
+    }
+
+    .values-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .values-table tr:hover {
+        background: var(--bg-main);
+    }
+
+    .value-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 1.05rem;
+    }
+
+    .value-order {
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--text-muted);
+    }
+
+    .value-usage {
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .usage-count {
+        padding: 0.25rem 0.625rem;
+        background: rgba(0, 51, 160, 0.1);
+        color: var(--primary);
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .value-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-small {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.85rem;
+        border-radius: 6px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-edit {
+        background: white;
+        color: var(--primary);
+        border: 1px solid var(--primary);
+    }
+
+    .btn-edit:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-delete {
+        background: white;
+        color: var(--danger);
+        border: 1px solid var(--danger);
+    }
+
+    .btn-delete:hover {
+        background: var(--danger);
+        color: white;
+    }
+
+    .empty-values {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: var(--text-muted);
+    }
+
+    .empty-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    @media (max-width: 768px) {
+        .detail-header {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .attribute-stats {
+            justify-content: center;
+        }
+
+        .values-table {
+            font-size: 0.85rem;
+        }
+
+        .values-table th,
+        .values-table td {
+            padding: 0.75rem 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-container">
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+        <a href="{% url 'catalog:attribute_list' %}">
+            <i class="fas fa-tags"></i> Attributes
+        </a>
+        <i class="fas fa-chevron-right"></i>
+        <span>{{ attribute.display_name }}</span>
+    </div>
+
+    <!-- Attribute Header -->
+    <div class="detail-header">
+        <div class="attribute-icon">
+            <i class="fas fa-tag"></i>
+        </div>
+        <div class="attribute-info">
+            <h1 class="attribute-name">{{ attribute.display_name }}</h1>
+            <div class="attribute-internal">Internal Name: {{ attribute.name }}</div>
+            <div class="attribute-stats">
+                <div class="stat-item">
+                    <i class="fas fa-list"></i>
+                    <span class="stat-value">{{ values_count }}</span>
+                    <span>Value{{ values_count|pluralize }}</span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-sort-amount-down"></i>
+                    <span class="stat-value">{{ attribute.display_order }}</span>
+                    <span>Order</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="detail-actions">
+        <a href="{% url 'catalog:attribute_value_create_for' attribute.pk %}" class="btn-action btn-success">
+            <i class="fas fa-plus"></i> Add Value
+        </a>
+        <a href="{% url 'catalog:attribute_bulk_values' attribute.pk %}" class="btn-action btn-success">
+            <i class="fas fa-plus-square"></i> Bulk Add Values
+        </a>
+        <a href="{% url 'catalog:attribute_edit' attribute.pk %}" class="btn-action btn-primary">
+            <i class="fas fa-edit"></i> Edit Attribute
+        </a>
+        <a href="{% url 'catalog:attribute_delete' attribute.pk %}" class="btn-action btn-danger">
+            <i class="fas fa-trash"></i> Delete
+        </a>
+    </div>
+
+    <!-- Values Section -->
+    <div class="values-section">
+        <div class="section-header">
+            <h2 class="section-title">Attribute Values</h2>
+            <a href="{% url 'catalog:attribute_value_create_for' attribute.pk %}" class="btn-action btn-success">
+                <i class="fas fa-plus"></i> Add Value
+            </a>
+        </div>
+
+        {% if values %}
+        <table class="values-table">
+            <thead>
+                <tr>
+                    <th>Value</th>
+                    <th>Display Order</th>
+                    <th>Used In Variants</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for value in values %}
+                <tr>
+                    <td>
+                        <div class="value-name">{{ value.value }}</div>
+                    </td>
+                    <td>
+                        <div class="value-order">{{ value.display_order }}</div>
+                    </td>
+                    <td>
+                        <div class="value-usage">
+                            {% with count=value.product_variants.count %}
+                                {% if count > 0 %}
+                                    <span class="usage-count">{{ count }} variant{{ count|pluralize }}</span>
+                                {% else %}
+                                    <span style="color: var(--text-muted);">Not used</span>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="value-actions">
+                            <a href="{% url 'catalog:attribute_value_edit' value.pk %}" class="btn-small btn-edit">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{% url 'catalog:attribute_value_delete' value.pk %}" class="btn-small btn-delete">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-values">
+            <div class="empty-icon">
+                <i class="fas fa-layer-group"></i>
+            </div>
+            <h3>No Values Yet</h3>
+            <p>Add values to this attribute to use it in product variants.</p>
+            <br>
+            <a href="{% url 'catalog:attribute_value_create_for' attribute.pk %}" class="btn-action btn-success">
+                <i class="fas fa-plus"></i> Add First Value
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,148 @@
+<!-- apps/orders/templates/orders/partials/customer_search_results.html -->
+<!-- Rendered inside #customerSearchResults by HTMX -->
+
+{% if customers %}
+    {% for customer in customers %}
+    <button
+        class="customer-result-item"
+        hx-post="{% url 'orders:cart_set_customer' %}"
+        hx-vals='{"customer_id": "{{ customer.pk }}"}'
+        hx-target="#cartPanel"
+        hx-swap="outerHTML"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        type="button"
+    >
+        <div class="csr-avatar">{{ customer.full_name|slice:":1"|upper }}</div>
+        <div class="csr-info">
+            <span class="csr-name">{{ customer.full_name }}</span>
+            <span class="csr-sub">
+                {% if customer.phone %}{{ customer.phone }}{% endif %}
+                {% if customer.customer_number %} · #{{ customer.customer_number }}{% endif %}
+            </span>
+        </div>
+        <i class="fas fa-plus csr-add-icon"></i>
+    </button>
+    {% endfor %}
+
+    <!-- Quick add new customer link -->
+    <div class="csr-footer">
+        <button
+            class="csr-new-btn"
+            hx-get="{% url 'orders:cart_quick_add_customer_form' %}"
+            hx-target="#customerSearchResults"
+            hx-swap="innerHTML"
+            type="button"
+        >
+            <i class="fas fa-user-plus"></i>
+            Add new customer
+        </button>
+    </div>
+
+{% elif query %}
+    <!-- No results — offer quick add -->
+    <div class="csr-empty">
+        <p>No customer found for "<strong>{{ query }}</strong>"</p>
+        <button
+            class="csr-new-btn"
+            hx-get="{% url 'orders:cart_quick_add_customer_form' %}?full_name={{ query|urlencode }}"
+            hx-target="#customerSearchResults"
+            hx-swap="innerHTML"
+            type="button"
+        >
+            <i class="fas fa-user-plus"></i>
+            Add "{{ query }}" as new customer
+        </button>
+    </div>
+{% endif %}
+
+<style>
+    .customer-result-item {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        background: none;
+        border: none;
+        border-bottom: 1px solid #f0f2f5;
+        cursor: pointer;
+        text-align: left;
+        transition: background 0.15s;
+    }
+
+    .customer-result-item:last-of-type { border-bottom: none; }
+
+    .customer-result-item:hover { background: #f5f7ff; }
+
+    .csr-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #0033A0;
+        color: #fff;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .csr-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .csr-name {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #1a1a1a;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .csr-sub {
+        font-size: 0.75rem;
+        color: #888;
+    }
+
+    .csr-add-icon {
+        font-size: 0.75rem;
+        color: #7FBA00;
+        flex-shrink: 0;
+    }
+
+    .csr-footer {
+        padding: 0.5rem 0.75rem;
+        border-top: 1px solid #e4e7ed;
+    }
+
+    .csr-empty {
+        padding: 0.875rem 1rem;
+        font-size: 0.875rem;
+        color: #666;
+    }
+
+    .csr-empty p { margin: 0 0 0.5rem 0; }
+
+    .csr-new-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        background: #f2fae0;
+        border: 1px solid #b8df6a;
+        border-radius: 7px;
+        color: #4e7800;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.18s;
+    }
+
+    .csr-new-btn:hover { background: #e4f5b8; }
+</style>

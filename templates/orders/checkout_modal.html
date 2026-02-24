@@ -1,0 +1,452 @@
+<!-- apps/orders/templates/orders/checkout_modal.html -->
+<!-- Checkout Modal — colors consistent with POS (#0033A0 blue, #7FBA00 green) -->
+
+<div class="checkout-modal-overlay" id="checkoutModal" onclick="closeCheckoutModal(event)">
+    <div class="checkout-modal" onclick="event.stopPropagation()">
+
+        <!-- Header — Royal Blue to match POS navbar -->
+        <div class="checkout-header">
+            <div class="checkout-title">
+                <i class="fas fa-cash-register"></i>
+                <h2>Checkout</h2>
+            </div>
+            <button class="btn-close-modal" onclick="document.getElementById('checkoutModal').remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="checkout-body">
+
+            <!-- Order Summary -->
+            <div class="order-summary-card">
+                <h3 class="section-title">
+                    <i class="fas fa-shopping-cart"></i>
+                    Order Summary
+                </h3>
+                <div class="summary-details">
+                    <div class="summary-row">
+                        <span>Order Number</span>
+                        <strong>{{ order.order_number }}</strong>
+                    </div>
+                    <div class="summary-row">
+                        <span>Items</span>
+                        <strong>{{ order.item_count }} item{{ order.item_count|pluralize }}</strong>
+                    </div>
+                    <div class="summary-row">
+                        <span>Subtotal</span>
+                        <strong>₦{{ order.subtotal|floatformat:2 }}</strong>
+                    </div>
+                    {% if order.discount_amount > 0 %}
+                    <div class="summary-row discount">
+                        <span>Discount</span>
+                        <strong>-₦{{ order.discount_amount|floatformat:2 }}</strong>
+                    </div>
+                    {% endif %}
+                    {% if order.tax_amount > 0 %}
+                    <div class="summary-row">
+                        <span>Tax</span>
+                        <strong>₦{{ order.tax_amount|floatformat:2 }}</strong>
+                    </div>
+                    {% endif %}
+                    <div class="summary-row total-row">
+                        <span>Total Amount</span>
+                        <strong class="amount-lg">₦{{ order.total|floatformat:2 }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Summary — HTMX target -->
+            <div id="paymentSummary">
+                {% include 'orders/partials/payment_summary.html' %}
+
+                {% if balance_due > 0 %}
+                <!-- Add Payment Form -->
+                <div class="add-payment-card">
+                    <h3 class="section-title">
+                        <i class="fas fa-plus-circle"></i>
+                        Add Payment
+                    </h3>
+
+                    <form
+                        id="paymentForm"
+                        hx-post="{% url 'orders:add_payment' %}"
+                        hx-target="#paymentSummary"
+                        hx-swap="outerHTML"
+                    >
+                        {% csrf_token %}
+
+                        <div class="form-grid">
+                            <!-- Payment Method -->
+                            <div class="form-group">
+                                <label for="payment_method">Payment Method</label>
+                                <select name="payment_method" id="payment_method" class="form-select" required>
+                                    {% for value, label in payment_methods %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Amount -->
+                            <div class="form-group">
+                                <label for="amount">Amount (₦)</label>
+                                <div class="input-with-icon">
+                                    <span class="input-icon">₦</span>
+                                    <input
+                                        type="number"
+                                        name="amount"
+                                        id="amount"
+                                        class="form-input"
+                                        step="0.01"
+                                        min="0.01"
+                                        value="{{ balance_due }}"
+                                        required
+                                    >
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Reference (shown for Card / Transfer) -->
+                        <div class="form-group ref-group" style="display:none; margin-bottom:1rem;">
+                            <label for="reference">Reference / Transaction ID</label>
+                            <input type="text" name="reference" id="reference" class="form-input" placeholder="Optional">
+                        </div>
+
+                        <button type="submit" class="btn-add-payment">
+                            <i class="fas fa-plus-circle"></i>
+                            Add Payment
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="checkout-footer">
+            <button class="btn-checkout-cancel" onclick="document.getElementById('checkoutModal').remove()">
+                Cancel
+            </button>
+            <button
+                id="completeSaleBtn"
+                class="btn-complete"
+                hx-post="{% url 'orders:complete_sale' %}"
+                hx-target="body"
+                hx-swap="beforeend"
+                {% if balance_due > 0 %}disabled{% endif %}
+            >
+                <i class="fas fa-check-circle"></i>
+                Complete Sale
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    /* Overlay */
+    .checkout-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        animation: coFade 0.2s ease;
+    }
+
+    @keyframes coFade {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+
+    /* Modal */
+    .checkout-modal {
+        background: #fff;
+        border-radius: 16px;
+        width: 100%;
+        max-width: 560px;
+        max-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+        animation: coSlide 0.28s ease;
+        overflow: hidden;
+    }
+
+    @keyframes coSlide {
+        from { opacity: 0; transform: translateY(22px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Header: Royal Blue ── */
+    .checkout-header {
+        background: #0033A0;
+        padding: 1.25rem 1.75rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .checkout-title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: #fff;
+    }
+
+    .checkout-title i  { font-size: 1.375rem; }
+    .checkout-title h2 { margin: 0; font-size: 1.375rem; font-weight: 700; }
+
+    .btn-close-modal {
+        width: 36px;
+        height: 36px;
+        background: rgba(255,255,255,0.15);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 0.9375rem;
+        transition: background 0.18s;
+    }
+
+    .btn-close-modal:hover { background: rgba(255,255,255,0.28); }
+
+    /* ── Body ── */
+    .checkout-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.75rem;
+        background: #f5f6fa;
+    }
+
+    .checkout-body::-webkit-scrollbar { width: 6px; }
+    .checkout-body::-webkit-scrollbar-thumb { background: #c8ccd6; border-radius: 3px; }
+
+    /* ── Cards ── */
+    .order-summary-card,
+    .add-payment-card {
+        background: #fff;
+        border: 1px solid #e4e7ed;
+        border-radius: 12px;
+        padding: 1.375rem 1.5rem;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+
+    .section-title {
+        margin: 0 0 1rem 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #0033A0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* ── Summary rows ── */
+    .summary-details { display: flex; flex-direction: column; gap: 0.625rem; }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9375rem;
+    }
+
+    .summary-row span   { color: #666; }
+    .summary-row strong { color: #1a1a1a; font-weight: 600; }
+    .summary-row.discount strong { color: #ef4444; }
+
+    .total-row {
+        padding-top: 0.75rem;
+        margin-top: 0.25rem;
+        border-top: 2px solid #e4e7ed;
+    }
+
+    /* Green amount — matches POS checkout button color */
+    .amount-lg {
+        font-size: 1.625rem !important;
+        color: #7FBA00 !important;
+        font-weight: 800 !important;
+        font-family: monospace;
+    }
+
+    /* ── Form ── */
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.125rem;
+        margin-bottom: 1rem;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+
+    .form-group label { font-size: 0.8125rem; font-weight: 600; color: #444; }
+
+    .form-select,
+    .form-input {
+        padding: 0.75rem 1rem;
+        border: 1.5px solid #e4e7ed;
+        border-radius: 8px;
+        font-size: 0.9375rem;
+        font-family: inherit;
+        background: #fafbfc;
+        transition: all 0.18s;
+        width: 100%;
+    }
+
+    .form-select:focus,
+    .form-input:focus {
+        outline: none;
+        border-color: #0033A0;
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(0,51,160,0.1);
+    }
+
+    .input-with-icon { position: relative; }
+
+    .input-icon {
+        position: absolute;
+        left: 0.875rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-weight: 700;
+        color: #888;
+        pointer-events: none;
+    }
+
+    .input-with-icon .form-input { padding-left: 2rem; }
+
+    /* Blue "Add Payment" button */
+    .btn-add-payment {
+        width: 100%;
+        padding: 0.875rem;
+        background: #0033A0;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.9375rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+        margin-top: 0.25rem;
+    }
+
+    .btn-add-payment:hover {
+        background: #002a85;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,51,160,0.25);
+    }
+
+    /* ── Footer ── */
+    .checkout-footer {
+        background: #fff;
+        border-top: 1px solid #e4e7ed;
+        padding: 1.125rem 1.75rem;
+        display: flex;
+        gap: 1rem;
+        flex-shrink: 0;
+    }
+
+    .btn-checkout-cancel {
+        flex: 1;
+        padding: 0.9375rem;
+        background: #f0f2f5;
+        color: #555;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9375rem;
+        cursor: pointer;
+        transition: background 0.18s;
+    }
+
+    .btn-checkout-cancel:hover { background: #e2e5eb; }
+
+    /* Green "Complete Sale" — matches POS "Proceed to Checkout" button */
+    .btn-complete {
+        flex: 2;
+        padding: 0.9375rem;
+        background: #7FBA00;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-complete:hover:not(:disabled) {
+        background: #6ba500;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(127,186,0,0.3);
+    }
+
+    .btn-complete:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+        .checkout-modal    { max-width: 100%; max-height: 100vh; border-radius: 0; }
+        .form-grid         { grid-template-columns: 1fr; }
+        .checkout-footer   { flex-direction: column; }
+    }
+</style>
+
+<script>
+    function closeCheckoutModal(event) {
+        // Only close when clicking the dark overlay itself
+        if (event && event.target !== document.getElementById('checkoutModal')) return;
+        document.getElementById('checkoutModal')?.remove();
+    }
+
+    // Show reference field for card / transfer payments
+    const methodSelect = document.getElementById('payment_method');
+    if (methodSelect) {
+        methodSelect.addEventListener('change', function () {
+            const refGroup = document.querySelector('.ref-group');
+            if (refGroup) {
+                refGroup.style.display = ['CARD', 'TRANSFER'].includes(this.value) ? 'flex' : 'none';
+            }
+        });
+    }
+
+    // Enable / disable "Complete Sale" after HTMX payment swap
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+        if (evt.target.id !== 'paymentSummary') return;
+
+        const wrapper = document.getElementById('paymentSummary');
+        const btn     = document.getElementById('completeSaleBtn');
+        if (!wrapper || !btn) return;
+
+        const balance = parseFloat(wrapper.dataset.balance ?? '999');
+        btn.disabled  = balance > 0;
+    });
+
+    // ESC closes
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') document.getElementById('checkoutModal')?.remove();
+    });
+</script>

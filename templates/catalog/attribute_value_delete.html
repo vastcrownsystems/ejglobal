@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Delete Value - EJ Global Services{% endblock %}
+{% block page_title %}Delete Value{% endblock %}
+
+{% block extra_css %}
+<style>
+    .delete-container {
+        max-width: 600px;
+        margin: 2rem auto;
+    }
+
+    .delete-card {
+        background: var(--bg-card);
+        border: 2px solid var(--danger);
+        border-radius: 16px;
+        padding: 2rem;
+    }
+
+    .delete-icon {
+        width: 80px;
+        height: 80px;
+        background: rgba(231, 76, 60, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        font-size: 2.5rem;
+        color: var(--danger);
+    }
+
+    .delete-title {
+        text-align: center;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--danger);
+        margin-bottom: 1rem;
+    }
+
+    .delete-message {
+        text-align: center;
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        line-height: 1.6;
+    }
+
+    .value-info {
+        background: var(--bg-main);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .attribute-name {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+    }
+
+    .value-name {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .value-order {
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--text-muted);
+    }
+
+    .warning-box {
+        background: rgba(255, 193, 7, 0.1);
+        border: 1px solid rgba(255, 193, 7, 0.3);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .warning-title {
+        font-weight: 700;
+        color: #D68400;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .warning-text {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .info-box {
+        background: rgba(0, 191, 179, 0.1);
+        border: 1px solid rgba(0, 191, 179, 0.3);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: start;
+        gap: 0.75rem;
+    }
+
+    .info-icon {
+        color: var(--accent-cyan);
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .info-text {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .delete-actions {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .btn-delete {
+        flex: 1;
+        padding: 1rem;
+        background: var(--danger);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-delete:hover {
+        background: #C0392B;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+    }
+
+    .btn-cancel {
+        flex: 1;
+        padding: 1rem;
+        background: white;
+        color: var(--text-secondary);
+        border: 2px solid var(--border);
+        border-radius: 10px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        text-decoration: none;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+
+    .btn-cancel:hover {
+        background: var(--bg-main);
+        border-color: var(--text-secondary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="delete-container">
+    <div class="delete-card">
+        <div class="delete-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+
+        <h1 class="delete-title">Delete Value?</h1>
+        
+        <p class="delete-message">
+            Are you sure you want to delete this attribute value? This action cannot be undone.
+        </p>
+
+        <div class="value-info">
+            <div class="attribute-name">
+                <i class="fas fa-tag"></i> {{ value.attribute.display_name }}
+            </div>
+            <div class="value-name">{{ value.value }}</div>
+            <div class="value-order">Display Order: {{ value.display_order }}</div>
+        </div>
+
+        {% if usage_count > 0 %}
+        <div class="warning-box">
+            <div class="warning-title">
+                <i class="fas fa-exclamation-circle"></i>
+                Warning: Value In Use
+            </div>
+            <p class="warning-text">
+                This value is currently used in <strong>{{ usage_count }} product variant{{ usage_count|pluralize }}</strong>. 
+                Deleting it will remove this attribute from those variants.
+            </p>
+        </div>
+        {% else %}
+        <div class="info-box">
+            <div class="info-icon">
+                <i class="fas fa-info-circle"></i>
+            </div>
+            <div class="info-text">
+                This value is not currently used in any variants and can be safely deleted.
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="delete-actions">
+                <button type="submit" class="btn-delete">
+                    <i class="fas fa-trash"></i> Yes, Delete Value
+                </button>
+                <a href="{% url 'catalog:attribute_detail' value.attribute.pk %}" class="btn-cancel">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

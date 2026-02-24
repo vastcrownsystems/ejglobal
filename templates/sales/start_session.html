@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Start Session - EJ Global Services POS{% endblock %}
+
+{% block page_title %}Start Session{% endblock %}
+
+{% block extra_css %}
+<style>
+    .session-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .info-banner {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 16px;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .info-icon {
+        width: 60px;
+        height: 60px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .info-content h2 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .info-content p {
+        opacity: 0.95;
+        margin: 0;
+    }
+
+    .form-select {
+        width: 100%;
+        padding: 1rem;
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        font-size: 1rem;
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary);
+        background: var(--bg-main);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .form-select:focus {
+        outline: none;
+        border-color: var(--primary);
+        background: white;
+        box-shadow: 0 0 0 4px rgba(0, 51, 160, 0.1);
+    }
+
+    .available-registers {
+        background: rgba(127, 186, 0, 0.1);
+        border: 1px solid rgba(127, 186, 0, 0.3);
+        padding: 1rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: #5A9300;
+        font-weight: 600;
+    }
+
+    .no-registers {
+        background: rgba(231, 76, 60, 0.1);
+        border: 1px solid rgba(231, 76, 60, 0.3);
+        color: #C0392B;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="session-container">
+    <!-- Info Banner -->
+    <div class="info-banner">
+        <div class="info-icon">
+            <i class="fas fa-play-circle"></i>
+        </div>
+        <div class="info-content">
+            <h2>Start New Session</h2>
+            <p>Select a register and enter the opening cash amount to begin your shift.</p>
+        </div>
+    </div>
+
+    <!-- Available Registers Info -->
+    {% if available_registers > 0 %}
+    <div class="available-registers">
+        <i class="fas fa-check-circle"></i>
+        <span>{{ available_registers }} register{{ available_registers|pluralize }} available</span>
+    </div>
+    {% else %}
+    <div class="available-registers no-registers">
+        <i class="fas fa-exclamation-circle"></i>
+        <span>No registers available. All registers have open sessions.</span>
+    </div>
+    {% endif %}
+
+    <!-- Start Session Form -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Session Details</h2>
+        </div>
+
+        <form method="post" action="{% url 'sales:start_session' %}">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label class="form-label" for="id_register">
+                    Select Register <span class="required">*</span>
+                </label>
+                {{ form.register }}
+                {% if form.register.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.register.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_opening_cash">
+                    Opening Cash (₦) <span class="required">*</span>
+                </label>
+                {{ form.opening_cash }}
+                <div class="form-help-text">Enter the total cash available at the start of your session</div>
+                {% if form.opening_cash.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.opening_cash.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_notes">Notes (Optional)</label>
+                {{ form.notes }}
+                {% if form.notes.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.notes.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-success btn-save" {% if available_registers == 0 %}disabled{% endif %}>
+                    <i class="fas fa-play"></i> Start Session
+                </button>
+                <a href="{% url 'sales:session_dashboard' %}" class="btn btn-secondary btn-cancel">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

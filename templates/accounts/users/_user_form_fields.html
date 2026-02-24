@@ -1,0 +1,78 @@
+{# templates/accounts/users/_user_form_fields.html #}
+
+<div class="form-group">
+  <label class="form-label" for="{{ form.username.id_for_label }}">
+    Username <span class="required">*</span>
+  </label>
+  {{ form.username }}
+  {% if form.username.errors %}
+    <ul class="errorlist">
+      {% for error in form.username.errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+</div>
+
+<div class="form-group">
+  <label class="form-label" for="{{ form.first_name.id_for_label }}">First Name</label>
+  {{ form.first_name }}
+  {% if form.first_name.errors %}
+    <ul class="errorlist">
+      {% for error in form.first_name.errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+</div>
+
+<div class="form-group">
+  <label class="form-label" for="{{ form.last_name.id_for_label }}">Last Name</label>
+  {{ form.last_name }}
+  {% if form.last_name.errors %}
+    <ul class="errorlist">
+      {% for error in form.last_name.errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+</div>
+
+<div class="form-group">
+  <label class="form-label" for="{{ form.email.id_for_label }}">Email</label>
+  {{ form.email }}
+  {% if form.email.errors %}
+    <ul class="errorlist">
+      {% for error in form.email.errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+</div>
+
+<div class="form-group">
+  <label class="form-label" for="{{ form.password1.id_for_label }}">
+    Password <span class="required">*</span>
+  </label>
+  {{ form.password1 }}
+  {% if form.password1.errors %}
+    <ul class="errorlist">
+      {% for error in form.password1.errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+</div>
+
+<div class="form-group">
+  <label class="form-label" for="{{ form.password2.id_for_label }}">
+    Confirm Password <span class="required">*</span>
+  </label>
+  {{ form.password2 }}
+  {% if form.password2.errors %}
+    <ul class="errorlist">
+      {% for error in form.password2.errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+</div>
+
+<div class="form-group">
+  <label class="form-label">Assign Roles (Groups)</label>
+  {{ form.groups }}
+  {% if form.groups.errors %}
+    <ul class="errorlist">
+      {% for error in form.groups.errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+  <div class="form-help-text">Choose one or more roles for this user.</div>
+</div>

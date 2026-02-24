@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block page_title %}User Management{% endblock %}
+
+{% block content %}
+<div class="card table-container">
+  <div class="card-header">
+    <div class="card-title">Users</div>
+    <a class="btn btn-primary" href="{% url 'accounts:user_create' %}">
+      <i class="fas fa-user-plus"></i> Create User
+    </a>
+  </div>
+
+  <div class="table-scroll-hint">
+        <i class="fas fa-arrow-right"></i>
+        <span>Scroll to see more</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th align="left">Username</th>
+        <th align="left">Name</th>
+        <th align="left">Role(s)</th>
+        <th align="left">Active</th>
+        <th align="left">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr style="border-top: 1px solid var(--border);">
+        <td>{{ u.username }}</td>
+        <td>{{ u.get_full_name|default:"-" }}</td>
+       <td>
+          {% if u.is_superuser %}
+            <span class="role-badge role-super">Super Admin</span>
+          {% endif %}
+
+          {% for g in u.groups.all %}
+            <span class="role-badge role-{{ g.name|lower }}">
+              {{ g.name }}
+            </span>
+          {% empty %}
+            {% if not u.is_superuser %}
+              <span class="text-muted">No role</span>
+            {% endif %}
+          {% endfor %}
+        </td>
+        <td>{{ u.is_active }}</td>
+        <td style="display:flex; flex-direction: row; gap:8px; flex-wrap:wrap;">
+          <!-- Edit Profile -->
+          <a class="btn btn-secondary" href="{% url 'accounts:user_edit' u.pk %}" title="Edit user profile">
+            <i class="fas fa-edit"></i> Edit
+          </a>
+
+          <!-- Password Reset -->
+          <a class="btn btn-warning" href="{% url 'accounts:user_password_reset' u.pk %}" title="Reset user password">
+            <i class="fas fa-key"></i> Password
+          </a>
+
+          <!-- Access Control -->
+          <a class="btn btn-accent" href="{% url 'accounts:user_access_update' u.pk %}" title="Manage groups & permissions">
+            <i class="fas fa-user-shield"></i> Access
+          </a>
+
+          <!-- Terminate/Reactivate -->
+          {% if u.is_active %}
+            <form method="post" action="{% url 'accounts:user_terminate' u.pk %}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger"
+                      onclick="return confirm('Terminate {{ u.username }}? This will prevent login but keep records.');">
+                <i class="fas fa-user-slash"></i> Terminate
+              </button>
+            </form>
+          {% else %}
+            <form method="post" action="{% url 'accounts:user_reactivate' u.pk %}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-success"
+                      onclick="return confirm('Reactivate {{ u.username }}?');">
+                <i class="fas fa-user-check"></i> Reactivate
+              </button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

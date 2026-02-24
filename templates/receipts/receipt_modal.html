@@ -1,0 +1,602 @@
+<!-- apps/receipts/templates/receipts/receipt_modal.html -->
+<!-- Receipt Modal - POS color consistent, receipt_detail print look/feel -->
+<div id="receiptModal" class="receipt-modal-overlay" onclick="closeReceiptModal(event)">
+    <div class="receipt-modal-content" onclick="event.stopPropagation()">
+
+        <!-- Modal Header — Royal Blue to match POS nav -->
+        <div class="receipt-modal-header">
+            <div class="receipt-modal-title">
+                <i class="fas fa-receipt"></i>
+                <span>Receipt</span>
+            </div>
+            <div class="receipt-modal-actions">
+                <button onclick="printReceipt()" class="btn-header-print">
+                    <i class="fas fa-print"></i>
+                    Print
+                </button>
+                <button onclick="downloadReceipt()" class="btn-header-icon" title="Download PDF">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button onclick="closeReceiptModal()" class="btn-header-icon">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Scrollable Body -->
+        <div class="receipt-modal-body">
+
+            <!-- ========================================
+                 PRINT AREA — mirrors receipt_detail.html
+                 Only this div is printed
+            ========================================= -->
+            <div id="receiptPrintArea" class="receipt-print-area">
+
+                <!-- Header -->
+                <div class="rp-header">
+                    <div class="rp-company-name">EJ GLOBAL SERVICES</div>
+                    <div class="rp-company-sub">Your trusted partner</div>
+                    <div class="rp-company-sub">Tel: +234-XXX-XXX-XXXX</div>
+                    <div class="rp-company-sub">Email: info@ejglobal.com</div>
+                    <div class="rp-receipt-title">SALES RECEIPT</div>
+                    <div class="rp-receipt-number">{{ receipt.receipt_no }}</div>
+                </div>
+
+                <div class="rp-dash"></div>
+
+                <!-- Transaction Info -->
+                <div class="rp-section">
+                    <div class="rp-row">
+                        <span class="rp-lbl">Date:</span>
+                        <span>{{ receipt.created_at|date:"M d, Y g:i A" }}</span>
+                    </div>
+                    <div class="rp-row">
+                        <span class="rp-lbl">Order:</span>
+                        <span>{{ receipt.payload.order.order_number }}</span>
+                    </div>
+                    <div class="rp-row">
+                        <span class="rp-lbl">Cashier:</span>
+                        <span>{{ receipt.payload.cashier.name }}</span>
+                    </div>
+                    {% if receipt.payload.session %}
+                    {% if receipt.payload.session.register_name %}
+                    <div class="rp-row">
+                        <span class="rp-lbl">Register:</span>
+                        <span>{{ receipt.payload.session.register_name }}</span>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+
+                <div class="rp-dash"></div>
+
+                <!-- Customer -->
+                {% with c=receipt.payload.customer %}
+                {% if not c.is_walk_in %}
+                <div class="rp-section">
+                    <div class="rp-items-hdr">CUSTOMER</div>
+{#                    <div class="rp-row">#}
+{#                        <span class="rp-lbl">Name:</span>#}
+{#                        <span>{{ c.name }}</span>#}
+{#                    </div>#}
+{#                    {% if c.phone %}#}
+{#                    <div class="rp-row">#}
+{#                        <span class="rp-lbl">Phone:</span>#}
+{#                        <span>{{ c.phone }}</span>#}
+{#                    </div>#}
+{#                    {% endif %}#}
+{#                    {% if c.email %}#}
+{#                    <div class="rp-row">#}
+{#                        <span class="rp-lbl">Email:</span>#}
+{#                        <span>{{ c.email }}</span>#}
+{#                    </div>#}
+{#                    {% endif %}#}
+                    {% if c.customer_number %}
+                    <div class="rp-row">
+                        <span class="rp-lbl">Customer #:</span>
+                        <span>{{ c.customer_number }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="rp-dash"></div>
+                {% else %}
+                <div class="rp-section">
+                    <div class="rp-row">
+                        <span class="rp-lbl">Customer:</span>
+                        <span>Walk-in Customer</span>
+                    </div>
+                </div>
+                <div class="rp-dash"></div>
+                {% endif %}
+                {% endwith %}
+
+                <!-- Items -->
+                <div class="rp-section">
+                    <div class="rp-items-hdr">ITEMS</div>
+                    {% for item in receipt.payload.items %}
+                    <div class="rp-item">
+                        <div class="rp-item-name">{{ item.display_name }}</div>
+                        <div class="rp-item-line">
+                            <span class="rp-item-qty">
+                                {{ item.quantity|floatformat:0 }} x ₦{{ item.unit_price|floatformat:2 }}
+                                {% if item.discount_amount > 0 %}(-₦{{ item.discount_amount|floatformat:2 }}){% endif %}
+                            </span>
+                            <span class="rp-item-total">₦{{ item.line_total|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="rp-solid"></div>
+
+                <!-- Totals -->
+                <div class="rp-section">
+                    <div class="rp-row">
+                        <span class="rp-lbl">Subtotal:</span>
+                        <span>₦{{ receipt.payload.totals.subtotal|floatformat:2 }}</span>
+                    </div>
+                    {% if receipt.payload.totals.discount_amount > 0 %}
+                    <div class="rp-row">
+                        <span class="rp-lbl">Discount:</span>
+                        <span>-₦{{ receipt.payload.totals.discount_amount|floatformat:2 }}</span>
+                    </div>
+                    {% endif %}
+                    {% if receipt.payload.totals.tax_amount > 0 %}
+                    <div class="rp-row">
+                        <span class="rp-lbl">Tax:</span>
+                        <span>₦{{ receipt.payload.totals.tax_amount|floatformat:2 }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="rp-solid"></div>
+                    <div class="rp-row rp-grand">
+                        <span>TOTAL:</span>
+                        <span>₦{{ receipt.payload.totals.total|floatformat:2 }}</span>
+                    </div>
+                </div>
+
+                <div class="rp-dash"></div>
+
+                <!-- Payment -->
+                <div class="rp-section">
+                    <div class="rp-items-hdr">PAYMENT</div>
+                    {% for payment in receipt.payload.payments %}
+                    <div class="rp-row">
+                        <span>{{ payment.payment_method_display }}:</span>
+                        <span>₦{{ payment.amount|floatformat:2 }}</span>
+                    </div>
+                    {% if payment.reference_number %}
+                    <div class="rp-row" style="padding-left: 1em;">
+                        <span style="color:#555;">Ref:</span>
+                        <span style="color:#555;">{{ payment.reference_number }}</span>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                    <div class="rp-thin"></div>
+                    <div class="rp-row rp-bold">
+                        <span>Paid:</span>
+                        <span>₦{{ receipt.payload.totals.paid_amount|floatformat:2 }}</span>
+                    </div>
+                    {% if receipt.payload.totals.balance_due > 0 %}
+                    <div class="rp-row">
+                        <span>Balance:</span>
+                        <span>₦{{ receipt.payload.totals.balance_due|floatformat:2 }}</span>
+                    </div>
+                    {% else %}
+                    <div class="rp-row">
+                        <span>Change:</span>
+                        <span>₦0.00</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="rp-dash"></div>
+
+                <!-- Footer -->
+                <div class="rp-footer">
+                    <div class="rp-thankyou">THANK YOU!</div>
+                    <div class="rp-fnote">Please come again</div>
+                    <div class="rp-fnote">Goods sold are not returnable</div>
+                    <div class="rp-barcode">{{ receipt.receipt_no }}</div>
+                    <div class="rp-printcount">Print #{{ receipt.print_count }}</div>
+                </div>
+
+            </div>
+            <!-- END PRINT AREA -->
+
+        </div>
+
+        <!-- Modal Footer — consistent with checkout_modal -->
+        <div class="receipt-modal-footer">
+            <button onclick="printReceipt()" class="btn-rp-print">
+                <i class="fas fa-print"></i>
+                Print Receipt
+            </button>
+            <button onclick="downloadReceipt()" class="btn-rp-secondary">
+                <i class="fas fa-download"></i>
+                Download
+            </button>
+            <button onclick="closeReceiptModal()" class="btn-rp-cancel">
+                Close
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    /* ==============================================
+       MODAL CHROME  (screen only — hidden on print)
+    =============================================== */
+    .receipt-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        animation: rmFade 0.2s ease;
+    }
+
+    @keyframes rmFade {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+
+    .receipt-modal-content {
+        background: #fff;
+        border-radius: 16px;
+        width: 100%;
+        max-width: 480px;
+        max-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+        animation: rmSlide 0.28s ease;
+        overflow: hidden;
+    }
+
+    @keyframes rmSlide {
+        from { opacity: 0; transform: translateY(22px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Header — Royal Blue #0033A0 matches POS navbar */
+    .receipt-modal-header {
+        background: #0033A0;
+        padding: 1.125rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+    }
+
+    .receipt-modal-title {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        color: #fff;
+        font-size: 1.125rem;
+        font-weight: 700;
+    }
+
+    .receipt-modal-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Green print button — matches POS "Proceed to Checkout" */
+    .btn-header-print {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.5rem 1rem;
+        background: #7FBA00;
+        color: #fff;
+        border: none;
+        border-radius: 7px;
+        font-weight: 700;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: background 0.18s;
+    }
+
+    .btn-header-print:hover { background: #6ba500; }
+
+    .btn-header-icon {
+        width: 34px;
+        height: 34px;
+        background: rgba(255, 255, 255, 0.15);
+        color: #fff;
+        border: none;
+        border-radius: 7px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.18s;
+        font-size: 0.875rem;
+    }
+
+    .btn-header-icon:hover { background: rgba(255, 255, 255, 0.28); }
+
+    /* Body */
+    .receipt-modal-body {
+        flex: 1;
+        overflow-y: auto;
+        background: #f0f2f7;
+        padding: 1.25rem;
+        display: flex;
+        justify-content: center;
+    }
+
+    .receipt-modal-body::-webkit-scrollbar { width: 5px; }
+    .receipt-modal-body::-webkit-scrollbar-thumb { background: #c8ccd6; border-radius: 3px; }
+
+    /* Footer — mirrors checkout_modal footer style */
+    .receipt-modal-footer {
+        background: #fff;
+        border-top: 1px solid #e4e7ed;
+        padding: 1rem 1.5rem;
+        display: flex;
+        gap: 0.75rem;
+        flex-shrink: 0;
+    }
+
+    /* Green = POS primary action color */
+    .btn-rp-print {
+        flex: 2;
+        padding: 0.875rem;
+        background: #7FBA00;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.9375rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-rp-print:hover {
+        background: #6ba500;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(127, 186, 0, 0.35);
+    }
+
+    .btn-rp-secondary {
+        flex: 1;
+        padding: 0.875rem;
+        background: #f0f2f5;
+        color: #444;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: background 0.18s;
+    }
+
+    .btn-rp-secondary:hover { background: #e0e3e9; }
+
+    .btn-rp-cancel {
+        flex: 1;
+        padding: 0.875rem;
+        background: #fff;
+        color: #666;
+        border: 1.5px solid #e0e0e0;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: background 0.18s;
+    }
+
+    .btn-rp-cancel:hover { background: #f5f5f5; }
+
+    /* ==============================================
+       RECEIPT PRINT AREA
+       Mirrors receipt_detail.html exactly:
+       Courier New, 80mm, same section structure
+    =============================================== */
+    .receipt-print-area {
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        line-height: 1.45;
+        color: #000;
+        background: #fff;
+        width: 100%;
+        max-width: 302px; /* 80mm */
+        padding: 14px;
+        box-shadow: 0 1px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    .rp-header {
+        text-align: center;
+        padding-bottom: 8px;
+        margin-bottom: 2px;
+    }
+
+    .rp-company-name {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 4px;
+    }
+
+    .rp-company-sub {
+        font-size: 11px;
+        margin-bottom: 2px;
+    }
+
+    .rp-receipt-title {
+        font-size: 13px;
+        font-weight: bold;
+        margin-top: 8px;
+        margin-bottom: 3px;
+    }
+
+    .rp-receipt-number {
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    /* Dividers — same as receipt_detail.html */
+    .rp-dash  { border-top: 2px dashed #000; margin: 8px 0; }
+    .rp-solid { border-top: 2px solid #000;  margin: 8px 0; }
+    .rp-thin  { border-top: 1px solid #000;  margin: 5px 0; }
+
+    .rp-section { margin-bottom: 2px; }
+
+    .rp-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 3px;
+        font-size: 11px;
+    }
+
+    .rp-lbl  { font-weight: bold; }
+    .rp-bold { font-weight: bold; }
+
+    .rp-items-hdr {
+        font-weight: bold;
+        font-size: 12px;
+        margin-bottom: 5px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #000;
+    }
+
+    .rp-item        { margin-bottom: 7px; }
+    .rp-item-name   { font-weight: bold; font-size: 12px; margin-bottom: 2px; }
+    .rp-item-line   { display: flex; justify-content: space-between; font-size: 11px; }
+    .rp-item-qty    { flex: 1; }
+    .rp-item-total  { font-weight: bold; }
+
+    .rp-grand {
+        font-size: 14px !important;
+        font-weight: bold;
+        padding-top: 3px;
+    }
+
+    .rp-footer      { text-align: center; margin-top: 10px; }
+    .rp-thankyou    { font-size: 14px; font-weight: bold; margin-bottom: 4px; }
+    .rp-fnote       { font-size: 11px; margin-bottom: 2px; }
+    .rp-barcode     {
+        margin: 10px auto 4px;
+        padding: 5px 10px;
+        border: 1px solid #000;
+        display: inline-block;
+        font-size: 11px;
+        letter-spacing: 2px;
+        font-weight: bold;
+    }
+    .rp-printcount  { font-size: 10px; color: #555; }
+
+    /* ==============================================
+       PRINT MEDIA
+       Hides ALL modal chrome, prints only the
+       receipt-print-area — same as receipt_detail
+    =============================================== */
+    @media print {
+        /* Hide everything */
+        body > *                    { display: none !important; }
+
+        /* Re-show only the modal */
+        #receiptModal               { display: block !important; }
+
+        .receipt-modal-overlay {
+            background: none !important;
+            position: static !important;
+            padding: 0 !important;
+            display: block !important;
+        }
+
+        .receipt-modal-content {
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            max-height: none !important;
+            max-width: 80mm !important;
+            display: block !important;
+        }
+
+        /* Hide chrome */
+        .receipt-modal-header,
+        .receipt-modal-footer       { display: none !important; }
+
+        .receipt-modal-body {
+            background: #fff !important;
+            padding: 0 !important;
+            overflow: visible !important;
+            display: block !important;
+        }
+
+        /* Receipt content */
+        .receipt-print-area {
+            box-shadow: none !important;
+            padding: 0 !important;
+            max-width: 80mm !important;
+            width: 80mm !important;
+        }
+
+        @page {
+            size: 80mm auto;
+            margin: 4mm;
+        }
+    }
+
+    /* Responsive */
+    @media (max-width: 520px) {
+        .receipt-modal-content  { border-radius: 0; max-height: 100vh; }
+        .receipt-modal-footer   { flex-wrap: wrap; }
+        .btn-rp-print           { flex: 1 1 100%; }
+    }
+</style>
+
+<script>
+    function printReceipt() {
+        // Increment print count silently (don't block print)
+        fetch('{% url "receipts:increment_print_count" receipt.pk %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+            }
+        }).catch(() => {});
+
+        window.print();
+    }
+
+    function closeReceiptModal(event) {
+        if (event && event.target !== document.getElementById('receiptModal')) return;
+
+        document.getElementById('receiptModal')?.remove();
+
+        // Reload POS screen cleanly
+        window.location.reload();
+    }
+
+    function downloadReceipt() {
+        window.location.href = '{% url "receipts:download_pdf" receipt.pk %}';
+    }
+
+    // ESC key closes modal
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') document.getElementById('receiptModal')?.remove();
+    });
+
+    // Auto-focus the main print button so user can press Enter to print
+    document.querySelector('.btn-rp-print')?.focus();
+</script>

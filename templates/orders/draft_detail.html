@@ -1,0 +1,457 @@
+{% extends "layout.html" %}
+{% load static %}
+
+{% block title %}Order {{ order.order_number }} - EJ Global Services{% endblock %}
+{% block page_title %}Draft Order Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    /* Order Header Card */
+    .order-header-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .order-header-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 2rem;
+        padding-bottom: 2rem;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .order-number-section h1 {
+        font-size: 1.75rem;
+        margin-bottom: 0.5rem;
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--primary);
+    }
+
+    .order-status-badge {
+        padding: 0.5rem 1rem;
+        background: rgba(255, 140, 0, 0.1);
+        color: var(--accent-orange);
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .order-actions-section {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .btn-action-large {
+        padding: 0.875rem 1.5rem;
+        border: 2px solid var(--border);
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-action-large.reopen {
+        background: linear-gradient(135deg, var(--accent-green) 0%, #6BA500 100%);
+        color: white;
+        border-color: var(--accent-green);
+    }
+
+    .btn-action-large.reopen:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(127, 186, 0, 0.3);
+    }
+
+    .btn-action-large.delete {
+        background: white;
+        color: var(--danger);
+    }
+
+    .btn-action-large.delete:hover {
+        border-color: var(--danger);
+        background: rgba(231, 76, 60, 0.05);
+    }
+
+    /* Info Grid */
+    .order-info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2rem;
+    }
+
+    .info-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .info-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .info-value {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .info-value.empty {
+        color: var(--text-muted);
+        font-style: italic;
+        font-weight: 400;
+    }
+
+    /* Items Card */
+    .items-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+
+    .items-card-header {
+        padding: 1.5rem;
+        border-bottom: 2px solid var(--border);
+        font-size: 1.25rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .items-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .items-table th {
+        background: var(--bg-main);
+        padding: 1rem 1.5rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        color: var(--text-muted);
+    }
+
+    .items-table td {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .item-name {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .item-variant {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+
+    .item-sku {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    .item-price {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+    }
+
+    /* Totals Section */
+    .totals-section {
+        padding: 1.5rem;
+        border-top: 2px solid var(--border);
+        background: var(--bg-main);
+    }
+
+    .totals-grid {
+        max-width: 400px;
+        margin-left: auto;
+    }
+
+    .total-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+    }
+
+    .total-row:not(:last-child) {
+        border-bottom: 1px solid var(--border);
+    }
+
+    .total-label {
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .total-value {
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .total-row.main {
+        padding-top: 1rem;
+        margin-top: 0.5rem;
+        border-top: 2px solid var(--border) !important;
+    }
+
+    .total-row.main .total-label {
+        font-size: 1.1rem;
+        color: var(--text-primary);
+    }
+
+    .total-row.main .total-value {
+        font-size: 1.5rem;
+        color: var(--primary);
+    }
+
+    /* Empty State */
+    .empty-items {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: var(--text-muted);
+    }
+
+    .empty-items i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    .empty-items p {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    /* Back Button */
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: white;
+        color: var(--text-secondary);
+        border: 2px solid var(--border);
+        border-radius: 10px;
+        text-decoration: none;
+        font-weight: 600;
+        margin-bottom: 2rem;
+    }
+
+    .back-link:hover {
+        background: var(--bg-main);
+    }
+
+    @media (max-width: 768px) {
+        .order-header-top {
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .order-info-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-container">
+    <!-- Back Link -->
+    <a href="{% url 'orders:drafts_list' %}" class="back-link">
+        <i class="fas fa-arrow-left"></i> Back to Held Orders
+    </a>
+
+    <!-- Order Header -->
+    <div class="order-header-card">
+        <div class="order-header-top">
+            <div class="order-number-section">
+                <h1>{{ order.order_number }}</h1>
+                <span class="order-status-badge">
+                    <i class="fas fa-pause-circle"></i>
+                    Draft Order
+                </span>
+            </div>
+
+            <div class="order-actions-section">
+                {% if order.items.exists %}
+                    <form method="post" action="{% url 'orders:reopen_draft' order.pk %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-action-large reopen">
+                            <i class="fas fa-play-circle"></i>
+                            Resume in POS
+                        </button>
+                    </form>
+                {% endif %}
+
+                {% if order.created_by == user or not order.items.exists %}
+                    <form method="post" action="{% url 'orders:delete_draft' order.pk %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button 
+                            type="submit" 
+                            class="btn-action-large delete"
+                            onclick="return confirm('Delete this draft order?')"
+                        >
+                            <i class="fas fa-trash"></i>
+                            Delete
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Order Info -->
+        <div class="order-info-grid">
+            <div class="info-group">
+                <div class="info-label">Customer</div>
+                <div class="info-value {% if not order.customer_name %}empty{% endif %}">
+                    {{ order.customer_name|default:"Walk-in Customer" }}
+                </div>
+                {% if order.customer_phone %}
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">
+                        <i class="fas fa-phone"></i> {{ order.customer_phone }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="info-group">
+                <div class="info-label">Created By</div>
+                <div class="info-value">
+                    {{ order.created_by.get_full_name|default:order.created_by.username }}
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-muted);">
+                    {{ order.created_at|date:"M d, Y h:i A" }}
+                </div>
+            </div>
+
+            <div class="info-group">
+                <div class="info-label">Items / Total</div>
+                <div class="info-value">
+                    {{ order.item_count }} item{{ order.item_count|pluralize }}
+                </div>
+                <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary); font-family: 'JetBrains Mono', monospace;">
+                    ₦{{ order.total|floatformat:2 }}
+                </div>
+            </div>
+        </div>
+
+        {% if order.notes %}
+            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+                <div class="info-label">Notes</div>
+                <div style="margin-top: 0.5rem; padding: 1rem; background: var(--bg-main); border-radius: 8px; color: var(--text-secondary);">
+                    {{ order.notes }}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Order Items -->
+    <div class="items-card">
+        <div class="items-card-header">
+            <i class="fas fa-shopping-bag"></i>
+            Order Items
+        </div>
+
+        {% if items %}
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>SKU</th>
+                        <th style="text-align: center;">Quantity</th>
+                        <th style="text-align: right;">Unit Price</th>
+                        <th style="text-align: right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>
+                            <div class="item-name">{{ item.product_name }}</div>
+                            {% if item.variant_name %}
+                                <div class="item-variant">{{ item.variant_name }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="item-sku">{{ item.sku }}</span>
+                        </td>
+                        <td style="text-align: center;">
+                            <strong>{{ item.quantity }}</strong>
+                        </td>
+                        <td style="text-align: right;">
+                            <span class="item-price">₦{{ item.unit_price|floatformat:2 }}</span>
+                        </td>
+                        <td style="text-align: right;">
+                            <strong class="item-price" style="font-size: 1.05rem; color: var(--primary);">
+                                ₦{{ item.line_total|floatformat:2 }}
+                            </strong>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Totals -->
+            <div class="totals-section">
+                <div class="totals-grid">
+                    <div class="total-row">
+                        <span class="total-label">Subtotal:</span>
+                        <span class="total-value">₦{{ order.subtotal|floatformat:2 }}</span>
+                    </div>
+
+                    {% if order.discount_amount > 0 %}
+                    <div class="total-row">
+                        <span class="total-label">Discount:</span>
+                        <span class="total-value" style="color: var(--accent-green);">
+                            -₦{{ order.discount_amount|floatformat:2 }}
+                        </span>
+                    </div>
+                    {% endif %}
+
+                    {% if order.tax_amount > 0 %}
+                    <div class="total-row">
+                        <span class="total-label">Tax:</span>
+                        <span class="total-value">₦{{ order.tax_amount|floatformat:2 }}</span>
+                    </div>
+                    {% endif %}
+
+                    <div class="total-row main">
+                        <span class="total-label">Total:</span>
+                        <span class="total-value">₦{{ order.total|floatformat:2 }}</span>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="empty-items">
+                <i class="fas fa-shopping-bag"></i>
+                <p>No items in this order</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,545 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} - EJ Global Services{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .form-header {
+        margin-bottom: 2rem;
+    }
+
+    .form-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .form-subtitle {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+    }
+
+    .form-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .form-section {
+        margin-bottom: 2rem;
+    }
+
+    .form-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+    }
+
+    .required {
+        color: var(--danger);
+        margin-left: 0.25rem;
+    }
+
+    .form-input,
+    .form-select,
+    .form-textarea {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 2px solid var(--border);
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-family: 'DM Sans', sans-serif;
+        transition: all 0.3s ease;
+    }
+
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        background: white;
+        box-shadow: 0 0 0 4px rgba(0, 51, 160, 0.1);
+    }
+
+    .form-textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    .form-help-text {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-top: 0.5rem;
+    }
+
+    .form-file {
+        display: block;
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 2px dashed var(--border);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: var(--bg-main);
+    }
+
+    .form-file:hover {
+        border-color: var(--primary);
+        background: white;
+    }
+
+    /* Image Preview */
+    .image-preview-section {
+        margin-top: 1rem;
+    }
+
+    .image-preview {
+        max-width: 300px;
+        max-height: 300px;
+        border-radius: 12px;
+        border: 2px solid var(--border);
+        object-fit: contain;
+        background: var(--bg-main);
+        padding: 0.5rem;
+    }
+
+    .no-image {
+        width: 300px;
+        height: 300px;
+        background: var(--bg-main);
+        border: 2px dashed var(--border);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        font-size: 3rem;
+    }
+
+    /* Checkboxes */
+    .form-checkboxes {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.875rem 1rem;
+        background: var(--bg-main);
+        border: 2px solid var(--border);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .checkbox-group:hover {
+        border-color: var(--primary);
+        background: white;
+    }
+
+    .form-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: var(--primary);
+    }
+
+    .checkbox-label {
+        flex: 1;
+        cursor: pointer;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .checkbox-description {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+
+    /* Grid Layout for Fields */
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Error Messages */
+    .errorlist {
+        list-style: none;
+        padding: 0;
+        margin: 0.5rem 0 0 0;
+    }
+
+    .errorlist li {
+        color: var(--danger);
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(231, 76, 60, 0.1);
+        border-left: 3px solid var(--danger);
+        border-radius: 4px;
+        margin-top: 0.5rem;
+    }
+
+    .form-errors {
+        background: rgba(231, 76, 60, 0.1);
+        border: 1px solid var(--danger);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-errors-title {
+        color: var(--danger);
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Form Actions */
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        padding-top: 2rem;
+        border-top: 2px solid var(--border);
+    }
+
+    .btn-submit {
+        flex: 1;
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, var(--accent-green) 0%, #6BA500 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 16px rgba(127, 186, 0, 0.3);
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(127, 186, 0, 0.4);
+    }
+
+    .btn-cancel {
+        padding: 1rem 2rem;
+        background: white;
+        color: var(--text-secondary);
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        text-align: center;
+    }
+
+    .btn-cancel:hover {
+        background: var(--bg-main);
+        border-color: var(--text-secondary);
+    }
+
+    /* Info Box */
+    .info-box {
+        background: rgba(0, 191, 179, 0.1);
+        border: 1px solid rgba(0, 191, 179, 0.3);
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .info-icon {
+        color: var(--accent-cyan);
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .info-content {
+        flex: 1;
+    }
+
+    .info-title {
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .info-text {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <!-- Form Header -->
+    <div class="form-header">
+        <h1 class="form-title">{{ title }}</h1>
+        <p class="form-subtitle">
+            {% if product %}
+                Update product information and settings
+            {% else %}
+                Add a new product to your catalog
+            {% endif %}
+        </p>
+    </div>
+
+    <!-- Info Box -->
+    {% if not product %}
+    <div class="info-box">
+        <div class="info-icon">
+            <i class="fas fa-lightbulb"></i>
+        </div>
+        <div class="info-content">
+            <div class="info-title">Pro Tip</div>
+            <p class="info-text">
+                You can leave the SKU blank and it will be auto-generated. After creating the product, you can add variants with different sizes, colors, or other attributes.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Form Errors -->
+    {% if form.errors %}
+    <div class="form-errors">
+        <div class="form-errors-title">
+            <i class="fas fa-exclamation-circle"></i> Please correct the following errors:
+        </div>
+        <ul>
+            {% for field, errors in form.errors.items %}
+                {% for error in errors %}
+                    <li>{{ field|title }}: {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Form -->
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <!-- Basic Information -->
+        <div class="form-card">
+            <div class="form-section">
+                <h2 class="section-title">Basic Information</h2>
+
+                <div class="form-group">
+                    <label class="form-label" for="id_name">
+                        Product Name <span class="required">*</span>
+                    </label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                        {{ form.name.errors }}
+                    {% endif %}
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="id_category">
+                            Category <span class="required">*</span>
+                        </label>
+                        {{ form.category }}
+                        {% if form.category.errors %}
+                            {{ form.category.errors }}
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="id_sku">
+                            SKU
+                        </label>
+                        {{ form.sku }}
+                        <div class="form-help-text">Leave blank to auto-generate</div>
+                        {% if form.sku.errors %}
+                            {{ form.sku.errors }}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="id_description">
+                        Description
+                    </label>
+                    {{ form.description }}
+                    <div class="form-help-text">Describe your product features and benefits</div>
+                    {% if form.description.errors %}
+                        {{ form.description.errors }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pricing -->
+        <div class="form-card">
+            <div class="form-section">
+                <h2 class="section-title">Pricing</h2>
+
+                <div class="form-group">
+                    <label class="form-label" for="id_base_price">
+                        Base Price (₦) <span class="required">*</span>
+                    </label>
+                    {{ form.base_price }}
+                    <div class="form-help-text">Default price if no variants or variant has no specific price</div>
+                    {% if form.base_price.errors %}
+                        {{ form.base_price.errors }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Product Image -->
+        <div class="form-card">
+            <div class="form-section">
+                <h2 class="section-title">Product Image</h2>
+
+                <div class="form-group">
+                    <label class="form-label" for="id_image">
+                        Upload Image
+                    </label>
+                    {{ form.image }}
+                    <div class="form-help-text">Recommended: Square image, at least 800x800px</div>
+                    {% if form.image.errors %}
+                        {{ form.image.errors }}
+                    {% endif %}
+                </div>
+
+                {% if product.image %}
+                <div class="image-preview-section">
+                    <label class="form-label">Current Image</label>
+                    <img src="{{ product.image.url }}" alt="{{ product.name }}" class="image-preview">
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="form-card">
+            <div class="form-section">
+                <h2 class="section-title">Settings</h2>
+
+                <div class="form-checkboxes">
+                    <div class="checkbox-group">
+                        {{ form.track_inventory }}
+                        <label class="checkbox-label" for="id_track_inventory">
+                            Track Inventory
+                            <div class="checkbox-description">
+                                Enable stock tracking for this product and its variants
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="checkbox-group">
+                        {{ form.is_active }}
+                        <label class="checkbox-label" for="id_is_active">
+                            Active
+                            <div class="checkbox-description">
+                                Make this product visible and available for sale
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="checkbox-group">
+                        {{ form.is_featured }}
+                        <label class="checkbox-label" for="id_is_featured">
+                            Featured Product
+                            <div class="checkbox-description">
+                                Display this product in featured sections
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-save"></i> {{ submit_text }}
+            </button>
+            <a href="{% if product %}{% url 'catalog:product_detail' product.pk %}{% else %}{% url 'catalog:product_list' %}{% endif %}" class="btn-cancel">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Image preview
+    const imageInput = document.getElementById('id_image');
+    if (imageInput) {
+        imageInput.addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    // Create preview if doesn't exist
+                    let previewSection = document.querySelector('.image-preview-section');
+                    if (!previewSection) {
+                        previewSection = document.createElement('div');
+                        previewSection.className = 'image-preview-section';
+                        previewSection.innerHTML = '<label class="form-label">Preview</label>';
+                        imageInput.closest('.form-group').appendChild(previewSection);
+                    }
+                    
+                    let img = previewSection.querySelector('img');
+                    if (!img) {
+                        img = document.createElement('img');
+                        img.className = 'image-preview';
+                        previewSection.appendChild(img);
+                    }
+                    
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+    }
+</script>
+{% endblock %}

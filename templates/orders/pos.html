@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Point of Sale - EJ Global Services{% endblock %}
+{% block page_title %}POS Terminal{% endblock %}
+
+{% block content %}
+<!-- Session Header -->
+<div class="session-header">
+    <div class="session-info">
+        <div class="session-badge">
+            <i class="fas fa-cash-register"></i>
+        </div>
+        <div class="session-details">
+            <h3>{{ session.register.name }}</h3>
+            <p>{{ session.store.name }} • Session Active</p>
+        </div>
+    </div>
+    <a href="{% url 'sales:close_session' session.id %}" class="btn" style="background: white; color: var(--accent-green); padding: 0.625rem 1.25rem;">
+        <i class="fas fa-stop"></i> Close Session
+    </a>
+</div>
+
+<!-- POS Layout -->
+<div class="pos-container">
+    <!-- Left: Catalog -->
+    <div class="catalog-section">
+        <div class="catalog-header">
+            <h2 style="margin: 0; font-size: 1.35rem;">Product Catalog</h2>
+            <div class="catalog-search">
+                <input type="text" class="search-input" placeholder="Search products..." id="searchInput">
+                <select class="category-filter" id="categoryFilter">
+                    <option value="">All Categories</option>
+                    <option value="bread">Bread</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="catalog-grid" id="catalogGrid">
+            {% for product in products %}
+                <div class="product-card" data-category="{{ product.category.slug }}">
+
+                    <div class="product-image-wrapper">
+                        {% if product.image %}
+                            <img src="{{ product.image.url }}" class="product-image">
+                        {% else %}
+                            <img src="{% static 'images/products/placeholder.png' %}" class="product-image">
+                        {% endif %}
+                    </div>
+
+                    <div class="product-header">
+                        <div class="product-name">{{ product.name }}</div>
+                        <div class="product-category">{{ product.category.name }}</div>
+                    </div>
+
+                    <div class="product-variants">
+                        {% for variant in product.variants.all %}
+                            <form
+                                hx-post="{% url 'orders:cart_add' variant.id %}"
+                                hx-target="#cartPanel"
+                                hx-swap="outerHTML"
+                            >
+                                {% csrf_token %}
+                                <button type="submit" class="variant-btn">
+                                    <span class="variant-size">
+                                        {{ variant.name }}
+                                        {# OR variant.get_attribute_display #}
+                                    </span>
+                                    <span class="variant-price">
+                                        ₦{{ variant.price }}
+                                    </span>
+                                </button>
+                            </form>
+                        {% empty %}
+                            <div class="text-muted small">No variants</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Right: Cart + Checkout -->
+    <div class="cart-section" id="cartPanel">
+        {% include "orders/partials/cart_panel.html" %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const productCards = document.querySelectorAll('.product-card');
+
+    function filterProducts() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const category = categoryFilter.value;
+
+        productCards.forEach(card => {
+            const productName = card.querySelector('.product-name').textContent.toLowerCase();
+            const productCategory = card.getAttribute('data-category');
+
+            const matchesSearch = productName.includes(searchTerm);
+            const matchesCategory = !category || productCategory === category;
+
+            if (matchesSearch && matchesCategory) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    searchInput.addEventListener('input', filterProducts);
+    categoryFilter.addEventListener('change', filterProducts);
+</script>
+{% endblock %}

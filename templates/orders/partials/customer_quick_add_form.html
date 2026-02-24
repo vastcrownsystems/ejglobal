@@ -1,0 +1,130 @@
+<!-- apps/orders/templates/orders/partials/customer_quick_add_form.html -->
+<!-- Quick-add customer form shown inside the cart search results dropdown -->
+
+<div class="cqf-wrapper">
+    <div class="cqf-header">
+        <i class="fas fa-user-plus"></i>
+        New Customer
+    </div>
+
+    <form
+        hx-post="{% url 'orders:cart_quick_add_customer' %}"
+        hx-target="#cartPanel"
+        hx-swap="outerHTML"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+    >
+        {% csrf_token %}
+
+        <div class="cqf-field">
+            <input
+                type="text"
+                name="full_name"
+                class="cqf-input"
+                placeholder="Full name *"
+                value="{{ prefill_name|default:'' }}"
+                required
+                autofocus
+            >
+        </div>
+
+        <div class="cqf-field">
+            <input
+                type="tel"
+                name="phone"
+                class="cqf-input"
+                placeholder="Phone number"
+            >
+        </div>
+
+        <div class="cqf-field">
+            <input
+                type="email"
+                name="email"
+                class="cqf-input"
+                placeholder="Email (optional)"
+            >
+        </div>
+
+        <div class="cqf-actions">
+            <button type="submit" class="cqf-btn-save">
+                <i class="fas fa-check"></i> Save & Select
+            </button>
+            <button
+                type="button"
+                class="cqf-btn-cancel"
+                onclick="document.getElementById('customerSearchResults').innerHTML = ''"
+            >
+                Cancel
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+    .cqf-wrapper {
+        padding: 0.875rem;
+    }
+
+    .cqf-header {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: #0033A0;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .cqf-field { margin-bottom: 0.625rem; }
+
+    .cqf-input {
+        width: 100%;
+        padding: 0.625rem 0.875rem;
+        border: 1.5px solid #e4e7ed;
+        border-radius: 7px;
+        font-size: 0.875rem;
+        background: #fafbfc;
+        transition: border-color 0.18s;
+    }
+
+    .cqf-input:focus {
+        outline: none;
+        border-color: #0033A0;
+        background: #fff;
+    }
+
+    .cqf-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+    }
+
+    .cqf-btn-save {
+        flex: 1;
+        padding: 0.625rem;
+        background: #7FBA00;
+        color: #fff;
+        border: none;
+        border-radius: 7px;
+        font-size: 0.875rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.18s;
+    }
+
+    .cqf-btn-save:hover { background: #6ba500; }
+
+    .cqf-btn-cancel {
+        padding: 0.625rem 0.875rem;
+        background: #f0f2f5;
+        color: #555;
+        border: none;
+        border-radius: 7px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.18s;
+    }
+
+    .cqf-btn-cancel:hover { background: #e2e5eb; }
+</style>
