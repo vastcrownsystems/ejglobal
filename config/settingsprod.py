@@ -99,7 +99,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'ejglobal',
+        'NAME': 'ejglobaldb',
         'USER': 'ejglobaluser',
         'PASSWORD': os.environ.get('DB_PASSWORD', ''),
         'HOST': 'localhost',
