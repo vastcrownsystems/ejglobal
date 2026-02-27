@@ -1,8 +1,96 @@
 # apps/sales/forms.py
 
 from django import forms
-from .models import CashierSession, Register
+from .models import Store, Register, CashierSession
 
+
+class StoreForm(forms.ModelForm):
+    """Form for creating/editing stores"""
+
+    name = forms.CharField(
+        max_length=120,
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'e.g. Main Store, Branch 1, Downtown Location'
+        })
+    )
+
+    address = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-textarea',
+            'placeholder': 'Enter store address...',
+            'rows': 3
+        })
+    )
+
+    is_active = forms.BooleanField(
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-checkbox'
+        })
+    )
+
+    class Meta:
+        model = Store
+        fields = ['name', 'address', 'is_active']
+
+
+class RegisterForm(forms.ModelForm):
+    """Form for creating/editing registers"""
+
+    store = forms.ModelChoiceField(
+        queryset=Store.objects.filter(is_active=True),
+        widget=forms.Select(attrs={
+            'class': 'form-select'
+        })
+    )
+
+    name = forms.CharField(
+        max_length=60,
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'e.g. Front Desk 1, Checkout 2'
+        }),
+        help_text='Friendly name for this register'
+    )
+
+    code = forms.CharField(
+        max_length=30,
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'e.g. REG-001, POS-A1'
+        }),
+        help_text='Unique identifier code'
+    )
+
+    is_active = forms.BooleanField(
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-checkbox'
+        }),
+        help_text='Active registers can be used for sessions'
+    )
+
+    class Meta:
+        model = Register
+        fields = ['store', 'name', 'code', 'is_active']
+
+    def clean_code(self):
+        """Ensure code is uppercase and unique"""
+        code = self.cleaned_data['code'].upper().strip()
+
+        # Check if code exists (excluding current instance if editing)
+        qs = Register.objects.filter(code=code)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
+            raise forms.ValidationError(f'Register code "{code}" already exists')
+
+        return code
 
 class StartSessionForm(forms.ModelForm):
     """Form for starting a new cashier session"""

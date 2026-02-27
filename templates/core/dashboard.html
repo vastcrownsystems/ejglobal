@@ -11,7 +11,11 @@
 <!-- Header Section -->
 <div class="page-header">
     <h2>Welcome back, {{ user.get_full_name|default:user.username }}</h2>
+    {% if is_manager %}
     <p>Here's what's happening with your business today</p>
+    {% else %}
+    <p>Here's your personal sales performance today</p>
+    {% endif %}
 </div>
 
 <!-- Stats Grid -->
@@ -21,14 +25,18 @@
             <div class="stat-icon primary">
                 <i class="fas fa-naira-sign"></i>
             </div>
-            <div class="stat-change {% if revenue_change_positive %}positive{% else %}negative{% endif %}">
-                <i class="fas fa-arrow-{% if revenue_change_positive %}up{% else %}down{% endif %}"></i>
-                <span>{{ revenue_change|floatformat:1 }}%</span>
-            </div>
+<!--            <div class="stat-change {% if revenue_change_positive %}positive{% else %}negative{% endif %}">-->
+<!--                <i class="fas fa-arrow-{% if revenue_change_positive %}up{% else %}down{% endif %}"></i>-->
+<!--                <span>{{ revenue_change|floatformat:1 }}%</span>-->
+<!--            </div>-->
         </div>
         <div class="stat-body">
             <h3>₦{{ today_revenue|floatformat:0 }}</h3>
+            {% if is_manager %}
             <p class="stat-label">Total Revenue (Today)</p>
+            {% else %}
+            <p class="stat-label">My Revenue (Today)</p>
+            {% endif %}
         </div>
     </div>
 
@@ -37,14 +45,18 @@
             <div class="stat-icon success">
                 <i class="fas fa-shopping-bag"></i>
             </div>
-            <div class="stat-change {% if sales_change_positive %}positive{% else %}negative{% endif %}">
-                <i class="fas fa-arrow-{% if sales_change_positive %}up{% else %}down{% endif %}"></i>
-                <span>{{ sales_change|floatformat:1 }}%</span>
-            </div>
+<!--            <div class="stat-change {% if sales_change_positive %}positive{% else %}negative{% endif %}">-->
+<!--                <i class="fas fa-arrow-{% if sales_change_positive %}up{% else %}down{% endif %}"></i>-->
+<!--                <span>{{ sales_change|floatformat:1 }}%</span>-->
+<!--            </div>-->
         </div>
         <div class="stat-body">
             <h3>{{ today_sales }}</h3>
+            {% if is_manager %}
             <p class="stat-label">Total Sales (Today)</p>
+            {% else %}
+            <p class="stat-label">My Sales (Today)</p>
+            {% endif %}
         </div>
     </div>
 
@@ -53,14 +65,18 @@
             <div class="stat-icon warning">
                 <i class="fas fa-users"></i>
             </div>
-            <div class="stat-change {% if customers_change_positive %}positive{% else %}negative{% endif %}">
-                <i class="fas fa-arrow-{% if customers_change_positive %}up{% else %}down{% endif %}"></i>
-                <span>{{ customers_change|floatformat:1 }}%</span>
-            </div>
+<!--            <div class="stat-change {% if customers_change_positive %}positive{% else %}negative{% endif %}">-->
+<!--                <i class="fas fa-arrow-{% if customers_change_positive %}up{% else %}down{% endif %}"></i>-->
+<!--                <span>{{ customers_change|floatformat:1 }}%</span>-->
+<!--            </div>-->
         </div>
         <div class="stat-body">
             <h3>{{ total_customers }}</h3>
+            {% if is_manager %}
             <p class="stat-label">Total Customers</p>
+            {% else %}
+            <p class="stat-label">Customers Served</p>
+            {% endif %}
         </div>
     </div>
 
@@ -69,18 +85,22 @@
             <div class="stat-icon accent">
                 <i class="fas fa-box"></i>
             </div>
-            <div class="stat-change {% if stock_change_positive %}positive{% else %}negative{% endif %}">
-                <i class="fas fa-arrow-{% if stock_change_positive %}up{% else %}down{% endif %}"></i>
-                <span>{{ stock_change|floatformat:1 }}%</span>
-            </div>
+<!--            <div class="stat-change {% if stock_change_positive %}positive{% else %}negative{% endif %}">-->
+<!--                <i class="fas fa-arrow-{% if stock_change_positive %}up{% else %}down{% endif %}"></i>-->
+<!--                <span>{{ stock_change|floatformat:1 }}%</span>-->
+<!--            </div>-->
         </div>
         <div class="stat-body">
             <h3>{{ products_in_stock }}</h3>
+            {% if is_manager %}
             <p class="stat-label">Products in Stock</p>
             {% if products_low_stock > 0 %}
             <p style="color: #ff8c00; font-size: 0.75rem; margin-top: 0.25rem;">
                 <i class="fas fa-exclamation-triangle"></i> {{ products_low_stock }} low stock
             </p>
+            {% endif %}
+            {% else %}
+            <p class="stat-label">Items Sold (Today)</p>
             {% endif %}
         </div>
     </div>
@@ -90,7 +110,11 @@
 <div class="content-grid">
     <div class="card">
         <div class="card-header">
+            {% if is_manager %}
             <h2 class="card-title">Sales Overview</h2>
+            {% else %}
+            <h2 class="card-title">My Sales Overview</h2>
+            {% endif %}
             <div class="card-actions">
                 <button class="icon-btn">
                     <i class="fas fa-download"></i>
@@ -134,7 +158,11 @@
 <!-- Recent Orders Table -->
 <div class="card table-container">
     <div class="card-header">
+        {% if is_manager %}
         <h2 class="card-title">Recent Orders</h2>
+        {% else %}
+        <h2 class="card-title">My Recent Orders</h2>
+        {% endif %}
         <button class="btn btn-primary">View All</button>
     </div>
     <div class="table-scroll-hint">
@@ -145,8 +173,9 @@
         <thead>
             <tr>
                 <th>Order ID</th>
-                <th>Product</th>
                 <th>Customer</th>
+                <th>Cashier</th>
+                <th>Register</th>
                 <th>Date</th>
                 <th>Amount</th>
                 <th>Status</th>
@@ -157,15 +186,9 @@
             {% for order in recent_orders %}
             <tr>
                 <td>{{ order.order_number }}</td>
-                <td>
-                    <div class="product-cell">
-                        <div class="product-image">
-                            <i class="fas fa-box"></i>
-                        </div>
-                        <span>{{ order.product_name }}</span>
-                    </div>
-                </td>
                 <td>{{ order.customer_name }}</td>
+                <td>{{ order.cashier_name }}</td>
+                <td>{{ order.register_id }}</td>
                 <td>{{ order.date|date:"M d, Y" }}</td>
                 <td>₦{{ order.total|floatformat:0 }}</td>
                 <td>
@@ -187,7 +210,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="7" style="text-align: center; padding: 2rem; color: #999;">
+                <td colspan="8" style="text-align: center; padding: 2rem; color: #999;">
                     <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.3;"></i>
                     <p>No recent orders</p>
                 </td>
@@ -226,12 +249,15 @@ function initSalesChart() {
         ? JSON.parse(salesData)
         : salesData;
 
+    const isManager = {{ is_manager|yesno:"true,false" }};
+    const chartLabel = isManager ? 'Daily Revenue (₦)' : 'My Daily Revenue (₦)';
+
     new Chart(ctx, {
         type: 'line',
         data: {
             labels: chartData.map(d => d.date),
             datasets: [{
-                label: 'Daily Revenue (₦)',
+                label: chartLabel,
                 data: chartData.map(d => d.revenue),
                 borderColor: '#7FBA00',
                 backgroundColor: 'rgba(127,186,0,0.1)',

@@ -6,21 +6,54 @@
 {% block page_title %}Cashier Sessions{% endblock %}
 
 {% block extra_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
 <style>
+    :root {
+        --session-primary: #0033A0;
+        --session-success: #7FBA00;
+        --session-danger: #E74C3C;
+        --session-text: #1A1F2E;
+        --session-text-muted: #6B7280;
+        --session-border: #E5E7EB;
+        --session-bg: #F9FAFB;
+        --session-white: #FFFFFF;
+    }
+
+    body {
+        font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
     .session-dashboard {
         max-width: 1200px;
         margin: 0 auto;
+        padding: 2rem 1rem;
     }
 
     /* Current Session Card */
     .current-session-card {
-        background: linear-gradient(135deg, var(--accent-green) 0%, #6BA500 100%);
+        background: linear-gradient(135deg, #7FBA00 0%, #6BA500 50%, #5A9300 100%);
         color: white;
-        padding: 2rem;
+        padding: 2.5rem;
         border-radius: 20px;
         margin-bottom: 2rem;
         position: relative;
         overflow: hidden;
+        box-shadow: 0 12px 32px rgba(127, 186, 0, 0.25);
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     .current-session-card::before {
@@ -28,9 +61,11 @@
         position: absolute;
         top: -50%;
         right: -10%;
-        width: 200px;
-        height: 200px;
+        width: 400px;
+        height: 400px;
         background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
     }
 
     .session-content {
@@ -42,7 +77,7 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 1.5rem;
+        margin-bottom: 2rem;
         flex-wrap: wrap;
         gap: 1rem;
     }
@@ -50,191 +85,474 @@
     .session-title {
         display: flex;
         align-items: center;
-        gap: 1rem;
+        gap: 1.25rem;
     }
 
     .session-badge {
-        width: 50px;
-        height: 50px;
-        background: rgba(255, 255, 255, 0.2);
+        width: 60px;
+        height: 60px;
+        background: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(10px);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.25rem;
+        font-size: 1.5rem;
         animation: pulse 2s infinite;
+        border: 2px solid rgba(255, 255, 255, 0.3);
     }
 
     @keyframes pulse {
         0%, 100% {
             transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
         }
         50% {
             transform: scale(1.05);
+            box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
         }
     }
 
     .session-title h2 {
-        font-size: 1.75rem;
-        margin: 0;
+        font-size: 1.875rem;
+        margin: 0 0 0.25rem 0;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+    }
+
+    .session-title p {
+        font-size: 1rem;
+        opacity: 0.95;
     }
 
     .close-btn {
-        padding: 0.75rem 1.5rem;
+        padding: 0.875rem 1.75rem;
         background: white;
-        color: var(--accent-green);
+        color: #7FBA00;
         border: none;
-        border-radius: 10px;
+        border-radius: 12px;
         font-weight: 700;
+        font-family: 'Outfit', sans-serif;
         cursor: pointer;
-        transition: all 0.3s ease;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         text-decoration: none;
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.75rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        letter-spacing: -0.01em;
     }
 
     .close-btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
     }
 
     .session-details {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1.5rem;
+        gap: 1.25rem;
     }
 
     .session-detail-item {
-        background: rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.2);
         backdrop-filter: blur(10px);
-        padding: 1rem;
+        padding: 1.25rem;
         border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        transition: all 0.3s ease;
+    }
+
+    .session-detail-item:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: translateY(-2px);
     }
 
     .detail-label {
-        font-size: 0.85rem;
-        opacity: 0.9;
+        font-size: 0.875rem;
+        opacity: 1;
         margin-bottom: 0.5rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
     }
 
     .detail-value {
-        font-size: 1.5rem;
+        font-size: 1.75rem;
         font-weight: 700;
         font-family: 'JetBrains Mono', monospace;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     /* No Active Session */
     .no-session-card {
-        background: var(--bg-card);
-        border: 2px dashed var(--border);
-        padding: 3rem;
+        background: var(--session-white);
+        border: 2px dashed var(--session-border);
+        padding: 4rem 3rem;
         border-radius: 20px;
         text-align: center;
         margin-bottom: 2rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .no-session-icon {
-        width: 80px;
-        height: 80px;
-        background: var(--bg-main);
+        width: 100px;
+        height: 100px;
+        background: var(--session-bg);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 2rem;
-        color: var(--text-muted);
+        font-size: 2.5rem;
+        color: var(--session-text-muted);
         margin: 0 auto 1.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .no-session-card:hover .no-session-icon {
+        transform: scale(1.05);
+        background: var(--session-primary);
+        color: white;
     }
 
     .no-session-card h2 {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-        color: var(--text-primary);
+        font-size: 1.75rem;
+        margin-bottom: 0.75rem;
+        color: var(--session-text);
+        font-weight: 700;
+        letter-spacing: -0.02em;
     }
 
     .no-session-card p {
-        color: var(--text-secondary);
-        margin-bottom: 1.5rem;
+        color: var(--session-text-muted);
+        margin-bottom: 2rem;
+        font-size: 1.05rem;
     }
 
     .start-session-btn {
-        padding: 1rem 2rem;
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        padding: 1.125rem 2.5rem;
+        background: linear-gradient(135deg, var(--session-primary) 0%, #0047CC 100%);
         color: white;
         border: none;
         border-radius: 12px;
-        font-size: 1rem;
+        font-size: 1.05rem;
         font-weight: 700;
+        font-family: 'Outfit', sans-serif;
         cursor: pointer;
-        transition: all 0.3s ease;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         text-decoration: none;
         display: inline-flex;
         align-items: center;
         gap: 0.75rem;
+        box-shadow: 0 4px 16px rgba(0, 51, 160, 0.25);
+        letter-spacing: -0.01em;
     }
 
     .start-session-btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0, 51, 160, 0.3);
+        box-shadow: 0 8px 24px rgba(0, 51, 160, 0.35);
+    }
+
+    .start-session-btn:active {
+        transform: translateY(0);
     }
 
     /* Recent Sessions */
+    .card {
+        background: var(--session-white);
+        border-radius: 16px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+    }
+
+    .card-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--session-border);
+    }
+
+    .card-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--session-text);
+        margin: 0;
+        letter-spacing: -0.02em;
+    }
+
+    /* Recent Sessions Table - Responsive */
+    .table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+    }
+
     .recent-sessions-table {
         width: 100%;
+        min-width: 1000px;
         border-collapse: collapse;
     }
 
     .recent-sessions-table thead {
-        background: var(--bg-main);
+        background: var(--session-bg);
     }
 
     .recent-sessions-table th {
-        padding: 1rem;
         text-align: left;
-        font-size: 0.85rem;
+        padding: 1rem 1rem;
         font-weight: 600;
-        color: var(--text-muted);
+        color: var(--session-text-muted);
+        font-size: 0.813rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        border-bottom: 2px solid var(--border);
+        white-space: nowrap;
+    }
+
+    .recent-sessions-table tbody tr {
+        border-bottom: 1px solid var(--session-border);
+        transition: all 0.2s ease;
+    }
+
+    .recent-sessions-table tbody tr:hover {
+        background: var(--session-bg);
     }
 
     .recent-sessions-table td {
-        padding: 1rem;
-        border-bottom: 1px solid var(--border);
-    }
-
-    .recent-sessions-table tr:hover {
-        background: var(--bg-card-hover);
+        padding: 1.125rem 1rem;
+        color: var(--session-text);
+        vertical-align: top;
     }
 
     .status-badge {
         display: inline-flex;
         align-items: center;
-        gap: 0.25rem;
-        padding: 0.25rem 0.75rem;
-        border-radius: 12px;
-        font-size: 0.8rem;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
         font-weight: 600;
     }
 
     .status-badge.closed {
-        background: rgba(231, 76, 60, 0.15);
+        background: rgba(231, 76, 60, 0.12);
         color: #C0392B;
+        border: 1px solid rgba(231, 76, 60, 0.25);
     }
 
     .cash-value {
         font-family: 'JetBrains Mono', monospace;
         font-weight: 600;
+        font-size: 0.95rem;
     }
 
     .cash-value.positive {
-        color: var(--accent-green);
+        color: #7FBA00;
     }
 
     .cash-value.negative {
-        color: var(--danger);
+        color: #E74C3C;
+    }
+
+    /* Pagination */
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem 2rem;
+        border-top: 2px solid var(--session-border);
+        background: var(--session-bg);
+        border-radius: 0 0 16px 16px;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .pagination-info {
+        font-size: 0.9rem;
+        color: var(--session-text-muted);
+        font-weight: 500;
+    }
+
+    .pagination {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .pagination-btn {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid var(--session-border);
+        border-radius: 8px;
+        background: var(--session-white);
+        color: var(--session-text);
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .pagination-btn:hover:not(.disabled) {
+        background: var(--session-primary);
+        color: white;
+        border-color: var(--session-primary);
+        transform: translateY(-2px);
+    }
+
+    .pagination-btn.disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        background: var(--session-bg);
+    }
+
+    .pagination-current {
+        padding: 0.5rem 1.25rem;
+        background: var(--session-primary);
+        color: white;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin: 0 0.25rem;
+    }
+
+    /* Remove horizontal scroll on desktop when table fits */
+    @media (min-width: 1200px) {
+        .recent-sessions-table {
+            min-width: 0;
+        }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .session-dashboard {
+            padding: 1.5rem 1rem;
+        }
+
+        .current-session-card {
+            padding: 2rem 1.5rem;
+        }
+
+        .session-header-row {
+            flex-direction: column;
+        }
+
+        .close-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .session-title h2 {
+            font-size: 1.5rem;
+        }
+
+        .detail-value {
+            font-size: 1.5rem;
+        }
+
+        .no-session-card {
+            padding: 3rem 2rem;
+        }
+
+        /* Card-based mobile layout for table */
+        .table-wrapper {
+            overflow-x: visible;
+        }
+
+        .recent-sessions-table {
+            border: 0;
+            min-width: 0;
+        }
+
+        .recent-sessions-table thead {
+            display: none;
+        }
+
+        .recent-sessions-table tbody {
+            display: block;
+        }
+
+        .recent-sessions-table tbody tr {
+            display: block;
+            margin-bottom: 1rem;
+            border: 1px solid var(--session-border);
+            border-radius: 12px;
+            padding: 1rem;
+            background: var(--session-white);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .recent-sessions-table tbody tr:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .recent-sessions-table td {
+            display: block;
+            text-align: left;
+            padding: 0.5rem 0;
+            border: none;
+        }
+
+        .recent-sessions-table td::before {
+            content: attr(data-label);
+            display: inline-block;
+            font-weight: 600;
+            color: var(--session-text-muted);
+            margin-right: 0.5rem;
+            min-width: 110px;
+            font-size: 0.875rem;
+        }
+
+        .recent-sessions-table td:first-child {
+            padding-top: 0;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid var(--session-border);
+            padding-bottom: 0.75rem;
+        }
+
+        .recent-sessions-table td:first-child::before {
+            display: none;
+        }
+
+        .recent-sessions-table td:last-child {
+            padding-bottom: 0;
+            margin-top: 0.5rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--session-border);
+        }
+
+        .pagination-container {
+            flex-direction: column;
+            padding: 1rem;
+        }
+
+        .pagination-info {
+            text-align: center;
+        }
+    }
+
+    /* POS Button Styling */
+    .btn-primary {
+        padding: 0.875rem 1.75rem;
+        background: linear-gradient(135deg, var(--session-primary) 0%, #0047CC 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        font-family: 'Outfit', sans-serif;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        box-shadow: 0 4px 12px rgba(0, 51, 160, 0.2);
+        letter-spacing: -0.01em;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 51, 160, 0.3);
     }
 </style>
 {% endblock %}
@@ -306,38 +624,60 @@
     {% if recent_sessions %}
     <div class="card">
         <div class="card-header">
-            <h2 class="card-title">Recent Sessions</h2>
+            {% if is_manager %}
+            <h2 class="card-title">All Recent Sessions</h2>
+            {% else %}
+            <h2 class="card-title">My Recent Sessions</h2>
+            {% endif %}
         </div>
 
-        <table class="recent-sessions-table">
-            <thead>
-                <tr>
-                    <th>Register</th>
-                    <th>Opened</th>
-                    <th>Closed</th>
-                    <th>Duration</th>
-                    <th>Opening Cash</th>
-                    <th>Closing Cash</th>
-                    <th>Difference</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
+        <div class="table-wrapper">
+            <table class="recent-sessions-table">
+                <thead>
+                    <tr>
+                        <th>Register</th>
+                        <th>Cashier</th>
+                        <th>Opened</th>
+                        <th>Closed</th>
+                        <th>Duration</th>
+                        <th>Total Sales</th>
+                        <th>Opening Cash</th>
+                        <th>Closing Cash</th>
+                        <th>Difference</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
             <tbody>
                 {% for session in recent_sessions %}
                 <tr>
-                    <td>
+                    <td data-label="Register">
                         <strong>{{ session.register.name }}</strong><br>
-                        <small style="color: var(--text-muted);">{{ session.register.code }}</small>
+                        <small style="color: var(--session-text-muted);">{{ session.register.code }}</small>
                     </td>
-                    <td>{{ session.opened_at|date:"M d, Y h:i A" }}</td>
-                    <td>{{ session.closed_at|date:"M d, Y h:i A" }}</td>
-                    <td>{{ session.duration_display }}</td>
-                    <td class="cash-value">₦{{ session.opening_cash|floatformat:2 }}</td>
-                    <td class="cash-value">₦{{ session.closing_cash|floatformat:2 }}</td>
-                    <td class="cash-value {% if session.cash_difference >= 0 %}positive{% else %}negative{% endif %}">
+                    <td data-label="Cashier">
+                        <strong>{{ session.cashier.get_full_name|default:session.cashier.username }}</strong>
+                        {% if session.cashier == user %}
+                        <br><small style="color: var(--session-success);">(You)</small>
+                        {% endif %}
+                    </td>
+                    <td data-label="Opened">{{ session.opened_at|date:"M d, Y h:i A" }}</td>
+                    <td data-label="Closed">{{ session.closed_at|date:"M d, Y h:i A" }}</td>
+                    <td data-label="Duration">{{ session.duration_display }}</td>
+                    <td data-label="Total Sales">
+                        <strong class="cash-value" style="color: var(--session-primary); font-size: 1.05rem;">₦{{ session.total_sales|floatformat:2 }}</strong>
+                        <br>
+                        <small style="color: var(--session-text-muted); font-size: 0.75rem; line-height: 1.4;">
+                            Cash: ₦{{ session.cash_sales|floatformat:0 }}<br>
+                            Card: ₦{{ session.card_sales|floatformat:0 }}<br>
+                            Transfer: ₦{{ session.transfer_sales|floatformat:0 }}
+                        </small>
+                    </td>
+                    <td data-label="Opening Cash" class="cash-value">₦{{ session.opening_cash|floatformat:2 }}</td>
+                    <td data-label="Closing Cash" class="cash-value">₦{{ session.closing_cash|floatformat:2 }}</td>
+                    <td data-label="Difference" class="cash-value {% if session.cash_difference >= 0 %}positive{% else %}negative{% endif %}">
                       {% if session.cash_difference >= 0 %}+{% endif %}₦{{ session.cash_difference|floatformat:2 }}
                     </td>
-                    <td>
+                    <td data-label="Status">
                         <span class="status-badge closed">
                             <i class="fas fa-check"></i> Closed
                         </span>
@@ -346,6 +686,53 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if recent_sessions.has_other_pages %}
+        <div class="pagination-container">
+            <div class="pagination-info">
+                Showing {{ recent_sessions.start_index }} - {{ recent_sessions.end_index }} of {{ recent_sessions.paginator.count }} sessions
+            </div>
+            <div class="pagination">
+                {% if recent_sessions.has_previous %}
+                    <a href="?page=1" class="pagination-btn" title="First page">
+                        <i class="fas fa-angle-double-left"></i>
+                    </a>
+                    <a href="?page={{ recent_sessions.previous_page_number }}" class="pagination-btn" title="Previous page">
+                        <i class="fas fa-angle-left"></i>
+                    </a>
+                {% else %}
+                    <span class="pagination-btn disabled">
+                        <i class="fas fa-angle-double-left"></i>
+                    </span>
+                    <span class="pagination-btn disabled">
+                        <i class="fas fa-angle-left"></i>
+                    </span>
+                {% endif %}
+
+                <span class="pagination-current">
+                    Page {{ recent_sessions.number }} of {{ recent_sessions.paginator.num_pages }}
+                </span>
+
+                {% if recent_sessions.has_next %}
+                    <a href="?page={{ recent_sessions.next_page_number }}" class="pagination-btn" title="Next page">
+                        <i class="fas fa-angle-right"></i>
+                    </a>
+                    <a href="?page={{ recent_sessions.paginator.num_pages }}" class="pagination-btn" title="Last page">
+                        <i class="fas fa-angle-double-right"></i>
+                    </a>
+                {% else %}
+                    <span class="pagination-btn disabled">
+                        <i class="fas fa-angle-right"></i>
+                    </span>
+                    <span class="pagination-btn disabled">
+                        <i class="fas fa-angle-double-right"></i>
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 </div>

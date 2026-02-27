@@ -1,0 +1,416 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ register.name }} - Register Details{% endblock %}
+{% block page_title %}Register Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #0033A0;
+        text-decoration: none;
+        font-weight: 600;
+        margin-bottom: 2rem;
+        transition: all 0.2s;
+    }
+
+    .back-link:hover {
+        gap: 0.75rem;
+    }
+
+    .detail-header {
+        background: linear-gradient(135deg, #0033A0 0%, #0047D1 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 16px;
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .detail-header-info h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .detail-header-info p {
+        margin: 0.5rem 0 0 0;
+        opacity: 0.9;
+        font-size: 1.1rem;
+    }
+
+    .detail-header-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        padding: 0.75rem 1.25rem;
+        border-radius: 10px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+        font-size: 0.95rem;
+    }
+
+    .btn-primary {
+        background: white;
+        color: #0033A0;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+    }
+
+    .btn-success {
+        background: #7FBA00;
+        color: white;
+    }
+
+    .btn-success:hover {
+        background: #6ba500;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(127, 186, 0, 0.3);
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        border: 1px solid #e8e8e8;
+        border-radius: 16px;
+        padding: 1.5rem;
+        transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transform: translateY(-2px);
+    }
+
+    .stat-card h3 {
+        margin: 0 0 0.75rem 0;
+        font-size: 0.9rem;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0033A0;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .card {
+        background: white;
+        border: 1px solid #e8e8e8;
+        border-radius: 16px;
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: 1.5rem 2rem;
+        border-bottom: 2px solid #f0f0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .card-header h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    thead {
+        background: #f8f9fa;
+    }
+
+    th {
+        padding: 1rem 1.5rem;
+        text-align: left;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #e8e8e8;
+        white-space: nowrap;
+    }
+
+    td {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: middle;
+    }
+
+    tbody tr {
+        transition: background 0.2s;
+    }
+
+    tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .cashier-name {
+        font-weight: 600;
+        color: #1a1a1a;
+    }
+
+    .cash-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        color: #0033A0;
+    }
+
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.375rem 0.875rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .badge.success {
+        background: rgba(127, 186, 0, 0.1);
+        color: #7FBA00;
+        border: 1.5px solid rgba(127, 186, 0, 0.3);
+    }
+
+    .badge.secondary {
+        background: rgba(108, 117, 125, 0.1);
+        color: #6c757d;
+        border: 1.5px solid rgba(108, 117, 125, 0.3);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        color: #ddd;
+        margin-bottom: 1.5rem;
+        opacity: 0.5;
+    }
+
+    .empty-state p {
+        margin: 0;
+        color: #999;
+        font-size: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .detail-header {
+            padding: 1.5rem;
+        }
+
+        .detail-header-info h1 {
+            font-size: 1.5rem;
+        }
+
+        .detail-header-actions {
+            width: 100%;
+        }
+
+        .btn {
+            flex: 1;
+            justify-content: center;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        table {
+            font-size: 0.85rem;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-container">
+    <!-- Back Link -->
+    <a href="{% url 'sales:register_list' %}" class="back-link">
+        <i class="fas fa-arrow-left"></i> Back to Registers
+    </a>
+
+    <!-- Register Header -->
+    <div class="detail-header">
+        <div class="detail-header-info">
+            <h1>
+                <i class="fas fa-cash-register"></i>
+                {{ register.name }}
+            </h1>
+            <p>{{ register.store.name }} • {{ register.code }}</p>
+        </div>
+        <div class="detail-header-actions">
+            {% if not current_session and register.is_active %}
+                <a href="{% url 'sales:start_session' %}" class="btn btn-success">
+                    <i class="fas fa-play"></i> Start Session
+                </a>
+            {% endif %}
+            <a href="{% url 'sales:register_edit' register.pk %}" class="btn btn-primary">
+                <i class="fas fa-edit"></i> Edit Register
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>
+                <i class="fas fa-history"></i>
+                Total Sessions
+            </h3>
+            <div class="stat-value">{{ total_sessions }}</div>
+        </div>
+
+        <div class="stat-card">
+            <h3>
+                <i class="fas fa-money-bill-wave"></i>
+                Total Cash Handled
+            </h3>
+            <div class="stat-value">₦{{ total_cash_handled|floatformat:2 }}</div>
+        </div>
+
+        <div class="stat-card">
+            <h3>
+                <i class="fas fa-signal"></i>
+                Status
+            </h3>
+            <div class="stat-value">
+                {% if current_session %}
+                    <span class="badge success">
+                        <i class="fas fa-circle-notch fa-spin"></i> In Use
+                    </span>
+                {% else %}
+                    <span class="badge secondary">
+                        <i class="fas fa-circle"></i> Available
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Session History -->
+    <div class="card">
+        <div class="card-header">
+            <h2>
+                <i class="fas fa-clock-rotate-left"></i>
+                Session History
+            </h2>
+        </div>
+
+        {% if sessions %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Cashier</th>
+                    <th>Opened</th>
+                    <th>Closed</th>
+                    <th>Duration</th>
+                    <th>Opening Cash</th>
+                    <th>Closing Cash</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for session in sessions %}
+                <tr>
+                    <td>
+                        <div class="cashier-name">
+                            {{ session.cashier.get_full_name|default:session.cashier.username }}
+                        </div>
+                    </td>
+                    <td>{{ session.opened_at|date:"M d, Y h:i A" }}</td>
+                    <td>
+                        {% if session.closed_at %}
+                            {{ session.closed_at|date:"M d, Y h:i A" }}
+                        {% else %}
+                            <span class="badge success">Open</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ session.duration_display }}</td>
+                    <td>
+                        <span class="cash-value">₦{{ session.opening_cash|floatformat:2 }}</span>
+                    </td>
+                    <td>
+                        {% if session.closing_cash %}
+                            <span class="cash-value">₦{{ session.closing_cash|floatformat:2 }}</span>
+                        {% else %}
+                            <span style="color: #999;">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if session.closed_at %}
+                            <span class="badge secondary">Closed</span>
+                        {% else %}
+                            <span class="badge success">Active</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <p>No session history yet</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

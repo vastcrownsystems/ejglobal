@@ -364,7 +364,6 @@ class OrderPayment(models.Model):
         ('CASH', 'Cash'),
         ('CARD', 'Card'),
         ('TRANSFER', 'Bank Transfer'),
-        ('MOBILE', 'Mobile Money'),
     ]
 
     order = models.ForeignKey(

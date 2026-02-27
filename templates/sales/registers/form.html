@@ -1,0 +1,346 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - EJ Global Services{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #0033A0;
+        text-decoration: none;
+        font-weight: 600;
+        margin-bottom: 2rem;
+        transition: all 0.2s;
+    }
+
+    .back-link:hover {
+        gap: 0.75rem;
+    }
+
+    .form-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .form-header {
+        background: linear-gradient(135deg, #0033A0 0%, #0047D1 100%);
+        color: white;
+        padding: 2.5rem 2rem;
+        text-align: center;
+    }
+
+    .form-header-icon {
+        width: 70px;
+        height: 70px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 2rem;
+    }
+
+    .form-header h1 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+    }
+
+    .form-header p {
+        margin: 0.5rem 0 0 0;
+        opacity: 0.9;
+    }
+
+    .form-body {
+        padding: 2.5rem 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.75rem;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+    }
+
+    .form-label .required {
+        color: #e74c3c;
+        margin-left: 0.25rem;
+    }
+
+    .form-input,
+    .form-select,
+    .form-textarea {
+        width: 100%;
+        padding: 0.875rem 1.25rem;
+        border: 2px solid #e8e8e8;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        transition: all 0.2s;
+        background: white;
+    }
+
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+        outline: none;
+        border-color: #0033A0;
+        box-shadow: 0 0 0 3px rgba(0, 51, 160, 0.1);
+    }
+
+    .form-select {
+        cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        background-size: 12px;
+        appearance: none;
+        padding-right: 3rem;
+    }
+
+    .form-help {
+        margin-top: 0.5rem;
+        font-size: 0.85rem;
+        color: #666;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-help i {
+        color: #0033A0;
+    }
+
+    .form-checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 10px;
+    }
+
+    .form-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+
+    .form-checkbox-label {
+        font-weight: 600;
+        color: #1a1a1a;
+        cursor: pointer;
+    }
+
+    .errorlist {
+        list-style: none;
+        padding: 0;
+        margin: 0.5rem 0 0 0;
+    }
+
+    .errorlist li {
+        background: rgba(231, 76, 60, 0.1);
+        color: #e74c3c;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+        border-left: 4px solid #e74c3c;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .errorlist li:before {
+        content: '\f06a';
+        font-family: 'Font Awesome 6 Free';
+        font-weight: 900;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        padding-top: 2rem;
+        border-top: 2px solid #f0f0f0;
+    }
+
+    .btn-save {
+        flex: 1;
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, #7FBA00 0%, #6ba500 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.3s;
+    }
+
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(127, 186, 0, 0.3);
+    }
+
+    .btn-cancel {
+        padding: 1rem 1.5rem;
+        background: #f5f5f5;
+        color: #666;
+        border: none;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 700;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-cancel:hover {
+        background: #e8e8e8;
+    }
+
+    @media (max-width: 640px) {
+        .form-body {
+            padding: 1.5rem;
+        }
+
+        .form-actions {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <!-- Back Link -->
+    <a href="{% url 'sales:register_list' %}" class="back-link">
+        <i class="fas fa-arrow-left"></i> Back to Registers
+    </a>
+
+    <!-- Form Card -->
+    <div class="form-card">
+        <!-- Header -->
+        <div class="form-header">
+            <div class="form-header-icon">
+                <i class="fas fa-cash-register"></i>
+            </div>
+            <h1>{{ title }}</h1>
+            <p>{% if register %}Update register details{% else %}Add a new POS register{% endif %}</p>
+        </div>
+
+        <!-- Form Body -->
+        <div class="form-body">
+            <form method="post">
+                {% csrf_token %}
+
+                <!-- Store Selection -->
+                <div class="form-group">
+                    <label class="form-label" for="id_store">
+                        Store<span class="required">*</span>
+                    </label>
+                    {{ form.store }}
+                    {% if form.store.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.store.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                    <div class="form-help">
+                        <i class="fas fa-store"></i>
+                        Select which store this register belongs to
+                    </div>
+                </div>
+
+                <!-- Register Name -->
+                <div class="form-group">
+                    <label class="form-label" for="id_name">
+                        Register Name<span class="required">*</span>
+                    </label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.name.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                    <div class="form-help">
+                        <i class="fas fa-tag"></i>
+                        {{ form.name.help_text }}
+                    </div>
+                </div>
+
+                <!-- Register Code -->
+                <div class="form-group">
+                    <label class="form-label" for="id_code">
+                        Register Code<span class="required">*</span>
+                    </label>
+                    {{ form.code }}
+                    {% if form.code.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.code.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                    <div class="form-help">
+                        <i class="fas fa-barcode"></i>
+                        {{ form.code.help_text }}
+                    </div>
+                </div>
+
+                <!-- Active Checkbox -->
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <div class="form-checkbox-group">
+                        {{ form.is_active }}
+                        <label for="id_is_active" class="form-checkbox-label">
+                            Register is Active
+                        </label>
+                    </div>
+                    <div class="form-help">
+                        <i class="fas fa-info-circle"></i>
+                        {{ form.is_active.help_text }}
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="form-actions">
+                    <button type="submit" class="btn-save">
+                        <i class="fas fa-check"></i>
+                        {% if register %}Update Register{% else %}Create Register{% endif %}
+                    </button>
+                    <a href="{% url 'sales:register_list' %}" class="btn-cancel">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

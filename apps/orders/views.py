@@ -15,9 +15,12 @@ from apps.orders.services import OrderService
 from django.views.decorators.http import require_POST
 from django.template.loader import render_to_string
 from django.db.models import Q
+from django.core.paginator import Paginator
+from django.contrib.auth import get_user_model
 
 import logging
 logger = logging.getLogger(__name__)
+User = get_user_model()
 
 # -----------------------------
 # Session helpers
@@ -582,7 +585,7 @@ def hold_current_order(request):
 
     if not order_id:
         messages.error(request, 'No active order to hold')
-        return redirect('pos:pos_interface')
+        return redirect('orders:pos')
 
     try:
         order = Order.objects.get(pk=order_id, status='DRAFT')
@@ -601,16 +604,15 @@ def hold_current_order(request):
         messages.success(request, f'Order {order.order_number} held')
         logger.info(f"Order held: {order.order_number}")
 
-        return redirect('pos:pos_interface')
+        return redirect('orders:pos')
 
     except Exception as e:
         logger.exception(f"Error holding order: {e}")
         messages.error(request, f'Error: {str(e)}')
-        return redirect('pos:pos_interface')
+        return redirect('orders:pos')
 
 
 @login_required
-@require_http_methods(["GET"])
 def draft_orders_list(request):
     """
     List all held/draft orders
@@ -631,7 +633,6 @@ def draft_orders_list(request):
 
 
 @login_required
-@require_http_methods(["GET"])
 def draft_order_detail(request, pk):
     """
     View draft order details
@@ -700,30 +701,65 @@ def draft_order_delete(request, pk):
 # ===== ORDER MANAGEMENT =====
 
 @login_required
-@require_http_methods(["GET"])
 def order_list(request):
     """
-    List all orders
+    List orders with role-based filtering
 
-    URL: GET /orders/
-    Returns: Order list page
+    - Cashiers see only their own orders
+    - Managers/Admins see all orders with cashier filter
     """
-    orders = Order.objects.exclude(status='DRAFT').order_by('-created_at')
 
-    # Filters
-    status = request.GET.get('status')
-    if status:
-        orders = orders.filter(status=status)
+    # Check if user is manager/admin
+    is_manager = request.user.is_superuser or request.user.groups.filter(
+        name__in=['Admin', 'Manager']
+    ).exists()
+
+    # Base queryset
+    if is_manager:
+        # Managers see all orders
+        orders = Order.objects.all()
+    else:
+        # Cashiers see only their own orders
+        orders = Order.objects.filter(created_by=request.user)
+
+    # Select related for optimization
+    orders = orders.select_related(
+        'created_by',
+        'customer',
+        'cashier_session'
+    ).prefetch_related('items')
+
+    # Filter by status if provided
+    status_filter = request.GET.get('status')
+    if status_filter:
+        orders = orders.filter(status=status_filter)
+
+    # Filter by cashier if provided (managers only)
+    if is_manager:
+        cashier_filter = request.GET.get('cashier')
+        if cashier_filter:
+            orders = orders.filter(created_by_id=cashier_filter)
+
+    # Order by most recent first
+    orders = orders.order_by('-created_at')
 
     # Pagination
-    from django.core.paginator import Paginator
-    paginator = Paginator(orders, 20)
-    page = request.GET.get('page', 1)
-    page_obj = paginator.get_page(page)
+    paginator = Paginator(orders, 25)  # 25 orders per page
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    # Get list of cashiers for filter dropdown (managers only)
+    cashiers = None
+    if is_manager:
+        cashiers = User.objects.filter(
+            created_orders__isnull=False
+        ).distinct().order_by('first_name', 'last_name', 'username')
 
     context = {
+        'orders': page_obj,
         'page_obj': page_obj,
-        'orders': page_obj.object_list,
+        'is_manager': is_manager,
+        'cashiers': cashiers,
     }
 
     return render(request, 'orders/order_list.html', context)

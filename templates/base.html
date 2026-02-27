@@ -5,6 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token }}">
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicon-16x16.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32x32.png' %}">
+<!--    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/apple-touch-icon.png' %}">-->
+<!--    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'images/android-chrome-192x192.png' %}">-->
+<!--    <link rel="icon" type="image/png" sizes="512x512" href="{% static 'images/android-chrome-512x512.png' %}">-->
+
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
     <link rel="stylesheet" href="{% static 'css/pos.css' %}">
     <link rel="stylesheet" href="{% static 'css/cart_panel.css' %}">
@@ -30,28 +39,33 @@
 {% if user.is_authenticated %}
     <div class="dashboard-container">
         <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
+        <aside class="sidebar collapsed" id="sidebar">
         <div class="sidebar-header">
             <a href="{% url 'dashboard' %}" class="logo">
-                <img src="{% static 'images/ejglobal_logo.png' %}" alt="EJ Global Services">
+                <img src="{% static 'images/ejglobal_logo_full.png' %}" class="logo-full" alt="EJ Global Services">
+                <img src="{% static 'images/ejglobal_logo_icon.png' %}" class="logo-icon" alt="EJ">
             </a>
         </div>
 
         <nav class="nav-menu">
             {% block sidebar_nav %}
-            <!-- Main Section -->
+            <!-- Main Section (Everyone) -->
             <div class="nav-section">
                 <div class="nav-section-title">
                     <i class="fas fa-home"></i> Main
                 </div>
-                <a href="{% url 'dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <a href="{% url 'dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" data-title="Dashboard">
                     <i class="fas fa-gauge"></i>
                     <span>Dashboard</span>
                 </a>
-                 <a href="{% url 'sales:session_dashboard' %}" class="nav-item {% if request.resolver_match.namespace == 'sales' %}active{% endif %}">
-                    <i class="fas fa-dollar-sign"></i>
-                    <span>Sales</span>
-                </a>
+                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
+                    <a href="{% url 'sales:session_dashboard' %}"
+                       class="nav-item {% if ns == 'sales' and 'session' in name %}active{% endif %}"
+                       data-title="My Session">
+                        <i class="fas fa-dollar-sign"></i>
+                        <span>My Session</span>
+                    </a>
+                {% endwith %}
                 {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
                     <a href="{% url 'orders:pos' %}"
                        class="nav-item
@@ -61,18 +75,26 @@
                            active
                        {% elif ns == 'orders' and name == 'checkout' %}
                            active
-                       {% endif %}">
+                       {% endif %}"
+                       data-title="POS">
                         <i class="fas fa-cash-register"></i>
                         <span>POS</span>
                     </a>
                 {% endwith %}
-                <a href="" class="nav-item {% if request.resolver_match.url_name == 'orders' %}active{% endif %}">
-                    <i class="fas fa-receipt"></i>
-                    <span>Orders</span>
-                </a>
+                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
+                    <a href="{% url 'orders:order_list' %}"
+                       class="nav-item
+                       {% if ns == 'orders' and 'order_' in name and name != 'pos' %}
+                           active
+                       {% endif %}"
+                       data-title="Orders">
+                        <i class="fas fa-receipt"></i>
+                        <span>Orders</span>
+                    </a>
+                {% endwith %}
             </div>
 
-            <!-- Catalog Section -->
+            <!-- Catalog Section (Manager+) -->
             <div class="nav-section">
                 <div class="nav-section-title">
                     <i class="fas fa-box"></i> Catalog
@@ -82,7 +104,8 @@
                        class="nav-item
                        {% if ns == 'catalog' and 'product_' in name %}
                            active
-                       {% endif %}">
+                       {% endif %}"
+                       data-title="Products">
                         <i class="fas fa-box-open"></i>
                         <span>Products</span>
                     </a>
@@ -92,33 +115,63 @@
                        class="nav-item
                        {% if ns == 'catalog' and 'variant_' in name and 'attribute_' not in name and 'attribute_value_' not in name %}
                            active
-                       {% endif %}">
+                       {% endif %}"
+                       data-title="Variants">
                         <i class="fas fa-layer-group"></i>
                         <span>Variants</span>
                     </a>
                 {% endwith %}
             </div>
 
-            <!-- Analytics Section -->
+            <!-- Operations Section (Manager+) -->
+            <div class="nav-section">
+                <div class="nav-section-title">
+                    <i class="fas fa-building"></i> Operations
+                </div>
+                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
+                    <a href="{% url 'sales:store_list' %}"
+                       class="nav-item
+                       {% if ns == 'sales' and 'store' in name %}
+                           active
+                       {% endif %}"
+                       data-title="Stores">
+                        <i class="fas fa-store"></i>
+                        <span>Stores</span>
+                    </a>
+                {% endwith %}
+                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
+                    <a href="{% url 'sales:register_list' %}"
+                       class="nav-item
+                       {% if ns == 'sales' and 'register' in name %}
+                           active
+                       {% endif %}"
+                       data-title="Registers">
+                        <i class="fas fa-desktop"></i>
+                        <span>Registers</span>
+                    </a>
+                {% endwith %}
+                <a href="{% url 'inventory:inv_dashboard' %}" class="nav-item {% if request.resolver_match.namespace == 'inventory' %}active{% endif %}" data-title="Inventory">
+                    <i class="fas fa-warehouse"></i>
+                    <span>Inventory</span>
+                </a>
+            </div>
+
+            <!-- Analytics Section (Manager+) -->
             <div class="nav-section">
                 <div class="nav-section-title">
                     <i class="fas fa-chart-line"></i> Analytics
                 </div>
-                <a href="{% url 'reports:reports_dashboard' %}" class="nav-item {% if request.resolver_match.namespace == 'reports' %}active{% endif %}">
+                <a href="{% url 'reports:reports_dashboard' %}" class="nav-item {% if request.resolver_match.namespace == 'reports' %}active{% endif %}" data-title="Reports">
                     <i class="fas fa-chart-bar"></i>
                     <span>Reports</span>
                 </a>
-                <a href="{% url 'inventory:inv_dashboard' %}" class="nav-item {% if request.resolver_match.namespace == 'inventory' %}active{% endif %}">
-                    <i class="fas fa-warehouse"></i>
-                    <span>Inventory</span>
-                </a>
-                <a href="{% url 'customers:customer_list' %}" class="nav-item {% if request.resolver_match.namespace == 'customers' %}active{% endif %}">
+                <a href="{% url 'customers:customer_list' %}" class="nav-item {% if request.resolver_match.namespace == 'customers' %}active{% endif %}" data-title="Customers">
                     <i class="fas fa-users"></i>
                     <span>Customers</span>
                 </a>
             </div>
 
-            <!-- Settings Section -->
+            <!-- Settings Section (Admin+) -->
             <div class="nav-section">
                 <div class="nav-section-title">
                     <i class="fas fa-cog"></i> Settings
@@ -130,45 +183,46 @@
                            active
                        {% elif ns == 'catalog' and 'attribute_value_' in name %}
                            active
-                       {% endif %}">
+                       {% endif %}"
+                       data-title="Attributes">
                         <i class="fas fa-tags"></i>
-                        <span>Variant Attributes</span>
+                        <span>Attributes</span>
                     </a>
                 {% endwith %}
-                <a href="" class="nav-item {% if request.resolver_match.url_name == 'payments' %}active{% endif %}">
-                    <i class="fas fa-credit-card"></i>
-                    <span>Payment Methods</span>
-                </a>
                 {% with vn=request.resolver_match.view_name %}
                     <a class="nav-item {% if vn == 'accounts:user_list' or vn == 'accounts:user_create' %}active{% endif %}"
-                       href="{% url 'accounts:user_list' %}">
+                       href="{% url 'accounts:user_list' %}"
+                       data-title="Accounts">
                         <i class="fas fa-user-shield"></i>
                         <span>Accounts</span>
                     </a>
                 {% endwith %}
-                {% with vn=request.resolver_match.view_name %}
-                    <a class="nav-item {% if vn == 'accounts:group_list' or vn == 'accounts:group_create' %}active{% endif %}"
-                       href="{% url 'accounts:group_list' %}">
-                        <i class="fas fa-user-group"></i>
-                        <span>Groups</span>
-                    </a>
-                {% endwith %}
+                {% if user.is_superuser %}
+                    {% with vn=request.resolver_match.view_name %}
+                        <a class="nav-item {% if vn == 'accounts:group_list' or vn == 'accounts:group_create' %}active{% endif %}"
+                           href="{% url 'accounts:group_list' %}"
+                           data-title="Groups">
+                            <i class="fas fa-user-group"></i>
+                            <span>Groups</span>
+                        </a>
+                    {% endwith %}
+                {% endif %}
             </div>
 
-            <!-- Account Section -->
+            <!-- Account Section (Everyone) -->
             <div class="nav-section">
                 <div class="nav-section-title">
                     <i class="fas fa-user"></i> Account
                 </div>
                  {% with vn=request.resolver_match.view_name %}
-                    <a href="{% url 'accounts:profile' %}" class="nav-item {% if vn == 'accounts:profile' or vn == 'accounts:profile_edit' %}active{% endif %}">
+                    <a href="{% url 'accounts:profile' %}" class="nav-item {% if vn == 'accounts:profile' or vn == 'accounts:profile_edit' %}active{% endif %}" data-title="Profile">
                         <i class="fas fa-user"></i>
-                        <span>My Profile</span>
+                        <span>Profile</span>
                     </a>
                 {% endwith %}
                 <form method="POST" action="{% url 'accounts:logout' %}">
                     {% csrf_token %}
-                    <button class="nav-item dashboard-logout-button">
+                    <button class="nav-item dashboard-logout-button" data-title="Logout">
                         <i class="fas fa-sign-out-alt"></i>
                         <span>Logout</span>
                     </button>
@@ -295,30 +349,65 @@
 
     <!-- JavaScript -->
     <script>
-        // Mobile menu toggle
+        // Sidebar toggle with localStorage persistence
         const menuToggle = document.getElementById('menuToggle');
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('mainContent');
 
+        // Check if we're on desktop or mobile
+        function isDesktop() {
+            return window.innerWidth > 768;
+        }
+
+        // Restore saved state on page load (desktop only)
+        if (isDesktop()) {
+            const savedState = localStorage.getItem('sidebarCollapsed');
+            if (savedState === 'false') {
+                // User had it expanded
+                sidebar.classList.remove('collapsed');
+                mainContent.classList.add('expanded');
+            }
+            // Default is collapsed (shows icons on desktop)
+        } else {
+            // Mobile: default is collapsed (hidden)
+            sidebar.classList.add('collapsed');
+        }
+
         if (menuToggle) {
             menuToggle.addEventListener('click', function() {
-                sidebar.classList.toggle('active');
+                const isCollapsed = sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+
+                // Save state (only meaningful on desktop)
+                if (isDesktop()) {
+                    localStorage.setItem('sidebarCollapsed', isCollapsed);
+                }
             });
         }
 
         // Close sidebar when clicking outside on mobile
         document.addEventListener('click', function(event) {
-            if (window.innerWidth <= 768) {
+            if (!isDesktop()) {
                 if (!sidebar.contains(event.target) && !menuToggle.contains(event.target)) {
-                    sidebar.classList.remove('active');
+                    sidebar.classList.add('collapsed');
+                    mainContent.classList.remove('expanded');
                 }
             }
         });
 
         // Handle window resize
         window.addEventListener('resize', function() {
-            if (window.innerWidth > 768) {
-                sidebar.classList.remove('active');
+            if (!isDesktop()) {
+                // On mobile, always start collapsed
+                sidebar.classList.add('collapsed');
+                mainContent.classList.remove('expanded');
+            } else {
+                // On desktop, restore saved state
+                const savedState = localStorage.getItem('sidebarCollapsed');
+                if (savedState === 'false') {
+                    sidebar.classList.remove('collapsed');
+                    mainContent.classList.add('expanded');
+                }
             }
         });
 

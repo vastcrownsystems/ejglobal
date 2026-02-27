@@ -1,358 +1,367 @@
 <!-- apps/orders/templates/orders/draft_orders_list.html -->
-<!-- Held/Draft Orders List -->
+{% extends 'base.html' %}
+{% load static %}
 
-{% extends "base.html" %}
+{% block title %}Held Orders - EJ Global Services POS{% endblock %}
+{% block page_title %}Held Orders{% endblock %}
 
-{% block title %}Held Orders{% endblock %}
-
-{% block content %}
-<div class="draft-orders-page">
-    <!-- Page Header -->
-    <div class="page-header">
-        <div class="header-left">
-            <h1>
-                <i class="fas fa-pause-circle"></i>
-                Held Orders
-            </h1>
-            <p class="subtitle">Resume or manage on-hold orders</p>
-        </div>
-
-        <div class="header-actions">
-            <a href="{% url 'pos:pos_interface' %}" class="btn-secondary">
-                <i class="fas fa-arrow-left"></i>
-                Back to POS
-            </a>
-        </div>
-    </div>
-
-    <!-- Draft Orders List -->
-    {% if drafts %}
-        <div class="drafts-grid">
-            {% for draft in drafts %}
-            <div class="draft-card">
-                <div class="draft-header">
-                    <div class="draft-number">{{ draft.order_number }}</div>
-                    <div class="draft-time">{{ draft.created_at|timesince }} ago</div>
-                </div>
-
-                <div class="draft-details">
-                    <div class="detail-row">
-                        <span class="detail-label">Items:</span>
-                        <span class="detail-value">{{ draft.item_count }}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Total:</span>
-                        <span class="detail-value amount">₦{{ draft.total|floatformat:2 }}</span>
-                    </div>
-                    {% if draft.customer %}
-                        <div class="detail-row">
-                            <span class="detail-label">Customer:</span>
-                            <span class="detail-value">{{ draft.customer.name }}</span>
-                        </div>
-                    {% endif %}
-                </div>
-
-                {% if draft.notes %}
-                    <div class="draft-notes">
-                        <i class="fas fa-sticky-note"></i>
-                        {{ draft.notes|truncatewords:20 }}
-                    </div>
-                {% endif %}
-
-                <div class="draft-actions">
-                    <form method="post" action="{% url 'orders:draft_order_resume' draft.pk %}" style="flex: 1;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-resume">
-                            <i class="fas fa-play-circle"></i>
-                            Resume
-                        </button>
-                    </form>
-                    <a href="{% url 'orders:draft_order_detail' draft.pk %}" class="btn-view">
-                        <i class="fas fa-eye"></i>
-                    </a>
-                    <button
-                        class="btn-delete"
-                        onclick="confirmDelete('{{ draft.order_number }}', '{% url 'orders:draft_order_delete' draft.pk %}')"
-                    >
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <!-- Empty State -->
-        <div class="empty-state">
-            <div class="empty-icon">
-                <i class="fas fa-pause-circle"></i>
-            </div>
-            <h3>No held orders</h3>
-            <p>Orders you put on hold will appear here</p>
-            <a href="{% url 'pos:pos_interface' %}" class="btn-primary">
-                <i class="fas fa-cash-register"></i>
-                Go to POS
-            </a>
-        </div>
-    {% endif %}
-</div>
+{% block extra_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
-    .draft-orders-page {
-        max-width: 1400px;
+    :root {
+        --draft-primary: #0033A0;
+        --draft-warning: #F59E0B;
+        --draft-text: #1A1F2E;
+        --draft-text-muted: #6B7280;
+        --draft-border: #E5E7EB;
+        --draft-bg: #F9FAFB;
+        --draft-white: #FFFFFF;
+    }
+
+    body {
+        font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .drafts-container {
+        max-width: 1200px;
         margin: 0 auto;
-        padding: 2rem;
+        padding: 2rem 1rem;
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     .page-header {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
         margin-bottom: 2rem;
     }
 
-    .header-left h1 {
-        margin: 0 0 0.5rem 0;
+    .page-header h1 {
         font-size: 2rem;
-        color: #1A1A1A;
-        display: flex;
+        font-weight: 700;
+        color: var(--draft-text);
+        margin: 0;
+        letter-spacing: -0.02em;
+    }
+
+    .btn-back {
+        padding: 0.875rem 1.75rem;
+        background: var(--draft-bg);
+        color: var(--draft-text);
+        border: 2px solid var(--draft-border);
+        border-radius: 12px;
+        font-weight: 700;
+        font-family: 'Outfit', sans-serif;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        text-decoration: none;
+        display: inline-flex;
         align-items: center;
         gap: 0.75rem;
     }
 
-    .subtitle {
-        margin: 0;
-        color: #666;
-    }
-
-    .btn-secondary, .btn-primary {
-        padding: 0.875rem 1.5rem;
-        border-radius: 8px;
-        text-decoration: none;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        transition: all 0.2s ease;
-    }
-
-    .btn-secondary {
-        background: #F5F5F5;
-        color: #666;
-    }
-
-    .btn-secondary:hover {
-        background: #E8E8E8;
-    }
-
-    .btn-primary {
-        background: #0033A0;
-        color: white;
-    }
-
-    .btn-primary:hover {
-        background: #0047D1;
+    .btn-back:hover {
+        background: var(--draft-white);
+        border-color: var(--draft-text-muted);
         transform: translateY(-2px);
     }
 
-    /* Drafts Grid */
     .drafts-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
         gap: 1.5rem;
     }
 
     .draft-card {
-        background: white;
-        border: 1px solid #E8E8E8;
-        border-radius: 12px;
+        background: var(--draft-white);
+        border: 2px solid var(--draft-border);
+        border-radius: 16px;
         padding: 1.5rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        transition: all 0.2s ease;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .draft-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--draft-warning);
+        transform: scaleY(0);
+        transition: transform 0.3s ease;
     }
 
     .draft-card:hover {
-        border-color: #0033A0;
-        box-shadow: 0 4px 12px rgba(0, 51, 160, 0.1);
+        border-color: var(--draft-warning);
+        transform: translateY(-4px);
+        box-shadow: 0 12px 32px rgba(245, 158, 11, 0.15);
+    }
+
+    .draft-card:hover::before {
+        transform: scaleY(1);
     }
 
     .draft-header {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        padding-bottom: 1rem;
-        border-bottom: 2px solid #F5F5F5;
+        align-items: flex-start;
+        margin-bottom: 1rem;
     }
 
     .draft-number {
         font-size: 1.125rem;
         font-weight: 700;
-        color: #1A1A1A;
-        font-family: monospace;
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--draft-text);
     }
 
-    .draft-time {
-        font-size: 0.875rem;
-        color: #999;
+    .draft-badge {
+        padding: 0.375rem 0.75rem;
+        background: rgba(245, 158, 11, 0.12);
+        color: #D97706;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        border: 1px solid rgba(245, 158, 11, 0.25);
     }
 
-    .draft-details {
+    .draft-meta {
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid var(--draft-bg);
     }
 
-    .detail-row {
+    .meta-row {
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        font-size: 0.9375rem;
+        gap: 0.75rem;
+        color: var(--draft-text-muted);
+        font-size: 0.9rem;
     }
 
-    .detail-label {
-        color: #666;
+    .meta-row i {
+        width: 20px;
+        text-align: center;
+        color: var(--draft-warning);
     }
 
-    .detail-value {
-        font-weight: 600;
-        color: #1A1A1A;
+    .draft-total {
+        font-size: 1.75rem;
+        font-weight: 800;
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--draft-primary);
+        margin-bottom: 1rem;
     }
 
-    .detail-value.amount {
-        color: #10B981;
-        font-family: monospace;
-    }
-
-    .draft-notes {
-        padding: 0.75rem;
-        background: #FFFBEB;
-        border: 1px solid #FEF3C7;
-        border-radius: 6px;
+    .draft-items {
         font-size: 0.875rem;
-        color: #92400E;
-        display: flex;
-        gap: 0.5rem;
+        color: var(--draft-text-muted);
+        margin-bottom: 1.5rem;
     }
 
     .draft-actions {
         display: flex;
-        gap: 0.5rem;
-        margin-top: auto;
+        gap: 0.75rem;
     }
 
     .btn-resume {
         flex: 1;
-        padding: 0.75rem;
-        background: #10B981;
+        padding: 0.875rem 1.25rem;
+        background: linear-gradient(135deg, #10B981 0%, #059669 100%);
         color: white;
         border: none;
-        border-radius: 8px;
-        font-weight: 600;
+        border-radius: 10px;
+        font-weight: 700;
+        font-family: 'Outfit', sans-serif;
         cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
-        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
     }
 
     .btn-resume:hover {
-        background: #059669;
-        transform: translateY(-1px);
-    }
-
-    .btn-view, .btn-delete {
-        width: 40px;
-        height: 40px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        text-decoration: none;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
     }
 
     .btn-view {
-        background: #F5F5F5;
-        color: #666;
-        border: 1px solid #E8E8E8;
+        padding: 0.875rem 1.25rem;
+        background: var(--draft-bg);
+        color: var(--draft-text);
+        border: 2px solid var(--draft-border);
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .btn-view:hover {
-        background: #0033A0;
-        color: white;
-        border-color: #0033A0;
+        background: var(--draft-white);
+        border-color: var(--draft-text-muted);
     }
 
-    .btn-delete {
-        background: #FFF5F5;
-        color: #EF4444;
-        border: 1px solid #FED7D7;
-    }
-
-    .btn-delete:hover {
-        background: #FEE2E2;
-        border-color: #EF4444;
-    }
-
-    /* Empty State */
     .empty-state {
         text-align: center;
         padding: 4rem 2rem;
-        background: white;
-        border: 1px solid #E8E8E8;
-        border-radius: 12px;
+        background: var(--draft-white);
+        border: 2px dashed var(--draft-border);
+        border-radius: 16px;
     }
 
     .empty-icon {
         width: 100px;
         height: 100px;
-        background: #F5F5F5;
+        background: var(--draft-bg);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         margin: 0 auto 1.5rem;
+        font-size: 2.5rem;
+        color: var(--draft-text-muted);
     }
 
-    .empty-icon i {
-        font-size: 3rem;
-        color: #D0D0D0;
-    }
-
-    .empty-state h3 {
-        margin: 0 0 0.5rem 0;
+    .empty-state h2 {
         font-size: 1.5rem;
-        color: #1A1A1A;
+        font-weight: 700;
+        color: var(--draft-text);
+        margin-bottom: 0.75rem;
     }
 
     .empty-state p {
-        margin: 0 0 1.5rem 0;
-        color: #666;
+        color: var(--draft-text-muted);
+        margin-bottom: 2rem;
+    }
+
+    @media (max-width: 768px) {
+        .drafts-container {
+            padding: 1.5rem 1rem;
+        }
+
+        .page-header {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .btn-back {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .drafts-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
+{% endblock %}
 
-<script>
-function confirmDelete(orderNumber, deleteUrl) {
-    if (confirm(`Delete order ${orderNumber}? This cannot be undone.`)) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = deleteUrl;
+{% block content %}
+<div class="drafts-container">
+    <div class="page-header">
+        <h1>
+            <i class="fas fa-clock"></i> Held Orders
+        </h1>
+        <a href="{% url 'orders:pos' %}" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+            Back to POS
+        </a>
+    </div>
 
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        const csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = 'csrfmiddlewaretoken';
-        csrfInput.value = csrfToken;
-        form.appendChild(csrfInput);
+    {% if draft_orders %}
+    <div class="drafts-grid">
+        {% for draft in draft_orders %}
+        <div class="draft-card" onclick="window.location='{% url 'orders:draft_order_detail' draft.order.id %}'">
+            <div class="draft-header">
+                <div class="draft-number">{{ draft.order.order_number }}</div>
+                <span class="draft-badge">On Hold</span>
+            </div>
 
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-</script>
+            <div class="draft-meta">
+                <div class="meta-row">
+                    <i class="fas fa-clock"></i>
+                    <span>Held {{ draft.order.created_at|timesince }} ago</span>
+                </div>
+                {% if draft.order.customer %}
+                <div class="meta-row">
+                    <i class="fas fa-user"></i>
+                    <span>{{ draft.order.customer.full_name }}</span>
+                </div>
+                {% elif draft.order.customer_name %}
+                <div class="meta-row">
+                    <i class="fas fa-user"></i>
+                    <span>{{ draft.order.customer_name }}</span>
+                </div>
+                {% endif %}
+                {% if is_manager %}
+                <div class="meta-row">
+                    <i class="fas fa-user-circle"></i>
+                    <span>{{ draft.order.created_by.get_full_name|default:draft.order.created_by.username }}</span>
+                </div>
+                {% endif %}
+            </div>
 
-{% csrf_token %}
+            <div class="draft-total">₦{{ draft.total|floatformat:2 }}</div>
+            <div class="draft-items">
+                {{ draft.item_count }} item{{ draft.item_count|pluralize }} in order
+            </div>
+
+            <div class="draft-actions" onclick="event.stopPropagation()">
+                <form method="post" action="{% url 'orders:draft_order_resume' draft.order.id %}" style="flex: 1;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-resume">
+                        <i class="fas fa-play"></i>
+                        Resume
+                    </button>
+                </form>
+                <a href="{% url 'orders:draft_order_detail' draft.order.id %}" class="btn-view">
+                    <i class="fas fa-eye"></i>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">
+            <i class="fas fa-inbox"></i>
+        </div>
+        <h2>No Held Orders</h2>
+        <p>Orders you hold during checkout will appear here</p>
+        <a href="{% url 'orders:pos' %}" class="btn-back">
+            <i class="fas fa-shopping-cart"></i>
+            Go to POS
+        </a>
+    </div>
+    {% endif %}
+</div>
 {% endblock %}

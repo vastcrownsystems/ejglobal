@@ -151,20 +151,19 @@ LOGIN_REDIRECT_URL = '/' # Change to your dashboard URL
 # Redirect to login page after logout
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
-STORAGES = {
-    "default": {
-        "BACKEND": "storages.backends.azure_storage.AzureStorage",
-        "OPTIONS": {
-            'timeout': 20,
-            'expiration_secs': 500,
-        },
-    },
-    "staticfiles": {
-        # "BACKEND": "storages.backends.azure_storage.AzureStorage",
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
-    }
-}
+# STORAGES = {
+#     "default": {
+#         "BACKEND": "storages.backends.azure_storage.AzureStorage",
+#         "OPTIONS": {
+#             'timeout': 20,
+#             'expiration_secs': 500,
+#         },
+#     },
+#     "staticfiles": {
+#         "BACKEND": "storages.backends.azure_storage.AzureStorage",
+#     }
+# }
 
-AZURE_CONTAINER = env('AZURE_CONTAINER')
-AZURE_ACCOUNT_NAME = env('AZURE_ACCOUNT_NAME')
-AZURE_ACCOUNT_KEY = env('AZURE_ACCOUNT_KEY')
+# AZURE_CONTAINER = env('AZURE_CONTAINER')
+# AZURE_ACCOUNT_NAME = env('AZURE_ACCOUNT_NAME')
+# AZURE_ACCOUNT_KEY = env('AZURE_ACCOUNT_KEY')
