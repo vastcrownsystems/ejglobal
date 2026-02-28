@@ -58,28 +58,22 @@ class Command(BaseCommand):
         # Bread products data
         bread_products = [
             {
-                'name': 'White Bread',
+                'name': 'Regular Bread',
                 'description': 'Classic soft white bread, perfect for sandwiches',
-                'base_price': 800,
-                'prices': {'Small': 500, 'Medium': 800, 'Big': 1200}
+                'base_price': 1100,
+                'prices': {'Small': 300, 'Medium': 500, 'Big': 1100}
             },
             {
-                'name': 'Croissant',
-                'description': 'Buttery, flaky French pastry',
-                'base_price': 900,
-                'prices': {'Small': 600, 'Medium': 900, 'Big': 1300}
+                'name': 'Sardine Bread',
+                'description': 'Sardine Bread',
+                'base_price': 1800,
+                'prices': {'Medium': 1000, 'Big': 1800}
             },
             {
-                'name': 'Challah',
-                'description': 'Traditional braided Jewish bread',
+                'name': 'Coconut Bread',
+                'description': 'Coconut Bread',
                 'base_price': 1000,
-                'prices': {'Small': 700, 'Medium': 1000, 'Big': 1400}
-            },
-            {
-                'name': 'Breadstick',
-                'description': 'Crispy Italian breadsticks',
-                'base_price': 700,
-                'prices': {'Small': 400, 'Medium': 700, 'Big': 1000}
+                'prices': {'Small': 700, 'Medium': 1000, 'Big': 1800}
             },
             {
                 'name': 'Wheat Bread',
@@ -88,26 +82,20 @@ class Command(BaseCommand):
                 'prices': {'Small': 550, 'Medium': 850, 'Big': 1250}
             },
             {
-                'name': 'Baguette',
-                'description': 'Classic French baguette',
-                'base_price': 950,
-                'prices': {'Small': 650, 'Medium': 950, 'Big': 1350}
-            },
-            {
-                'name': 'Crispbread',
-                'description': 'Light and crunchy Scandinavian crispbread',
-                'base_price': 750,
-                'prices': {'Small': 450, 'Medium': 750, 'Big': 1050}
-            },
-            {
-                'name': 'Matzah',
-                'description': 'Traditional unleavened bread',
+                'name': 'Fruit Bread',
+                'description': 'Fruit Bread',
                 'base_price': 800,
-                'prices': {'Small': 500, 'Medium': 800, 'Big': 1100}
+                'prices': {'Small': 500, 'Medium': 800, 'Big': 2000}
+            },
+            {
+                'name': 'Chocolate Bread',
+                'description': 'Chocolate Bread',
+                'base_price': 800,
+                'prices': {'Small': 500, 'Medium': 800, 'Big': 2000}
             },
         ]
 
-        # Create products and variants
+        #Create products and variants
         for product_data in bread_products:
             product, created = Product.objects.get_or_create(
                 name=product_data['name'],
