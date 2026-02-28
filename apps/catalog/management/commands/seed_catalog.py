@@ -93,6 +93,12 @@ class Command(BaseCommand):
                 'base_price': 800,
                 'prices': {'Small': 500, 'Medium': 800, 'Big': 2000}
             },
+            {
+                'name': 'Cake Bread',
+                'description': 'Chocolate Bread',
+                'base_price': 800,
+                'prices': {'Small': 500, 'Medium': 800, 'Big': 2000}
+            },
         ]
 
         #Create products and variants
