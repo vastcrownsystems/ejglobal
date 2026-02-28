@@ -15,6 +15,94 @@
     position: relative;
     overflow: hidden;
  }
+
+ /* Error Alerts */
+ .alert {
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    animation: slideDown 0.3s ease;
+ }
+
+ @keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+ }
+
+ .alert::before {
+    content: "\f06a";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+ }
+
+ .alert-danger {
+    background: rgba(231, 76, 60, 0.1);
+    color: #C0392B;
+    border: 2px solid rgba(231, 76, 60, 0.3);
+    border-left: 4px solid #E74C3C;
+ }
+
+ .alert-danger::before {
+    color: #E74C3C;
+ }
+
+ .alert-warning {
+    background: rgba(255, 140, 0, 0.1);
+    color: #D68400;
+    border: 2px solid rgba(255, 140, 0, 0.3);
+    border-left: 4px solid #FF8C00;
+ }
+
+ .alert-warning::before {
+    content: "\f071";
+    color: #FF8C00;
+ }
+
+ .alert ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+ }
+
+ .alert li {
+    margin: 0;
+ }
+
+ /* Field Errors */
+ .field-error {
+    color: #E74C3C;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(231, 76, 60, 0.1);
+    border-left: 3px solid #E74C3C;
+    border-radius: 6px;
+    animation: slideDown 0.3s ease;
+ }
+
+ .field-error ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+ }
+
+ .field-error li {
+    margin: 0;
+ }
 </style>
 
 <!-- Main login container -->

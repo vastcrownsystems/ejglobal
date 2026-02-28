@@ -1,5 +1,5 @@
 <!-- apps/receipts/templates/receipts/receipt_detail.html -->
-<!-- Printable Receipt Template - COMPLETE VERSION matching receipt_modal -->
+<!-- Printable Receipt Template - OPTIMIZED FOR THERMAL PRINTERS -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -22,12 +22,13 @@
 
         body {
             font-family: 'Courier New', monospace;
-            font-size: 12px;
-            line-height: 1.4;
-            color: #000;
+            font-size: 13px; /* ✅ Slightly larger */
+            line-height: 1.5; /* ✅ Better spacing */
+            color: #000; /* ✅ Pure black */
             background: #fff;
             padding: 10mm;
             width: 80mm;
+            font-weight: 600; /* ✅ Bolder base weight */
         }
 
         .receipt {
@@ -41,42 +42,47 @@
         }
 
         .rp-company-name {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 5px;
+            font-size: 20px; /* ✅ Larger */
+            font-weight: 900; /* ✅ Extra bold */
+            margin-bottom: 6px;
+            color: #000;
         }
 
         .rp-company-sub {
-            font-size: 11px;
+            font-size: 12px; /* ✅ Slightly larger */
             margin-bottom: 3px;
+            color: #000; /* ✅ Changed from gray */
+            font-weight: 600;
         }
 
         .rp-receipt-title {
-            font-size: 14px;
-            font-weight: bold;
-            margin-top: 10px;
-            margin-bottom: 5px;
+            font-size: 16px; /* ✅ Larger */
+            font-weight: 900; /* ✅ Extra bold */
+            margin-top: 12px;
+            margin-bottom: 6px;
+            color: #000;
         }
 
         .rp-receipt-number {
-            font-size: 12px;
-            font-weight: bold;
+            font-size: 14px; /* ✅ Larger */
+            font-weight: 900; /* ✅ Extra bold */
+            color: #000;
         }
 
         /* ===== Dividers ===== */
         .rp-dash {
-            border-bottom: 1px dashed #000;
-            margin: 10px 0;
+            border-bottom: 2px dashed #000; /* ✅ Thicker */
+            margin: 12px 0;
         }
 
         .rp-solid {
-            border-bottom: 2px solid #000;
-            margin: 10px 0;
+            border-bottom: 3px solid #000; /* ✅ Thicker */
+            margin: 12px 0;
         }
 
         .rp-thin {
-            border-bottom: 1px solid #000;
-            margin: 5px 0;
+            border-bottom: 2px solid #000; /* ✅ Thicker */
+            margin: 6px 0;
         }
 
         /* ===== Sections ===== */
@@ -85,57 +91,69 @@
         }
 
         .rp-items-hdr {
-            font-weight: bold;
-            margin-bottom: 8px;
-            font-size: 12px;
+            font-weight: 900; /* ✅ Extra bold */
+            margin-bottom: 10px;
+            font-size: 14px; /* ✅ Larger */
+            color: #000;
         }
 
         .rp-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 4px;
-            font-size: 11px;
+            margin-bottom: 5px; /* ✅ More spacing */
+            font-size: 12px; /* ✅ Larger */
+            color: #000;
+            font-weight: 700; /* ✅ Bold */
         }
 
         .rp-lbl {
-            font-weight: bold;
+            font-weight: 900; /* ✅ Extra bold */
+            color: #000;
         }
 
         /* ===== Items ===== */
         .rp-item {
-            margin-bottom: 8px;
+            margin-bottom: 10px; /* ✅ More spacing */
         }
 
         .rp-item-name {
-            font-weight: bold;
-            margin-bottom: 2px;
-            font-size: 12px;
+            font-weight: 900; /* ✅ Extra bold */
+            margin-bottom: 3px;
+            font-size: 13px; /* ✅ Larger */
+            color: #000;
         }
 
         .rp-item-line {
             display: flex;
             justify-content: space-between;
-            font-size: 11px;
+            font-size: 12px; /* ✅ Larger */
+            color: #000;
+            font-weight: 700; /* ✅ Bold */
         }
 
         .rp-item-qty {
             flex: 1;
+            font-weight: 700;
+            color: #000;
         }
 
         .rp-item-total {
-            font-weight: bold;
+            font-weight: 900; /* ✅ Extra bold */
             text-align: right;
+            color: #000;
         }
 
         /* ===== Totals ===== */
         .rp-grand {
-            font-size: 14px;
-            font-weight: bold;
-            margin-top: 5px;
+            font-size: 16px; /* ✅ Larger */
+            font-weight: 900; /* ✅ Extra bold */
+            margin-top: 8px;
+            color: #000;
         }
 
         .rp-bold {
-            font-weight: bold;
+            font-weight: 900; /* ✅ Extra bold */
+            color: #000;
         }
 
         /* ===== Footer ===== */
@@ -145,25 +163,39 @@
         }
 
         .rp-thankyou {
-            font-size: 13px;
-            font-weight: bold;
-            margin-bottom: 5px;
+            font-size: 15px; /* ✅ Larger */
+            font-weight: 900; /* ✅ Extra bold */
+            margin-bottom: 6px;
+            color: #000;
         }
 
         .rp-fnote {
-            font-size: 11px;
-            margin-bottom: 3px;
+            font-size: 12px; /* ✅ Larger */
+            margin-bottom: 4px;
+            color: #000; /* ✅ Changed from gray */
+            font-weight: 700; /* ✅ Bold */
         }
 
         .rp-barcode {
-            margin-top: 10px;
-            font-size: 10px;
+            margin-top: 12px;
+            font-size: 11px; /* ✅ Larger */
             letter-spacing: 2px;
+            color: #000;
+            font-weight: 700;
         }
 
         .rp-printcount {
-            margin-top: 5px;
-            font-size: 10px;
+            margin-top: 6px;
+            font-size: 11px; /* ✅ Larger */
+            color: #000; /* ✅ Changed from gray */
+            font-weight: 700;
+        }
+
+        /* ===== Payment Reference (darker) ===== */
+        .rp-payment-ref {
+            padding-left: 1em;
+            color: #000; /* ✅ Changed from #555 */
+            font-weight: 600;
         }
 
         /* ===== Print Button (Screen Only) ===== */
@@ -180,6 +212,7 @@
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             z-index: 1000;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
         .print-button:hover {
@@ -193,6 +226,17 @@
 
             body {
                 padding: 5mm;
+            }
+
+            /* ✅ Force dark printing */
+            * {
+                color: #000 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .rp-payment-ref {
+                color: #000 !important;
             }
         }
     </style>
@@ -291,6 +335,10 @@
                 <span class="rp-lbl">Subtotal:</span>
                 <span>₦{{ receipt.payload.totals.subtotal|floatformat:2 }}</span>
             </div>
+            <div class="rp-row">
+                <span class="rp-lbl">VAT:</span>
+                <span>₦0.00</span>
+            </div>
             {% if receipt.payload.totals.discount_amount > 0 %}
             <div class="rp-row">
                 <span class="rp-lbl">Discount:</span>
@@ -321,9 +369,9 @@
                 <span>₦{{ payment.amount|floatformat:2 }}</span>
             </div>
             {% if payment.reference_number %}
-            <div class="rp-row" style="padding-left: 1em;">
-                <span style="color:#555;">Ref:</span>
-                <span style="color:#555;">{{ payment.reference_number }}</span>
+            <div class="rp-row rp-payment-ref">
+                <span>Ref:</span>
+                <span>{{ payment.reference_number }}</span>
             </div>
             {% endif %}
             {% endfor %}

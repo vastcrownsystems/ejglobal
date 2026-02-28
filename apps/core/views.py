@@ -213,6 +213,7 @@ def _manager_dashboard(request):
         'revenue_change_positive': revenue_change >= 0,
 
         'today_sales': today_sales,
+        'today_orders': today_sales,  # ✅ ADDED: Number of orders today (same as sales count)
         'sales_change': abs(sales_change),
         'sales_change_positive': sales_change >= 0,
 
@@ -422,6 +423,7 @@ def _user_dashboard(request):
         'revenue_change_positive': revenue_change >= 0,
 
         'today_sales': today_sales,
+        'today_orders': today_sales,  # ✅ ADDED: Number of orders today (same as sales count)
         'sales_change': abs(sales_change),
         'sales_change_positive': sales_change >= 0,
 

@@ -98,6 +98,16 @@ body::before {
     z-index: 1000;
 }
 
+.sidebar form {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.sidebar form button {
+    width: 100%;
+}
+
 /* Desktop: Collapsed state shows icons */
 @media (min-width: 769px) {
     .sidebar.collapsed {
@@ -227,6 +237,7 @@ body::before {
     flex: 1;
     overflow-y: auto;
     padding: 0 1rem;
+    min-height: 0;
 }
 
 .logo-icon {

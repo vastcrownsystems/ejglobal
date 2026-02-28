@@ -86,13 +86,24 @@
                        class="nav-item
                        {% if ns == 'orders' and 'order_' in name and name != 'pos' %}
                            active
+                       {% elif ns == 'orders' and 'draft' in name %}
+                           active
                        {% endif %}"
                        data-title="Orders">
                         <i class="fas fa-receipt"></i>
                         <span>Orders</span>
                     </a>
                 {% endwith %}
+
+                <!-- Customers (Everyone can see) -->
+                <a href="{% url 'customers:customer_list' %}" class="nav-item {% if request.resolver_match.namespace == 'customers' %}active{% endif %}" data-title="Customers">
+                    <i class="fas fa-users"></i>
+                    <span>Customers</span>
+                </a>
             </div>
+
+            <!-- Manager/Admin Only Sections -->
+            {% if user.is_superuser or user.groups.all.0.name == 'Admin' or user.groups.all.0.name == 'Manager' %}
 
             <!-- Catalog Section (Manager+) -->
             <div class="nav-section">
@@ -123,7 +134,7 @@
                 {% endwith %}
             </div>
 
-            <!-- Operations Section (Manager+) -->
+            <!-- Operations Section (Manager+ only) -->
             <div class="nav-section">
                 <div class="nav-section-title">
                     <i class="fas fa-building"></i> Operations
@@ -150,10 +161,6 @@
                         <span>Registers</span>
                     </a>
                 {% endwith %}
-                <a href="{% url 'inventory:inv_dashboard' %}" class="nav-item {% if request.resolver_match.namespace == 'inventory' %}active{% endif %}" data-title="Inventory">
-                    <i class="fas fa-warehouse"></i>
-                    <span>Inventory</span>
-                </a>
             </div>
 
             <!-- Analytics Section (Manager+) -->
@@ -165,13 +172,25 @@
                     <i class="fas fa-chart-bar"></i>
                     <span>Reports</span>
                 </a>
-                <a href="{% url 'customers:customer_list' %}" class="nav-item {% if request.resolver_match.namespace == 'customers' %}active{% endif %}" data-title="Customers">
-                    <i class="fas fa-users"></i>
-                    <span>Customers</span>
-                </a>
             </div>
 
-            <!-- Settings Section (Admin+) -->
+            {% endif %}
+
+            <!-- Inventory Section (Manager+ OR Inventory users) -->
+            {% if user.is_superuser or user.groups.all.0.name == 'Admin' or user.groups.all.0.name == 'Manager' or user.groups.all.0.name == 'Inventory' %}
+            <div class="nav-section">
+                <div class="nav-section-title">
+                    <i class="fas fa-warehouse"></i> Inventory
+                </div>
+                <a href="{% url 'inventory:inv_dashboard' %}" class="nav-item {% if request.resolver_match.namespace == 'inventory' %}active{% endif %}" data-title="Inventory">
+                    <i class="fas fa-warehouse"></i>
+                    <span>Inventory</span>
+                </a>
+            </div>
+            {% endif %}
+
+            <!-- Settings Section (Admin+ only) -->
+            {% if user.is_superuser or user.groups.all.0.name == 'Admin' or user.groups.all.0.name == 'Manager' %}
             <div class="nav-section">
                 <div class="nav-section-title">
                     <i class="fas fa-cog"></i> Settings
@@ -208,6 +227,7 @@
                     {% endwith %}
                 {% endif %}
             </div>
+            {% endif %}
 
             <!-- Account Section (Everyone) -->
             <div class="nav-section">
@@ -250,15 +270,15 @@
                     <input type="text" placeholder="Search...">
                 </div>
 
-                <button class="nav-icon-btn">
-                    <i class="fas fa-bell"></i>
-                    <span class="badge-notification"><span>0</span></span >
-                </button>
+<!--                <button class="nav-icon-btn">-->
+<!--                    <i class="fas fa-bell"></i>-->
+<!--                    <span class="badge-notification"><span>0</span></span >-->
+<!--                </button>-->
 
-                <button class="nav-icon-btn">
-                    <i class="fas fa-envelope"></i>
-                    <span class="badge-notification"><span>0</span></span >
-                </button>
+<!--                <button class="nav-icon-btn">-->
+<!--                    <i class="fas fa-envelope"></i>-->
+<!--                    <span class="badge-notification"><span>0</span></span >-->
+<!--                </button>-->
 
                 <div class="user-menu">
                     <div class="user-avatar">

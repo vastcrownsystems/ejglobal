@@ -1,55 +1,54 @@
-<!-- apps/pos/templates/pos/partials/hold_order_modal.html -->
-<!-- Hold Order Modal - Add to POS template -->
+<!-- apps/orders/templates/orders/partials/hold_order_modal.html -->
 
-<div id="holdOrderModal" class="modal" style="display: none;">
-    <div class="modal-overlay" onclick="closeHoldModal()"></div>
-    <div class="modal-content">
-        <div class="modal-header">
+<div id="holdOrderModal" class="hold-modal" style="display: none;">
+    <div class="hold-modal-overlay" onclick="closeHoldModal()"></div>
+    <div class="hold-modal-content">
+        <div class="hold-modal-header">
             <h2>
                 <i class="fas fa-pause-circle"></i>
                 Hold Current Order
             </h2>
-            <button class="modal-close" onclick="closeHoldModal()">
+            <button class="hold-modal-close" onclick="closeHoldModal()">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
-        <form method="post" action="{% url 'orders:hold_order' %}" class="modal-body">
+        <form method="post" action="{% url 'orders:hold_order' %}" class="hold-modal-body">
             {% csrf_token %}
 
-            <div class="form-group">
+            <div class="hold-form-group">
                 <label>Customer Name (Optional)</label>
                 <input
                     type="text"
                     name="customer_name"
-                    class="form-input"
+                    class="hold-form-input"
                     placeholder="Enter customer name..."
                     autocomplete="off"
                 >
-                <div class="form-help">
+                <div class="hold-form-help">
                     Add a name to easily identify this order later
                 </div>
             </div>
 
-            <div class="form-group">
+            <div class="hold-form-group">
                 <label>Notes (Optional)</label>
                 <textarea
                     name="notes"
-                    class="form-textarea"
+                    class="hold-form-textarea"
                     rows="3"
                     placeholder="Add notes about this order..."
                 ></textarea>
-                <div class="form-help">
+                <div class="hold-form-help">
                     e.g., "Customer will return in 30 mins", "Waiting for payment"
                 </div>
             </div>
 
-            <div class="modal-actions">
-                <button type="submit" class="btn-hold">
+            <div class="hold-modal-actions">
+                <button type="submit" class="hold-btn-submit">
                     <i class="fas fa-check-circle"></i>
                     Hold Order
                 </button>
-                <button type="button" class="btn-cancel" onclick="closeHoldModal()">
+                <button type="button" class="hold-btn-cancel" onclick="closeHoldModal()">
                     Cancel
                 </button>
             </div>
@@ -57,40 +56,21 @@
     </div>
 </div>
 
-<!-- Hold Button (Add to cart section in POS) -->
-<button
-    class="btn-hold-order"
-    onclick="openHoldModal()"
-    {% if not order or order.item_count == 0 %}disabled{% endif %}
->
-    <i class="fas fa-pause-circle"></i>
-    Hold Order
-</button>
-
-<!-- Drafts Link (Add to POS header or sidebar) -->
-<a href="{% url 'orders:drafts_list' %}" class="btn-drafts">
-    <i class="fas fa-clipboard-list"></i>
-    Held Orders
-    {% if held_count > 0 %}
-        <span class="badge">{{ held_count }}</span>
-    {% endif %}
-</a>
-
 <style>
-    /* Modal */
-    .modal {
+    /* Hold Modal Styles */
+    .hold-modal {
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
-        z-index: 1000;
+        z-index: 9999;
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
-    .modal-overlay {
+    .hold-modal-overlay {
         position: absolute;
         top: 0;
         left: 0;
@@ -100,7 +80,7 @@
         backdrop-filter: blur(4px);
     }
 
-    .modal-content {
+    .hold-modal-content {
         position: relative;
         background: white;
         border-radius: 16px;
@@ -109,10 +89,10 @@
         max-height: 90vh;
         overflow: hidden;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        animation: modalSlideIn 0.3s ease;
+        animation: holdModalSlideIn 0.3s ease;
     }
 
-    @keyframes modalSlideIn {
+    @keyframes holdModalSlideIn {
         from {
             opacity: 0;
             transform: translateY(-20px);
@@ -123,90 +103,93 @@
         }
     }
 
-    .modal-header {
+    .hold-modal-header {
         padding: 1.5rem;
-        border-bottom: 2px solid var(--border);
+        border-bottom: 2px solid var(--border, #e4e7ed);
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
 
-    .modal-header h2 {
+    .hold-modal-header h2 {
         margin: 0;
         font-size: 1.25rem;
         display: flex;
         align-items: center;
         gap: 0.75rem;
+        color: var(--text-primary, #1A1F36);
     }
 
-    .modal-close {
+    .hold-modal-close {
         width: 36px;
         height: 36px;
         border: none;
-        background: var(--bg-main);
+        background: var(--bg-main, #F8F9FC);
         border-radius: 50%;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--text-muted);
+        color: var(--text-muted, #718096);
         transition: all 0.2s ease;
     }
 
-    .modal-close:hover {
-        background: var(--border);
-        color: var(--text-primary);
+    .hold-modal-close:hover {
+        background: var(--border, #e4e7ed);
+        color: var(--text-primary, #1A1F36);
     }
 
-    .modal-body {
+    .hold-modal-body {
         padding: 2rem;
     }
 
-    .form-group {
+    .hold-form-group {
         margin-bottom: 1.5rem;
     }
 
-    .form-group label {
+    .hold-form-group label {
         display: block;
         font-weight: 600;
         margin-bottom: 0.5rem;
-        color: var(--text-primary);
-    }
-
-    .form-input,
-    .form-textarea {
-        width: 100%;
-        padding: 0.875rem 1rem;
-        border: 2px solid var(--border);
-        border-radius: 10px;
-        font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary, #1A1F36);
         font-size: 0.95rem;
     }
 
-    .form-input:focus,
-    .form-textarea:focus {
+    .hold-form-input,
+    .hold-form-textarea {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 2px solid var(--border, #e4e7ed);
+        border-radius: 10px;
+        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+    }
+
+    .hold-form-input:focus,
+    .hold-form-textarea:focus {
         outline: none;
-        border-color: var(--primary);
+        border-color: var(--primary, #0033A0);
         box-shadow: 0 0 0 4px rgba(0, 51, 160, 0.1);
     }
 
-    .form-help {
+    .hold-form-help {
         font-size: 0.85rem;
-        color: var(--text-muted);
+        color: var(--text-muted, #718096);
         margin-top: 0.5rem;
     }
 
-    .modal-actions {
+    .hold-modal-actions {
         display: flex;
         gap: 1rem;
         padding-top: 1.5rem;
-        border-top: 2px solid var(--border);
+        border-top: 2px solid var(--border, #e4e7ed);
     }
 
-    .btn-hold {
+    .hold-btn-submit {
         flex: 1;
         padding: 1rem 2rem;
-        background: linear-gradient(135deg, var(--accent-orange) 0%, #D68400 100%);
+        background: linear-gradient(135deg, var(--accent-orange, #FF8C00) 0%, #D68400 100%);
         color: white;
         border: none;
         border-radius: 10px;
@@ -216,81 +199,28 @@
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
+        transition: all 0.2s ease;
+        font-size: 0.95rem;
     }
 
-    .btn-hold:hover {
+    .hold-btn-submit:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(255, 140, 0, 0.3);
     }
 
-    .btn-cancel {
+    .hold-btn-cancel {
         padding: 1rem 2rem;
         background: white;
-        color: var(--text-secondary);
-        border: 2px solid var(--border);
+        color: var(--text-secondary, #4A5568);
+        border: 2px solid var(--border, #e4e7ed);
         border-radius: 10px;
         font-weight: 700;
         cursor: pointer;
+        transition: all 0.2s ease;
     }
 
-    .btn-cancel:hover {
-        background: var(--bg-main);
-    }
-
-    /* Hold Order Button (in cart) */
-    .btn-hold-order {
-        width: 100%;
-        padding: 1rem;
-        background: linear-gradient(135deg, var(--accent-orange) 0%, #D68400 100%);
-        color: white;
-        border: none;
-        border-radius: 10px;
-        font-weight: 600;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        margin-bottom: 0.75rem;
-    }
-
-    .btn-hold-order:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(255, 140, 0, 0.3);
-    }
-
-    .btn-hold-order:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    /* Drafts Link Button */
-    .btn-drafts {
-        padding: 0.75rem 1.5rem;
-        background: white;
-        color: var(--primary);
-        border: 2px solid var(--border);
-        border-radius: 10px;
-        font-weight: 600;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        position: relative;
-    }
-
-    .btn-drafts:hover {
-        border-color: var(--primary);
-        background: rgba(0, 51, 160, 0.05);
-    }
-
-    .btn-drafts .badge {
-        background: var(--danger);
-        color: white;
-        padding: 0.25rem 0.5rem;
-        border-radius: 10px;
-        font-size: 0.75rem;
-        font-weight: 700;
+    .hold-btn-cancel:hover {
+        background: var(--bg-main, #F8F9FC);
     }
 </style>
 

@@ -16,10 +16,25 @@
             <p>{{ session.store.name }} • Session Active</p>
         </div>
     </div>
-    <a href="{% url 'sales:close_session' session.id %}" class="btn" style="background: white; color: var(--accent-green); padding: 0.625rem 1.25rem;">
-        <i class="fas fa-stop"></i> Close Session
-    </a>
+    <div style="display: flex; gap: 0.75rem; align-items: center;">
+        <!-- Held Orders Link -->
+        <a href="{% url 'orders:drafts_list' %}" class="btn-drafts">
+            <i class="fas fa-clipboard-list"></i>
+            <span>Held Orders</span>
+            {% if held_count > 0 %}
+                <span class="badge-held">{{ held_count }}</span>
+            {% endif %}
+        </a>
+
+        <!-- Close Session Button -->
+        <a href="{% url 'sales:close_session' session.id %}" class="btn" style="background: white; color: var(--accent-green); padding: 0.625rem 1.25rem;">
+            <i class="fas fa-stop"></i> Close Session
+        </a>
+    </div>
 </div>
+
+<!-- Hold Order Modal -->
+{% include 'orders/partials/hold_order_modal.html' %}
 
 <!-- POS Layout -->
 <div class="pos-container">
@@ -88,6 +103,42 @@
 {% endblock %}
 
 {% block extra_js %}
+<style>
+    /* Held Orders Button */
+    .btn-drafts {
+        padding: 0.625rem 1.25rem;
+        background: white;
+        color: var(--primary, #0033A0);
+        border: 2px solid var(--border, #e4e7ed);
+        border-radius: 10px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        position: relative;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+    }
+
+    .btn-drafts:hover {
+        border-color: var(--primary, #0033A0);
+        background: rgba(0, 51, 160, 0.05);
+        transform: translateY(-1px);
+    }
+
+    .btn-drafts .badge-held {
+        background: var(--danger, #E74C3C);
+        color: white;
+        padding: 0.125rem 0.5rem;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        min-width: 20px;
+        text-align: center;
+    }
+</style>
+
 <script>
     // Search functionality
     const searchInput = document.getElementById('searchInput');

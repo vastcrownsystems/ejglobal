@@ -1,5 +1,5 @@
 <!-- apps/receipts/templates/receipts/receipt_modal.html -->
-<!-- Receipt Modal - POS color consistent, receipt_detail print look/feel -->
+<!-- Receipt Modal - THERMAL PRINTER OPTIMIZED -->
 <div id="receiptModal" class="receipt-modal-overlay" onclick="closeReceiptModal(event)">
     <div class="receipt-modal-content" onclick="event.stopPropagation()">
 
@@ -75,22 +75,6 @@
                 {% if not c.is_walk_in %}
                 <div class="rp-section">
                     <div class="rp-items-hdr">CUSTOMER</div>
-{#                    <div class="rp-row">#}
-{#                        <span class="rp-lbl">Name:</span>#}
-{#                        <span>{{ c.name }}</span>#}
-{#                    </div>#}
-{#                    {% if c.phone %}#}
-{#                    <div class="rp-row">#}
-{#                        <span class="rp-lbl">Phone:</span>#}
-{#                        <span>{{ c.phone }}</span>#}
-{#                    </div>#}
-{#                    {% endif %}#}
-{#                    {% if c.email %}#}
-{#                    <div class="rp-row">#}
-{#                        <span class="rp-lbl">Email:</span>#}
-{#                        <span>{{ c.email }}</span>#}
-{#                    </div>#}
-{#                    {% endif %}#}
                     {% if c.customer_number %}
                     <div class="rp-row">
                         <span class="rp-lbl">Customer #:</span>
@@ -135,6 +119,10 @@
                         <span class="rp-lbl">Subtotal:</span>
                         <span>₦{{ receipt.payload.totals.subtotal|floatformat:2 }}</span>
                     </div>
+                    <div class="rp-row">
+                        <span class="rp-lbl">VAT:</span>
+                        <span>₦0.00</span>
+                    </div>
                     {% if receipt.payload.totals.discount_amount > 0 %}
                     <div class="rp-row">
                         <span class="rp-lbl">Discount:</span>
@@ -165,9 +153,9 @@
                         <span>₦{{ payment.amount|floatformat:2 }}</span>
                     </div>
                     {% if payment.reference_number %}
-                    <div class="rp-row" style="padding-left: 1em;">
-                        <span style="color:#555;">Ref:</span>
-                        <span style="color:#555;">{{ payment.reference_number }}</span>
+                    <div class="rp-row rp-payment-ref">
+                        <span>Ref:</span>
+                        <span>{{ payment.reference_number }}</span>
                     </div>
                     {% endif %}
                     {% endfor %}
@@ -249,51 +237,47 @@
         background: #fff;
         border-radius: 16px;
         width: 100%;
-        max-width: 480px;
+        max-width: 520px;
         max-height: 92vh;
+        overflow: hidden;
         display: flex;
         flex-direction: column;
-        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
-        animation: rmSlide 0.28s ease;
-        overflow: hidden;
+        box-shadow: 0 12px 60px rgba(0, 0, 0, 0.32);
+        animation: rmSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1);;
     }
 
     @keyframes rmSlide {
-        from { opacity: 0; transform: translateY(22px); }
-        to   { opacity: 1; transform: translateY(0); }
+        from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    /* Header — Royal Blue #0033A0 matches POS navbar */
+    /* Header — Royal Blue */
     .receipt-modal-header {
-        background: #0033A0;
-        padding: 1.125rem 1.5rem;
+        background: linear-gradient(135deg, #0033A0 0%, #002470 100%);
+        color: #fff;
+        padding: 1rem 1.5rem;
         display: flex;
-        align-items: center;
         justify-content: space-between;
+        align-items: center;
         flex-shrink: 0;
     }
 
     .receipt-modal-title {
         display: flex;
         align-items: center;
-        gap: 0.625rem;
-        color: #fff;
+        gap: 0.75rem;
         font-size: 1.125rem;
         font-weight: 700;
     }
 
     .receipt-modal-actions {
         display: flex;
-        align-items: center;
         gap: 0.5rem;
+        align-items: center;
     }
 
-    /* Green print button — matches POS "Proceed to Checkout" */
     .btn-header-print {
-        display: flex;
-        align-items: center;
-        gap: 0.375rem;
-        padding: 0.5rem 1rem;
+        padding: 0.625rem 1.125rem;
         background: #7FBA00;
         color: #fff;
         border: none;
@@ -329,8 +313,7 @@
         overflow-y: auto;
         background: #f0f2f7;
         padding: 1.25rem;
-        display: flex;
-        justify-content: center;
+        display: block;
     }
 
     .receipt-modal-body::-webkit-scrollbar { width: 5px; }
@@ -409,107 +392,167 @@
     .btn-rp-cancel:hover { background: #f5f5f5; }
 
     /* ==============================================
-       RECEIPT PRINT AREA
-       Mirrors receipt_detail.html exactly:
-       Courier New, 80mm, same section structure
+       RECEIPT PRINT AREA - THERMAL OPTIMIZED
+       Mirrors receipt_detail.html exactly
     =============================================== */
     .receipt-print-area {
         font-family: 'Courier New', monospace;
-        font-size: 12px;
-        line-height: 1.45;
+        font-size: 13px; /* ✅ Larger */
+        line-height: 1.5; /* ✅ Better spacing */
         color: #000;
         background: #fff;
         width: 100%;
         max-width: 302px; /* 80mm */
         padding: 14px;
         box-shadow: 0 1px 12px rgba(0, 0, 0, 0.12);
+        font-weight: 600; /* ✅ Bolder base */
+        margin: 0 auto;
     }
 
     .rp-header {
         text-align: center;
-        padding-bottom: 8px;
-        margin-bottom: 2px;
-    }
-
-    .rp-company-name {
-        font-size: 16px;
-        font-weight: bold;
+        padding-bottom: 10px;
         margin-bottom: 4px;
     }
 
+    .rp-company-name {
+        font-size: 20px; /* ✅ Larger */
+        font-weight: 900; /* ✅ Extra bold */
+        margin-bottom: 6px;
+        color: #000;
+    }
+
     .rp-company-sub {
-        font-size: 11px;
-        margin-bottom: 2px;
+        font-size: 12px; /* ✅ Larger */
+        margin-bottom: 3px;
+        color: #000; /* ✅ Changed from gray */
+        font-weight: 600;
     }
 
     .rp-receipt-title {
-        font-size: 13px;
-        font-weight: bold;
-        margin-top: 8px;
-        margin-bottom: 3px;
+        font-size: 16px; /* ✅ Larger */
+        font-weight: 900; /* ✅ Extra bold */
+        margin-top: 12px;
+        margin-bottom: 6px;
+        color: #000;
     }
 
     .rp-receipt-number {
-        font-size: 12px;
-        font-weight: bold;
+        font-size: 14px; /* ✅ Larger */
+        font-weight: 900; /* ✅ Extra bold */
+        color: #000;
     }
 
-    /* Dividers — same as receipt_detail.html */
-    .rp-dash  { border-top: 2px dashed #000; margin: 8px 0; }
-    .rp-solid { border-top: 2px solid #000;  margin: 8px 0; }
-    .rp-thin  { border-top: 1px solid #000;  margin: 5px 0; }
+    /* Dividers — Thicker for thermal */
+    .rp-dash  { border-top: 2px dashed #000; margin: 10px 0; } /* ✅ Thicker */
+    .rp-solid { border-top: 3px solid #000;  margin: 10px 0; } /* ✅ Thicker */
+    .rp-thin  { border-top: 2px solid #000;  margin: 6px 0; }  /* ✅ Thicker */
 
-    .rp-section { margin-bottom: 2px; }
+    .rp-section { margin-bottom: 4px; }
 
     .rp-row {
         display: flex;
         justify-content: space-between;
         align-items: baseline;
-        margin-bottom: 3px;
-        font-size: 11px;
+        margin-bottom: 5px; /* ✅ More spacing */
+        font-size: 12px; /* ✅ Larger */
+        color: #000;
+        font-weight: 700; /* ✅ Bold */
     }
 
-    .rp-lbl  { font-weight: bold; }
-    .rp-bold { font-weight: bold; }
+    .rp-lbl  {
+        font-weight: 900; /* ✅ Extra bold */
+        color: #000;
+    }
+
+    .rp-bold {
+        font-weight: 900; /* ✅ Extra bold */
+        color: #000;
+    }
 
     .rp-items-hdr {
-        font-weight: bold;
-        font-size: 12px;
-        margin-bottom: 5px;
-        padding-bottom: 4px;
-        border-bottom: 1px solid #000;
+        font-weight: 900; /* ✅ Extra bold */
+        font-size: 14px; /* ✅ Larger */
+        margin-bottom: 8px;
+        padding-bottom: 5px;
+        border-bottom: 2px solid #000; /* ✅ Thicker */
+        color: #000;
     }
 
-    .rp-item        { margin-bottom: 7px; }
-    .rp-item-name   { font-weight: bold; font-size: 12px; margin-bottom: 2px; }
-    .rp-item-line   { display: flex; justify-content: space-between; font-size: 11px; }
-    .rp-item-qty    { flex: 1; }
-    .rp-item-total  { font-weight: bold; }
+    .rp-item        { margin-bottom: 10px; } /* ✅ More spacing */
+    .rp-item-name   {
+        font-weight: 900; /* ✅ Extra bold */
+        font-size: 13px; /* ✅ Larger */
+        margin-bottom: 3px;
+        color: #000;
+    }
+    .rp-item-line   {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px; /* ✅ Larger */
+        color: #000;
+        font-weight: 700; /* ✅ Bold */
+    }
+    .rp-item-qty    {
+        flex: 1;
+        font-weight: 700;
+        color: #000;
+    }
+    .rp-item-total  {
+        font-weight: 900; /* ✅ Extra bold */
+        color: #000;
+    }
 
     .rp-grand {
-        font-size: 14px !important;
-        font-weight: bold;
-        padding-top: 3px;
+        font-size: 16px !important; /* ✅ Larger */
+        font-weight: 900 !important; /* ✅ Extra bold */
+        padding-top: 6px;
+        color: #000;
     }
 
-    .rp-footer      { text-align: center; margin-top: 10px; }
-    .rp-thankyou    { font-size: 14px; font-weight: bold; margin-bottom: 4px; }
-    .rp-fnote       { font-size: 11px; margin-bottom: 2px; }
-    .rp-barcode     {
-        margin: 10px auto 4px;
-        padding: 5px 10px;
-        border: 1px solid #000;
-        display: inline-block;
-        font-size: 11px;
-        letter-spacing: 2px;
-        font-weight: bold;
+    .rp-footer {
+        text-align: center;
+        margin-top: 12px;
+
+    .rp-thankyou    {
+        font-size: 15px; /* ✅ Larger */
+        font-weight: 900; /* ✅ Extra bold */
+        margin-bottom: 6px;
+        color: #000;
     }
-    .rp-printcount  { font-size: 10px; color: #555; }
+    .rp-fnote       {
+        font-size: 12px; /* ✅ Larger */
+        margin-bottom: 4px;
+        color: #000; /* ✅ Changed from gray */
+        font-weight: 700; /* ✅ Bold */
+    }
+    .rp-barcode     {
+        margin: 12px auto 6px;
+        padding: 6px 12px;
+        border: 2px solid #000; /* ✅ Thicker */
+        display: inline-block;
+        font-size: 11px; /* ✅ Larger */
+        letter-spacing: 2px;
+        font-weight: 900; /* ✅ Extra bold */
+        color: #000;
+    }
+    .rp-printcount  {
+        font-size: 11px; /* ✅ Larger */
+        color: #000; /* ✅ Changed from gray */
+        font-weight: 700; /* ✅ Bold */
+    }
+
+    /* Payment Reference - Dark */
+    .rp-payment-ref {
+        padding-left: 1em;
+        color: #000; /* ✅ Changed from #555 */
+        font-weight: 700;
+    }
 
     /* ==============================================
        PRINT MEDIA
        Hides ALL modal chrome, prints only the
-       receipt-print-area — same as receipt_detail
+       receipt-print-area
     =============================================== */
     @media print {
         /* Hide everything */
@@ -547,14 +590,25 @@
         /* Receipt content */
         .receipt-print-area {
             box-shadow: none !important;
-            padding: 0 !important;
+            padding: 5mm !important;
             max-width: 80mm !important;
             width: 80mm !important;
         }
 
+        /* ✅ Force dark printing */
+        * {
+            color: #000 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .rp-payment-ref {
+            color: #000 !important;
+        }
+
         @page {
             size: 80mm auto;
-            margin: 4mm;
+            margin: 0;
         }
     }
 

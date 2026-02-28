@@ -44,10 +44,10 @@ urlpatterns = [
     # ===== Draft Orders (Hold/Resume) =====
 
     # Hold current order
-    path('hold/', views.hold_current_order, name='hold_current_order'),
+    path('hold/', views.hold_current_order, name='hold_order'),
 
     # List held orders
-    path('drafts/', views.draft_orders_list, name='draft_orders_list'),
+    path('drafts/', views.draft_orders_list, name='drafts_list'),
 
     # View draft order
     path('drafts/<int:pk>/', views.draft_order_detail, name='draft_order_detail'),

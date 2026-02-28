@@ -8,18 +8,44 @@ from django.contrib import messages
 from django.db.models import Q, F
 from django.core.paginator import Paginator
 from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.utils import timezone
 
 from apps.catalog.models import ProductVariant
-from .models import StockMovement
+from .models import StockMovement, PendingStockAdjustment
 from .forms import StockAdjustmentForm, StockSearchForm
 from .services import InventoryService
+
+def user_is_manager(user):
+    """Check if user has manager/admin privileges"""
+    return user.is_superuser or (hasattr(user, 'role') and user.role in ['MANAGER', 'ADMIN'])
 
 
 @login_required
 def inventory_dashboard(request):
     """
     Main inventory page - shows stock levels and recent movements
+    NOW WITH APPROVAL WORKFLOW INTEGRATION
     """
+    from .models import PendingStockAdjustment
+
+    # Check if user is manager
+    user = request.user
+    is_manager = user.is_superuser or (hasattr(user, 'role') and user.role in ['MANAGER', 'ADMIN'])
+
+    # Get pending adjustment counts
+    if is_manager:
+        # Managers see all pending adjustments
+        pending_count = PendingStockAdjustment.objects.filter(status='PENDING').count()
+        user_pending_count = 0
+    else:
+        # Regular users see only their pending adjustments
+        pending_count = 0
+        user_pending_count = PendingStockAdjustment.objects.filter(
+            requested_by=user,
+            status='PENDING'
+        ).count()
+
     # Get all variants with stock tracking
     variants = ProductVariant.objects.select_related(
         'product',
@@ -87,7 +113,7 @@ def inventory_dashboard(request):
     ).count()
 
     context = {
-        'variants': page_obj,  # This is correct - page_obj works as variants
+        'variants': page_obj,
         'search_form': search_form,
         'recent_movements': recent_movements,
 
@@ -103,7 +129,12 @@ def inventory_dashboard(request):
             'out_of_stock': out_of_stock,
             'low_stock': low_stock,
             'in_stock': total_variants - out_of_stock - low_stock,
-        }
+        },
+
+        # NEW: Approval workflow data
+        'is_manager': is_manager,
+        'pending_count': pending_count,
+        'user_pending_count': user_pending_count,
     }
 
     return render(request, 'inventory/dashboard.html', context)
@@ -113,7 +144,10 @@ def inventory_dashboard(request):
 def adjust_stock(request):
     """
     Adjust stock for a variant
+    Now creates pending adjustment for non-managers
     """
+    is_manager = user_is_manager(request.user)
+
     if request.method == 'POST':
         form = StockAdjustmentForm(request.POST)
         if form.is_valid():
@@ -123,21 +157,40 @@ def adjust_stock(request):
                 reason = form.cleaned_data['reason']
                 notes = form.cleaned_data['notes']
 
-                # Perform adjustment through service
-                movement = InventoryService.adjust_stock(
-                    variant_id=variant.id,
-                    quantity_change=quantity_change,
-                    user=request.user,
-                    reason=reason,
-                    notes=notes
-                )
+                if is_manager:
+                    # Managers can adjust directly
+                    movement = InventoryService.adjust_stock(
+                        variant_id=variant.id,
+                        quantity_change=quantity_change,
+                        user=request.user,
+                        reason=reason,
+                        notes=notes
+                    )
 
-                action = "increased" if quantity_change > 0 else "decreased"
-                messages.success(
-                    request,
-                    f'✅ Stock {action} for {variant}. '
-                    f'New quantity: {movement.stock_after}'
-                )
+                    action = "increased" if quantity_change > 0 else "decreased"
+                    messages.success(
+                        request,
+                        f'✅ Stock {action} for {variant}. '
+                        f'New quantity: {movement.stock_after}'
+                    )
+                else:
+                    # Regular users create pending adjustment
+                    pending = PendingStockAdjustment.objects.create(
+                        variant=variant,
+                        adjustment_type='increase' if quantity_change > 0 else 'decrease',
+                        quantity=abs(quantity_change),
+                        quantity_change=quantity_change,
+                        reason=reason,
+                        notes=notes,
+                        requested_by=request.user,
+                        stock_at_request=variant.stock_quantity
+                    )
+
+                    messages.info(
+                        request,
+                        f'📋 Adjustment request submitted for {variant}. '
+                        f'Awaiting manager approval.'
+                    )
 
                 return redirect('inventory:inv_dashboard')
 
@@ -161,6 +214,8 @@ def adjust_stock(request):
     context = {
         'form': form,
         'title': 'Adjust Stock',
+        'is_manager': is_manager,
+        'approval_required': not is_manager,
     }
 
     return render(request, 'inventory/adjust_stock.html', context)
@@ -251,3 +306,130 @@ def movement_log(request):
     }
 
     return render(request, 'inventory/movement_log.html', context)
+
+
+@login_required
+def pending_adjustments(request):
+    """
+    List all pending adjustments
+    Managers see all, regular users see only their requests
+    """
+    is_manager = user_is_manager(request.user)
+
+    if is_manager:
+        # Managers see all pending adjustments
+        pending = PendingStockAdjustment.objects.filter(
+            status='PENDING'
+        ).select_related('variant', 'variant__product', 'requested_by').order_by('-requested_at')
+
+        # Also get recently reviewed
+        recent_reviewed = PendingStockAdjustment.objects.filter(
+            status__in=['APPROVED', 'REJECTED']
+        ).select_related('variant', 'variant__product', 'requested_by', 'reviewed_by').order_by('-reviewed_at')[:10]
+    else:
+        # Regular users see only their requests
+        pending = PendingStockAdjustment.objects.filter(
+            requested_by=request.user,
+            status='PENDING'
+        ).select_related('variant', 'variant__product').order_by('-requested_at')
+
+        recent_reviewed = PendingStockAdjustment.objects.filter(
+            requested_by=request.user,
+            status__in=['APPROVED', 'REJECTED']
+        ).select_related('variant', 'variant__product', 'reviewed_by').order_by('-reviewed_at')[:10]
+
+    context = {
+        'pending_adjustments': pending,
+        'recent_reviewed': recent_reviewed,
+        'is_manager': is_manager,
+    }
+
+    return render(request, 'inventory/pending_adjustments.html', context)
+
+
+@login_required
+def approve_adjustment(request, pk):
+    """
+    Approve a pending stock adjustment (Manager only)
+    """
+    if not user_is_manager(request.user):
+        messages.error(request, '❌ You do not have permission to approve adjustments.')
+        return redirect('inventory:pending_adjustments')
+
+    adjustment = get_object_or_404(PendingStockAdjustment, pk=pk, status='PENDING')
+
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                # Perform the stock adjustment
+                movement = InventoryService.adjust_stock(
+                    variant_id=adjustment.variant.id,
+                    quantity_change=adjustment.quantity_change,
+                    user=request.user,
+                    reason=adjustment.reason,
+                    notes=f"Approved adjustment requested by {adjustment.requested_by.get_full_name() or adjustment.requested_by.username}. {adjustment.notes}"
+                )
+
+                # Update pending adjustment
+                adjustment.status = 'APPROVED'
+                adjustment.reviewed_by = request.user
+                adjustment.reviewed_at = timezone.now()
+                adjustment.review_notes = request.POST.get('review_notes', '')
+                adjustment.save()
+
+                messages.success(
+                    request,
+                    f'✅ Adjustment approved for {adjustment.variant}. '
+                    f'New quantity: {movement.stock_after}'
+                )
+
+        except Exception as e:
+            messages.error(request, f'❌ Error approving adjustment: {str(e)}')
+
+    return redirect('inventory:pending_adjustments')
+
+
+@login_required
+def reject_adjustment(request, pk):
+    """
+    Reject a pending stock adjustment (Manager only)
+    """
+    if not user_is_manager(request.user):
+        messages.error(request, '❌ You do not have permission to reject adjustments.')
+        return redirect('inventory:pending_adjustments')
+
+    adjustment = get_object_or_404(PendingStockAdjustment, pk=pk, status='PENDING')
+
+    if request.method == 'POST':
+        adjustment.status = 'REJECTED'
+        adjustment.reviewed_by = request.user
+        adjustment.reviewed_at = timezone.now()
+        adjustment.review_notes = request.POST.get('review_notes', '')
+        adjustment.save()
+
+        messages.info(
+            request,
+            f'❌ Adjustment rejected for {adjustment.variant}.'
+        )
+
+    return redirect('inventory:pending_adjustments')
+
+
+@login_required
+def adjustment_detail(request, pk):
+    """
+    View details of a pending/reviewed adjustment
+    """
+    is_manager = user_is_manager(request.user)
+
+    if is_manager:
+        adjustment = get_object_or_404(PendingStockAdjustment, pk=pk)
+    else:
+        adjustment = get_object_or_404(PendingStockAdjustment, pk=pk, requested_by=request.user)
+
+    context = {
+        'adjustment': adjustment,
+        'is_manager': is_manager,
+    }
+
+    return render(request, 'inventory/adjustment_detail.html', context)

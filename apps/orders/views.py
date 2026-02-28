@@ -17,6 +17,7 @@ from django.template.loader import render_to_string
 from django.db.models import Q
 from django.core.paginator import Paginator
 from django.contrib.auth import get_user_model
+from django.db.models import Count
 
 import logging
 logger = logging.getLogger(__name__)
@@ -96,19 +97,31 @@ def pos_screen(request):
         messages.error(request, "No open cashier session. Start a session first.")
         return redirect("sales:start_session")
 
-    cart = get_or_create_cart(session, request.user)
+    order_id = request.session.get("current_order_id")
+    cart = None
 
-    # ADD THIS
-    request.session['current_order_id'] = cart.id
-    request.session.modified = True
+    if order_id:
+        cart = Order.objects.filter(
+            pk=order_id,
+            status="DRAFT",
+            cashier_session=session,
+            created_by=request.user
+        ).first()
+
+    if not cart:
+        cart = get_or_create_cart(session, request.user)
+        request.session["current_order_id"] = cart.id
+        request.session.modified = True
+
+    cart = fetch_cart(cart.pk)
+
 
     products = (
         Product.objects
-        .prefetch_related("variants")  # important
+        .prefetch_related("variants")
         .filter(is_active=True)
     )
 
-    # Show products/variants (simple baseline)
     variants = (
         ProductVariant.objects
         .select_related("product")
@@ -116,12 +129,16 @@ def pos_screen(request):
         .order_by("product__name", "name")
     )
 
+    held_count = get_held_orders_count(request.user)
+
     context = {
         "session": session,
         "products": products,
         "variants": variants,
-        **cart_context(cart),
+        'held_count': held_count,
+        **cart_context(cart),  # This should now show the items
     }
+
     return render(request, "orders/pos.html", context)
 
 
@@ -218,9 +235,17 @@ def cart_clear(request):
     if not session:
         return HttpResponseBadRequest("No open cashier session.")
 
-    cart = get_or_create_cart(session, request.user)
-    request.session['current_order_id'] = cart.id
-    request.session.modified = True
+    order_id = request.session.get('current_order_id')
+    if not order_id:
+        return HttpResponseBadRequest("No active cart.")
+
+    cart = get_object_or_404(
+        Order,
+        pk=order_id,
+        status='DRAFT',
+        created_by=request.user,
+        cashier_session=session
+    )
 
     cart.items.all().delete()
     OrderService._recalculate_totals(cart)
@@ -570,63 +595,109 @@ def quick_checkout(request):
         return JsonResponse({'error': str(e)}, status=400)
 
 
-# ===== DRAFT ORDERS (HOLD/RESUME) =====
+# ==================== HOLD/DRAFT ORDER VIEWS ====================
 
 @login_required
-@require_http_methods(["POST"])
+@require_POST
+@transaction.atomic
 def hold_current_order(request):
     """
-    Hold current order for later
-
-    URL: POST /orders/hold/
-    Returns: Redirect to POS
+    Hold the current draft order
+    Saves it with customer info and notes, marks as HELD, clears session cart
     """
-    order_id = request.session.get('current_order_id')
 
+    order_id = request.session.get('current_order_id')
     if not order_id:
-        messages.error(request, 'No active order to hold')
+        messages.error(request, "No active order to hold")
         return redirect('orders:pos')
 
     try:
-        order = Order.objects.get(pk=order_id, status='DRAFT')
-
-        # Add hold note
-        note = request.POST.get('note', '').strip()
-        if note:
-            order.notes = f"HELD: {note}\n{order.notes or ''}"
-            order.save()
-
-        # Clear session
-        if 'current_order_id' in request.session:
-            del request.session['current_order_id']
-            request.session.modified = True
-
-        messages.success(request, f'Order {order.order_number} held')
-        logger.info(f"Order held: {order.order_number}")
-
+        order = Order.objects.get(
+            id=order_id,
+            status='DRAFT',
+            created_by=request.user
+        )
+    except Order.DoesNotExist:
+        messages.error(request, "Order not found")
+        request.session.pop('current_order_id', None)
         return redirect('orders:pos')
 
-    except Exception as e:
-        logger.exception(f"Error holding order: {e}")
-        messages.error(request, f'Error: {str(e)}')
+    # Prevent holding empty order
+    if order.items.count() == 0:
+        messages.error(request, "Cannot hold an empty order")
         return redirect('orders:pos')
+
+    # Update customer info
+    customer_name = request.POST.get('customer_name', '').strip()
+    notes = request.POST.get('notes', '').strip()
+
+    if customer_name:
+        order.customer_name = customer_name
+
+    if notes:
+        order.notes = notes
+
+    order.status = 'HELD'
+
+    order.save()
+
+    # Clear session
+    request.session.pop('current_order_id', None)
+    request.session.modified = True
+
+    messages.success(
+        request,
+        f"Order {order.order_number} has been held successfully."
+    )
+
+    return redirect('orders:pos')
 
 
 @login_required
 def draft_orders_list(request):
     """
-    List all held/draft orders
-
-    URL: GET /orders/drafts/
-    Returns: Draft orders list page
+    Display all held orders (draft orders)
+    For managers: show all held orders
+    For cashiers: show only their held orders
     """
-    drafts = Order.objects.filter(
-        status='DRAFT',
-        created_by=request.user
-    ).order_by('-created_at')[:20]
+    # Check if user is manager
+    is_manager = request.user.groups.filter(name__in=['Admin', 'Manager']).exists()
+
+    # Get draft orders with items
+    if is_manager:
+        # Managers see all held orders
+        draft_orders = Order.objects.filter(status='HELD').annotate(
+            item_count_check=Count('items')
+        ).filter(
+            item_count_check__gt=0  # Only orders with items
+        ).select_related(
+            'customer', 'created_by', 'cashier_session'
+        ).prefetch_related('items').order_by('-created_at')
+    else:
+        # Cashiers see only their own held orders
+        draft_orders = Order.objects.filter(
+            status='HELD',
+            created_by=request.user
+        ).annotate(
+            item_count_check=Count('items')
+        ).filter(
+            item_count_check__gt=0
+        ).select_related(
+            'customer', 'cashier_session'
+        ).prefetch_related('items').order_by('-created_at')
+
+    # Add computed fields for template
+    draft_list = []
+    for order in draft_orders:
+        draft_list.append({
+            'order': order,
+            'total': order.total,
+            'item_count': order.item_count,
+        })
 
     context = {
-        'drafts': drafts,
+        'draft_orders': draft_list,
+        'is_manager': is_manager,
     }
 
     return render(request, 'orders/draft_orders_list.html', context)
@@ -635,67 +706,145 @@ def draft_orders_list(request):
 @login_required
 def draft_order_detail(request, pk):
     """
-    View draft order details
-
-    URL: GET /orders/drafts/<pk>/
-    Returns: Draft order detail page
+    View details of a held order
     """
-    draft = get_object_or_404(
-        Order.objects.prefetch_related('items'),
-        pk=pk,
-        status='DRAFT',
-        created_by=request.user
-    )
+    # Check if user is manager
+    is_manager = request.user.groups.filter(name__in=['Admin', 'Manager']).exists()
 
-    items = draft.items.select_related('variant', 'variant__product').all()
+    # Get the order
+    if is_manager:
+        order = get_object_or_404(Order, pk=pk, status='HELD')
+    else:
+        order = get_object_or_404(Order, pk=pk, status='HELD', created_by=request.user)
+
+    # Check if order has items
+    if order.items.count() == 0:
+        messages.warning(request, "This order is empty")
+        return redirect('orders:drafts_list')
 
     context = {
-        'order': draft,
-        'items': items,
+        'order': order,
+        'items': order.items.all(),
+        'is_manager': is_manager,
     }
 
     return render(request, 'orders/draft_order_detail.html', context)
 
 
 @login_required
-@require_http_methods(["POST"])
 def draft_order_resume(request, pk):
     """
-    Resume draft order
-
-    URL: POST /orders/drafts/<pk>/resume/
-    Returns: Redirect to POS
+    Resume a held order - load it back into the cart
     """
-    draft = get_object_or_404(Order, pk=pk, status='DRAFT', created_by=request.user)
+    if request.method != 'POST':
+        return redirect('orders:drafts_list')
 
-    # Set as current order
-    request.session['current_order_id'] = draft.id
+    is_manager = request.user.groups.filter(name__in=['Admin', 'Manager']).exists()
+
+    if is_manager:
+        order = get_object_or_404(Order, pk=pk, status='HELD')
+    else:
+        order = get_object_or_404(Order, pk=pk, status='HELD', created_by=request.user)
+
+    if order.items.count() == 0:
+        messages.error(request, "Cannot resume an empty order")
+        return redirect('orders:drafts_list')
+
+    try:
+        session = require_open_session(request.user)
+    except ValidationError:
+        messages.error(request, "No open cashier session. Start a session first.")
+        return redirect('sales:start_session')
+
+    existing_draft = Order.objects.filter(
+        cashier_session=session,
+        created_by=request.user,
+        status='DRAFT'
+    ).exclude(pk=order.pk).first()
+
+    if existing_draft and existing_draft.items.count() > 0:
+        messages.warning(
+            request,
+            "You have an active order in your cart. Please complete or hold it before resuming another order."
+        )
+        return redirect('orders:pos')
+
+    # Change status from HELD to DRAFT
+    order.status = 'DRAFT'
+    order.cashier_session = session
+    order.save(update_fields=['status', 'cashier_session', 'updated_at'])
+
+    # ✅ Recalculate totals (same as other cart flows)
+    OrderService._recalculate_totals(order)
+
+    # ✅ Set as current order (critical for POS to load this cart)
+    request.session['current_order_id'] = order.id
     request.session.modified = True
 
-    messages.success(request, f'Resumed order {draft.order_number}')
-    logger.info(f"Order resumed: {draft.order_number}")
-
-    return redirect('pos:pos_interface')
+    messages.success(
+        request,
+        f"Order {order.order_number} has been resumed. Continue adding items or proceed to checkout."
+    )
+    return redirect('orders:pos')
 
 
 @login_required
-@require_http_methods(["POST"])
 def draft_order_delete(request, pk):
     """
-    Delete draft order
-
-    URL: POST /orders/drafts/<pk>/delete/
-    Returns: Redirect to drafts list
+    Delete a held order
     """
-    draft = get_object_or_404(Order, pk=pk, status='DRAFT', created_by=request.user)
+    if request.method != 'POST':
+        return redirect('orders:drafts_list')
 
-    order_number = draft.order_number
-    draft.delete()
+    # Check if user is manager
+    is_manager = request.user.groups.filter(name__in=['Admin', 'Manager']).exists()
 
-    messages.success(request, f'Order {order_number} deleted')
-    logger.info(f"Draft order deleted: {order_number}")
+    # Get the order
+    if is_manager:
+        order = get_object_or_404(Order, pk=pk, status='HELD')
+    else:
+        order = get_object_or_404(Order, pk=pk, status='HELD', created_by=request.user)
 
-    return redirect('orders:draft_orders_list')
+    order_number = order.order_number
+
+    # Clear from session if it's the current order
+    if request.session.get('current_order_id') == order.id:
+        request.session.pop('current_order_id', None)
+
+    order.delete()
+
+    messages.success(
+        request,
+        f"Order {order_number} has been deleted."
+    )
+
+    return redirect('orders:drafts_list')
+
+
+# ==================== HELPER FUNCTION ====================
+
+def get_held_orders_count(user):
+    """
+    Get count of held orders for current user
+    Used to show badge in POS
+    """
+    is_manager = user.groups.filter(name__in=['Admin', 'Manager']).exists()
+
+    if is_manager:
+        count = Order.objects.filter(
+            status='HELD'  # ✅ HELD status
+        ).annotate(
+            item_count_check=Count('items')
+        ).filter(item_count_check__gt=0).count()
+    else:
+        count = Order.objects.filter(
+            status='HELD',  # ✅ FIXED: Was 'DRAFT', should be 'HELD'
+            created_by=user
+        ).annotate(
+            item_count_check=Count('items')
+        ).filter(item_count_check__gt=0).count()
+
+    return count
 
 
 # ===== ORDER MANAGEMENT =====
@@ -744,7 +893,7 @@ def order_list(request):
     orders = orders.order_by('-created_at')
 
     # Pagination
-    paginator = Paginator(orders, 25)  # 25 orders per page
+    paginator = Paginator(orders, 10)  # 10 orders per page
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 

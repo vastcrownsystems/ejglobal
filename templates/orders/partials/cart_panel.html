@@ -250,6 +250,16 @@
     <!-- Checkout Section -->
     {% if items|length > 0 %}
         <div class="cart-footer">
+            <!-- Hold Order Button -->
+            <button
+                class="btn-hold-order"
+                onclick="openHoldModal()"
+            >
+                <i class="fas fa-pause-circle"></i>
+                <span>Hold Order</span>
+            </button>
+
+            <!-- Checkout Button -->
             <button
                 class="btn-checkout"
                 onclick="openCheckoutModal()"
@@ -412,6 +422,41 @@
         z-index: 500;
         max-height: 240px;
         overflow-y: auto;
+    }
+
+    /* Hold Order Button */
+    .btn-hold-order {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        background: linear-gradient(135deg, var(--accent-orange, #FF8C00) 0%, #D68400 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.625rem;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(255, 140, 0, 0.15);
+    }
+
+    .btn-hold-order:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(255, 140, 0, 0.25);
+    }
+
+    .btn-hold-order:active {
+        transform: translateY(0);
+    }
+
+    .cart-footer {
+        padding: 1rem;
+        background: var(--bg-card, #fff);
+        border-top: 1px solid var(--border, #e4e7ed);
     }
 
     .customer-search-results:empty { display: none; }

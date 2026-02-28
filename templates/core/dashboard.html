@@ -63,7 +63,7 @@
     <div class="stat-card">
         <div class="stat-header">
             <div class="stat-icon warning">
-                <i class="fas fa-users"></i>
+                <i class="fas fa-receipt"></i>
             </div>
 <!--            <div class="stat-change {% if customers_change_positive %}positive{% else %}negative{% endif %}">-->
 <!--                <i class="fas fa-arrow-{% if customers_change_positive %}up{% else %}down{% endif %}"></i>-->
@@ -71,11 +71,11 @@
 <!--            </div>-->
         </div>
         <div class="stat-body">
-            <h3>{{ total_customers }}</h3>
+            <h3>{{ today_orders }}</h3>
             {% if is_manager %}
-            <p class="stat-label">Total Customers</p>
+            <p class="stat-label">Total Orders (Today)</p>
             {% else %}
-            <p class="stat-label">Customers Served</p>
+            <p class="stat-label">My Orders (Today)</p>
             {% endif %}
         </div>
     </div>

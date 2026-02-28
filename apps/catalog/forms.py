@@ -30,8 +30,9 @@ class ProductForm(forms.ModelForm):
         required=False,
         widget=forms.TextInput(attrs={
             'class': 'form-input',
-            'placeholder': 'Auto-generated if left blank',
-            'id': 'id_sku'
+            'placeholder': 'Auto-generated',
+            'id': 'id_sku',
+            'disabled': 'disabled'
         }),
         help_text='Leave blank to auto-generate'
     )

@@ -5,6 +5,7 @@
 {% block page_title %}Inventory Management{% endblock %}
 
 {% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
     /* Stats Cards */
     .stats-grid {
@@ -323,6 +324,7 @@
         background: var(--bg-main);
     }
 
+
     /* Recent Movements */
     .movements-list {
         padding: 1.5rem;
@@ -390,207 +392,597 @@
             min-width: auto;
         }
     }
+
+    .approval-banner {
+        background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+        color: white;
+        padding: 1.25rem 2rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+        animation: fadeInDown 0.5s ease;
+    }
+
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .approval-banner-content {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .approval-icon {
+        width: 50px;
+        height: 50px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .approval-text h3 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1.125rem;
+        font-weight: 700;
+    }
+
+    .approval-text p {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 0.95rem;
+    }
+
+    .btn-view-approvals {
+        padding: 0.75rem 1.5rem;
+        background: white;
+        color: #D97706;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-view-approvals:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    .page-header h1 {
+        margin-bottom: 1rem;
+    }
+
+    /* Action buttons in header */
+    .header-actions {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .btn-pending {
+        position: relative;
+        padding: 0.875rem 1.75rem;
+        background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+    }
+
+    .btn-pending:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(245, 158, 11, 0.35);
+    }
+
+    .pending-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background: #EF4444;
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 700;
+        border: 2px solid white;
+    }
+
+
+    /* Primary Button - Main Actions */
+.btn-primary {
+    padding: 0.875rem 1.75rem;
+    background: linear-gradient(135deg, #0033A0 0%, #002D8F 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: 0 4px 12px rgba(0, 51, 160, 0.25);
+    letter-spacing: -0.01em;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 51, 160, 0.35);
+    background: linear-gradient(135deg, #002D8F 0%, #002670 100%);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 51, 160, 0.3);
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Secondary Button - Alternative Actions */
+.btn-secondary {
+    padding: 0.875rem 1.75rem;
+    background: #FFFFFF;
+    color: #0033A0;
+    border: 2px solid #E5E7EB;
+    border-radius: 12px;
+    font-weight: 700;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    letter-spacing: -0.01em;
+}
+
+.btn-secondary:hover {
+    background: #F9FAFB;
+    border-color: #0033A0;
+    color: #0033A0;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 51, 160, 0.1);
+}
+
+.btn-secondary:active {
+    transform: translateY(0);
+    background: #F3F4F6;
+}
+
+.btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Badge inside button */
+.btn-primary .badge,
+.btn-secondary .badge {
+    padding: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.btn-secondary .badge {
+    background: #F59E0B;
+    color: white;
+}
+
+/* Success Button (for approve actions) */
+.btn-success {
+    padding: 0.875rem 1.75rem;
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.35);
+}
+
+/* Danger Button (for reject actions) */
+.btn-danger {
+    padding: 0.875rem 1.75rem;
+    background: rgba(239, 68, 68, 0.1);
+    color: #EF4444;
+    border: 2px solid rgba(239, 68, 68, 0.3);
+    border-radius: 12px;
+    font-weight: 700;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: #EF4444;
+    transform: translateY(-2px);
+}
+
+/* Button Sizes */
+.btn-sm {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    border-radius: 10px;
+}
+
+.btn-lg {
+    padding: 1.125rem 2.25rem;
+    font-size: 1.125rem;
+    border-radius: 14px;
+}
+
+/* Button Group */
+.btn-group {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Icon in button */
+.btn-primary i,
+.btn-secondary i,
+.btn-success i,
+.btn-danger i {
+    font-size: 1.125rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .btn-primary,
+    .btn-secondary,
+    .btn-success,
+    .btn-danger {
+        width: 100%;
+        justify-content: center;
+        padding: 1rem 1.5rem;
+    }
+
+    .btn-group {
+        flex-direction: column;
+    }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Stats Cards -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon total">
-            <i class="fas fa-boxes"></i>
+<div class="inventory-container">
+    <!-- Approval Banner for Managers (shown if there are pending adjustments) -->
+    {% if is_manager and pending_count > 0 %}
+    <div class="approval-banner">
+        <div class="approval-banner-content">
+            <div class="approval-icon">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="approval-text">
+                <h3>{{ pending_count }} Adjustment{{ pending_count|pluralize }} Awaiting Approval</h3>
+                <p>Review and approve stock adjustment requests from your team</p>
+            </div>
         </div>
-        <div class="stat-info">
-            <div class="stat-value">{{ stats.total }}</div>
-            <div class="stat-label">Total Products</div>
-        </div>
+        <a href="{% url 'inventory:pending_adjustments' %}" class="btn-view-approvals">
+            <i class="fas fa-tasks"></i>
+            Review Now
+        </a>
     </div>
+    {% endif %}
 
-    <div class="stat-card">
-        <div class="stat-icon out">
-            <i class="fas fa-exclamation-circle"></i>
+    <!-- Info Banner for Non-Managers -->
+    {% if not is_manager and user_pending_count > 0 %}
+    <div class="approval-banner" style="background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);">
+        <div class="approval-banner-content">
+            <div class="approval-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="approval-text">
+                <h3>{{ user_pending_count }} of Your Request{{ user_pending_count|pluralize }} Pending</h3>
+                <p>Your adjustment requests are waiting for manager approval</p>
+            </div>
         </div>
-        <div class="stat-info">
-            <div class="stat-value">{{ stats.out_of_stock }}</div>
-            <div class="stat-label">Out of Stock</div>
-        </div>
+        <a href="{% url 'inventory:pending_adjustments' %}" class="btn-view-approvals" style="color: #2563EB;">
+            <i class="fas fa-list"></i>
+            View Status
+        </a>
     </div>
+    {% endif %}
 
-    <div class="stat-card">
-        <div class="stat-icon low">
-            <i class="fas fa-exclamation-triangle"></i>
-        </div>
-        <div class="stat-info">
-            <div class="stat-value">{{ stats.low_stock }}</div>
-            <div class="stat-label">Low Stock</div>
-        </div>
-    </div>
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1>
+            <i class="fas fa-warehouse"></i> Inventory Dashboard
+        </h1>
+        <div class="header-actions">
+            {% if is_manager %}
+            <!-- Pending Approvals Button (Manager Only) -->
+            <a href="{% url 'inventory:pending_adjustments' %}" class="btn-pending">
+                <i class="fas fa-tasks"></i>
+                Pending Approvals
+                {% if pending_count > 0 %}
+                <span class="pending-badge">{{ pending_count }}</span>
+                {% endif %}
+            </a>
+            {% else %}
+            <!-- My Requests Button (Regular Users) -->
+            <a href="{% url 'inventory:pending_adjustments' %}" class="btn-secondary">
+                <i class="fas fa-clock"></i>
+                My Requests
+                {% if user_pending_count > 0 %}
+                <span class="badge">{{ user_pending_count }}</span>
+                {% endif %}
+            </a>
+            {% endif %}
 
-    <div class="stat-card">
-        <div class="stat-icon ok">
-            <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="stat-info">
-            <div class="stat-value">{{ stats.in_stock }}</div>
-            <div class="stat-label">In Stock</div>
-        </div>
-    </div>
-</div>
-
-<!-- Content Grid -->
-<div class="content-grid">
-    <!-- Stock List -->
-    <div class="stock-section">
-        <div class="section-header">
-            <h2 class="section-title">Stock Levels</h2>
-            <a href="{% url 'inventory:adjust_stock' %}" class="btn-adjust">
-                <i class="fas fa-plus-circle"></i> Adjust Stock
+            <!-- Adjust Stock Button -->
+            <a href="{% url 'inventory:adjust_stock' %}" class="btn-primary">
+                <i class="fas fa-plus-circle"></i>
+                Adjust Stock
             </a>
         </div>
+    </div>
 
-        <!-- Filters -->
-        <form method="get" class="filters-section">
-            {{ search_form.search }}
-            {{ search_form.stock_status }}
-            {{ search_form.category }}
-            <button type="submit" class="btn-action">
-                <i class="fas fa-search"></i> Search
-            </button>
-        </form>
+    <!-- Rest of your existing dashboard content -->
+    <!-- Stats Grid, Search Form, Variants Table, etc. -->
+    <!-- ... keep all your existing dashboard code ... -->
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon total">
+                <i class="fas fa-boxes"></i>
+            </div>
+            <div class="stat-info">
+                <div class="stat-value">{{ stats.total }}</div>
+                <div class="stat-label">Total Products</div>
+            </div>
+        </div>
 
-        <!-- Stock Table -->
-        <div class="stock-table-container">
-            <table class="stock-table">
-                <thead>
-                    <tr>
-                        <th>Product</th>
-                        <th>SKU</th>
-                        <th>Current Stock</th>
-                        <th>Threshold</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for variant in variants %}
-                    <tr>
-                        <td>
-                            <div class="product-cell">
-                                {% if variant.image %}
-                                    <img src="{{ variant.image.url }}" alt="{{ variant.product.name }}" class="product-image">
-                                {% elif variant.product.image %}
-                                    <img src="{{ variant.product.image.url }}" alt="{{ variant.product.name }}" class="product-image">
-                                {% else %}
-                                    <div class="product-image">
-                                        <i class="fas fa-box"></i>
+        <div class="stat-card">
+            <div class="stat-icon out">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="stat-info">
+                <div class="stat-value">{{ stats.out_of_stock }}</div>
+                <div class="stat-label">Out of Stock</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon low">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-info">
+                <div class="stat-value">{{ stats.low_stock }}</div>
+                <div class="stat-label">Low Stock</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon ok">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-info">
+                <div class="stat-value">{{ stats.in_stock }}</div>
+                <div class="stat-label">In Stock</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Grid -->
+    <div class="content-grid">
+        <!-- Stock List -->
+        <div class="stock-section">
+            <div class="section-header">
+                <h2 class="section-title">Stock Levels</h2>
+                <a href="{% url 'inventory:adjust_stock' %}" class="btn-adjust">
+                    <i class="fas fa-plus-circle"></i> Adjust Stock
+                </a>
+            </div>
+
+            <!-- Filters -->
+            <form method="get" class="filters-section">
+                {{ search_form.search }}
+                {{ search_form.stock_status }}
+                {{ search_form.category }}
+                <button type="submit" class="btn-action">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </form>
+
+            <!-- Stock Table -->
+            <div class="stock-table-container">
+                <table class="stock-table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>SKU</th>
+                            <th>Current Stock</th>
+                            <th>Threshold</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for variant in variants %}
+                        <tr>
+                            <td>
+                                <div class="product-cell">
+                                    {% if variant.image %}
+                                        <img src="{{ variant.image.url }}" alt="{{ variant.product.name }}" class="product-image">
+                                    {% elif variant.product.image %}
+                                        <img src="{{ variant.product.image.url }}" alt="{{ variant.product.name }}" class="product-image">
+                                    {% else %}
+                                        <div class="product-image">
+                                            <i class="fas fa-box"></i>
+                                        </div>
+                                    {% endif %}
+                                    <div class="product-info">
+                                        <div class="product-name">{{ variant.product.name }}</div>
+                                        <div class="product-sku">{{ variant.name|default:variant }}</div>
                                     </div>
-                                {% endif %}
-                                <div class="product-info">
-                                    <div class="product-name">{{ variant.product.name }}</div>
-                                    <div class="product-sku">{{ variant.name|default:variant }}</div>
                                 </div>
-                            </div>
-                        </td>
-                        <td>
-                            <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">
-                                {{ variant.sku }}
-                            </span>
-                        </td>
-                        <td>
-                            <strong style="font-family: 'JetBrains Mono', monospace; font-size: 1.1rem;">
-                                {{ variant.stock_quantity }}
-                            </strong>
-                        </td>
-                        <td>
-                            <span style="color: var(--text-muted);">
-                                {{ variant.low_stock_threshold }}
-                            </span>
-                        </td>
-                        <td>
-                            {% if variant.stock_quantity == 0 %}
-                                <span class="stock-badge out">
-                                    <i class="fas fa-times-circle"></i> Out of Stock
+                            </td>
+                            <td>
+                                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">
+                                    {{ variant.sku }}
                                 </span>
-                            {% elif variant.stock_quantity <= variant.low_stock_threshold %}
-                                <span class="stock-badge low">
-                                    <i class="fas fa-exclamation-triangle"></i> Low Stock
+                            </td>
+                            <td>
+                                <strong style="font-family: 'JetBrains Mono', monospace; font-size: 1.1rem;">
+                                    {{ variant.stock_quantity }}
+                                </strong>
+                            </td>
+                            <td>
+                                <span style="color: var(--text-muted);">
+                                    {{ variant.low_stock_threshold }}
                                 </span>
-                            {% else %}
-                                <span class="stock-badge ok">
-                                    <i class="fas fa-check-circle"></i> In Stock
-                                </span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="{% url 'inventory:variant_detail' variant.pk %}" class="btn-action">
-                                <i class="fas fa-eye"></i> View
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-muted);">
-                            <i class="fas fa-box-open" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-                            <p>No products found</p>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                            </td>
+                            <td>
+                                {% if variant.stock_quantity == 0 %}
+                                    <span class="stock-badge out">
+                                        <i class="fas fa-times-circle"></i> Out of Stock
+                                    </span>
+                                {% elif variant.stock_quantity <= variant.low_stock_threshold %}
+                                    <span class="stock-badge low">
+                                        <i class="fas fa-exclamation-triangle"></i> Low Stock
+                                    </span>
+                                {% else %}
+                                    <span class="stock-badge ok">
+                                        <i class="fas fa-check-circle"></i> In Stock
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'inventory:variant_detail' variant.pk %}" class="btn-action">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                                <i class="fas fa-box-open" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                                <p>No products found</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
 
-        <!-- Pagination -->
-        {% if variants.has_other_pages %}
-        <div style="padding: 1.5rem; border-top: 1px solid var(--border); text-align: center;">
-            {% if variants.has_previous %}
-                <a href="?page={{ variants.previous_page_number }}" class="btn-action">Previous</a>
-            {% endif %}
-            <span style="margin: 0 1rem;">Page {{ variants.number }} of {{ variants.paginator.num_pages }}</span>
-            {% if variants.has_next %}
-                <a href="?page={{ variants.next_page_number }}" class="btn-action">Next</a>
-            {% endif %}
-        </div>
-        {% endif %}
-    </div>
-
-    <!-- Recent Movements -->
-    <div class="movements-section">
-        <div class="section-header">
-            <h2 class="section-title">Recent Movements</h2>
-            <a href="{% url 'inventory:movement_log' %}" class="btn-action">
-                <i class="fas fa-history"></i> View All
-            </a>
-        </div>
-
-        <div class="movements-list">
-            {% for movement in recent_movements %}
-            <div class="movement-item">
-                <div class="movement-header">
-                    <div>
-                        <div class="movement-product">{{ movement.variant.product.name }}</div>
-                        <div class="product-sku">{{ movement.variant.sku }}</div>
-                    </div>
-                    <div class="movement-qty {% if movement.quantity >= 0 %}increase{% else %}decrease{% endif %}">
-                        {{ movement.quantity_display }}
-                    </div>
-                </div>
-                <div class="movement-meta">
-                    <span><i class="fas fa-tag"></i> {{ movement.get_movement_type_display }}</span>
-                    <span><i class="fas fa-user"></i> {{ movement.user.get_full_name|default:movement.user.username }}</span>
-                    <span><i class="fas fa-clock"></i> {{ movement.created_at|timesince }} ago</span>
-                </div>
-                {% if movement.notes %}
-                    <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
-                        {{ movement.notes }}
-                    </div>
+            <!-- Pagination -->
+            {% if variants.has_other_pages %}
+            <div style="padding: 1.5rem; border-top: 1px solid var(--border); text-align: center;">
+                {% if variants.has_previous %}
+                    <a href="?page={{ variants.previous_page_number }}" class="btn-action">Previous</a>
+                {% endif %}
+                <span style="margin: 0 1rem;">Page {{ variants.number }} of {{ variants.paginator.num_pages }}</span>
+                {% if variants.has_next %}
+                    <a href="?page={{ variants.next_page_number }}" class="btn-action">Next</a>
                 {% endif %}
             </div>
-            {% empty %}
-            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
-                <p>No recent movements</p>
+            {% endif %}
+        </div>
+
+        <!-- Recent Movements -->
+        <div class="movements-section">
+            <div class="section-header">
+                <h2 class="section-title">Recent Movements</h2>
+                <a href="{% url 'inventory:movement_log' %}" class="btn-action">
+                    <i class="fas fa-history"></i> View All
+                </a>
             </div>
-            {% endfor %}
+
+            <div class="movements-list">
+                {% for movement in recent_movements %}
+                <div class="movement-item">
+                    <div class="movement-header">
+                        <div>
+                            <div class="movement-product">{{ movement.variant.product.name }}</div>
+                            <div class="product-sku">{{ movement.variant.sku }}</div>
+                        </div>
+                        <div class="movement-qty {% if movement.quantity >= 0 %}increase{% else %}decrease{% endif %}">
+                            {{ movement.quantity_display }}
+                        </div>
+                    </div>
+                    <div class="movement-meta">
+                        <span><i class="fas fa-tag"></i> {{ movement.get_movement_type_display }}</span>
+                        <span><i class="fas fa-user"></i> {{ movement.user.get_full_name|default:movement.user.username }}</span>
+                        <span><i class="fas fa-clock"></i> {{ movement.created_at|timesince }} ago</span>
+                    </div>
+                    {% if movement.notes %}
+                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                            {{ movement.notes }}
+                        </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                    <p>No recent movements</p>
+                </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
+
 </div>
+
+
+
+
+
+
+
 {% endblock %}
