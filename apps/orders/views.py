@@ -18,6 +18,7 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.contrib.auth import get_user_model
 from django.db.models import Count
+from decimal import Decimal, InvalidOperation
 
 import logging
 logger = logging.getLogger(__name__)
@@ -277,6 +278,73 @@ def checkout(request):
     # After checkout, create fresh cart automatically on next POS load
     return redirect("orders:pos")
 
+
+@login_required
+def cart_apply_item_discount(request, item_id):
+    """
+    Apply discount to a specific cart item
+    """
+    if request.method != 'POST':
+        return redirect('orders:pos')
+
+    try:
+        session = require_open_session(request.user)
+    except ValidationError:
+        return redirect('sales:start_session')
+
+    # Get cart
+    cart = get_or_create_cart(session, request.user)
+
+    # Get discount amount from form input
+    # The input name is discount-input-{item_id}
+    discount_key = f'discount-input-{item_id}'
+    discount_input = request.POST.get(discount_key, '0')
+
+    try:
+        discount_amount = Decimal(discount_input.strip())
+        if discount_amount < 0:
+            discount_amount = Decimal('0')
+    except (ValueError, InvalidOperation, AttributeError):
+        discount_amount = Decimal('0')
+
+    # Get the item
+    try:
+        item = OrderItem.objects.get(id=item_id, order=cart)
+    except OrderItem.DoesNotExist:
+        context = cart_context(cart)
+        context['message'] = 'Item not found in cart'
+        context['message_type'] = 'error'
+        return render(request, 'orders/partials/cart_panel.html', context)
+
+    # Validate discount doesn't exceed item subtotal
+    item_subtotal = item.unit_price * item.quantity
+
+    if discount_amount > item_subtotal:
+        context = cart_context(cart)
+        context['message'] = f'Discount (₦{discount_amount}) cannot exceed item total (₦{item_subtotal})'
+        context['message_type'] = 'error'
+        return render(request, 'orders/partials/cart_panel.html', context)
+
+    # Apply discount to item
+    item.discount_amount = discount_amount
+    item.save()  # This will recalculate line_total automatically via model.save()
+
+    # Recalculate order totals
+    OrderService._recalculate_totals(cart)
+
+    # Refresh cart to get updated totals
+    cart.refresh_from_db()
+
+    # Return updated cart
+    context = cart_context(cart)
+    if discount_amount > 0:
+        context['message'] = f'Discount of ₦{discount_amount} applied to {item.product_name}'
+        context['message_type'] = 'success'
+    else:
+        context['message'] = f'Discount removed from {item.product_name}'
+        context['message_type'] = 'info'
+
+    return render(request, 'orders/partials/cart_panel.html', context)
 
 @require_POST
 @login_required

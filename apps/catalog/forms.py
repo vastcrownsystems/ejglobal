@@ -1,8 +1,69 @@
 # apps/catalog/forms.py
-
 from django import forms
 from .models import Category, Product, ProductVariant, VariantAttribute, VariantAttributeValue
+from django.core.exceptions import ValidationError
 
+
+class CategoryForm(forms.ModelForm):
+    """Form for creating and editing categories"""
+
+    class Meta:
+        model = Category
+        fields = ['name', 'slug', 'description', 'parent', 'is_active', 'display_order']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Enter category name',
+                'required': True,
+            }),
+            'slug': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'auto-generated-slug (leave blank for auto-generation)',
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-textarea',
+                'placeholder': 'Optional category description',
+                'rows': 4,
+            }),
+            'parent': forms.Select(attrs={
+                'class': 'form-select',
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'form-checkbox',
+            }),
+            'display_order': forms.NumberInput(attrs={
+                'class': 'form-input',
+                'placeholder': '0',
+                'min': '0',
+            }),
+        }
+        help_texts = {
+            'name': 'Unique name for this category',
+            'slug': 'URL-friendly version of the name (auto-generated if left blank)',
+            'parent': 'Optional parent category for hierarchical organization',
+            'is_active': 'Inactive categories are hidden from customers',
+            'display_order': 'Lower numbers appear first in listings',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['slug'].required = False
+
+        if self.instance and self.instance.pk:
+            self.fields['parent'].queryset = Category.objects.exclude(
+                pk=self.instance.pk
+            ).exclude(parent=self.instance)
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        qs = Category.objects.filter(name__iexact=name)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
+            raise forms.ValidationError('A category with this name already exists.')
+
+        return name
 
 class ProductForm(forms.ModelForm):
     """Form for creating and editing products"""
@@ -121,203 +182,210 @@ class ProductForm(forms.ModelForm):
 
 
 class ProductVariantForm(forms.ModelForm):
-    """Form for creating and editing product variants"""
-
-    product = forms.ModelChoiceField(
-        queryset=Product.objects.filter(is_active=True),
-        widget=forms.Select(attrs={
-            'class': 'form-select',
-            'id': 'id_product'
-        })
-    )
-
-    name = forms.CharField(
-        max_length=200,
-        required=False,
-        widget=forms.TextInput(attrs={
-            'class': 'form-input',
-            'placeholder': 'Leave blank to auto-generate from attributes',
-            'id': 'id_name'
-        }),
-        help_text='Leave blank to auto-generate from attributes'
-    )
-
-    sku = forms.CharField(
-        max_length=50,
-        required=False,
-        widget=forms.TextInput(attrs={
-            'class': 'form-input',
-            'placeholder': 'Auto-generated if left blank',
-            'id': 'id_sku'
-        }),
-        help_text='Leave blank to auto-generate'
-    )
-
-    attribute_values = forms.ModelMultipleChoiceField(
-        queryset=VariantAttributeValue.objects.all(),
-        required=False,
-        widget=forms.CheckboxSelectMultiple(attrs={
-            'class': 'form-checkbox-list'
-        }),
-        help_text='Select variant attributes (e.g., Size: Small, Color: Red)'
-    )
-
-    price = forms.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        min_value=0,
-        widget=forms.NumberInput(attrs={
-            'class': 'form-input',
-            'placeholder': '0.00',
-            'step': '0.01',
-            'id': 'id_price'
-        })
-    )
-
-    cost_price = forms.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        min_value=0,
-        initial=0,
-        widget=forms.NumberInput(attrs={
-            'class': 'form-input',
-            'placeholder': '0.00',
-            'step': '0.01',
-            'id': 'id_cost_price'
-        }),
-        help_text='Cost to purchase/produce this variant'
-    )
-
-    stock_quantity = forms.IntegerField(
-        min_value=0,
-        initial=0,
-        widget=forms.NumberInput(attrs={
-            'class': 'form-input',
-            'placeholder': '0',
-            'id': 'id_stock_quantity'
-        })
-    )
-
-    low_stock_threshold = forms.IntegerField(
-        min_value=0,
-        initial=10,
-        widget=forms.NumberInput(attrs={
-            'class': 'form-input',
-            'placeholder': '10',
-            'id': 'id_low_stock_threshold'
-        }),
-        help_text='Alert when stock falls below this level'
-    )
-
-    barcode = forms.CharField(
-        max_length=50,
-        required=False,
-        widget=forms.TextInput(attrs={
-            'class': 'form-input',
-            'placeholder': 'Enter barcode',
-            'id': 'id_barcode'
-        })
-    )
-
-    weight = forms.DecimalField(
-        max_digits=8,
-        decimal_places=2,
-        required=False,
-        widget=forms.NumberInput(attrs={
-            'class': 'form-input',
-            'placeholder': '0.00',
-            'step': '0.01',
-            'id': 'id_weight'
-        }),
-        help_text='Weight in kg'
-    )
-
-    image = forms.ImageField(
-        required=False,
-        widget=forms.FileInput(attrs={
-            'class': 'form-file',
-            'id': 'id_image',
-            'accept': 'image/*'
-        }),
-        help_text='Variant-specific image (optional)'
-    )
-
-    is_active = forms.BooleanField(
-        required=False,
-        initial=True,
-        widget=forms.CheckboxInput(attrs={
-            'class': 'form-checkbox',
-            'id': 'id_is_active'
-        })
-    )
-
-    is_default = forms.BooleanField(
-        required=False,
-        widget=forms.CheckboxInput(attrs={
-            'class': 'form-checkbox',
-            'id': 'id_is_default'
-        }),
-        help_text='Default variant to display'
-    )
+    """Form for creating/editing product variants"""
 
     class Meta:
         model = ProductVariant
         fields = [
             'product',
             'name',
+            'attribute_values',  # ✅ Added this
             'sku',
-            'attribute_values',
+            'barcode',
             'price',
             'cost_price',
             'stock_quantity',
             'low_stock_threshold',
-            'barcode',
             'weight',
             'image',
             'is_active',
-            'is_default'
+            'is_default',
         ]
+        widgets = {
+            'product': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True
+            }),
+            'name': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'e.g., Small, Red, 500ml (leave blank to auto-generate)',
+            }),
+            'attribute_values': forms.CheckboxSelectMultiple(),  # ✅ Added this
+            'sku': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Leave blank to auto-generate',
+                'required': False
+            }),
+            'barcode': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Enter barcode (optional)',
+                'required': False
+            }),
+            'price': forms.NumberInput(attrs={
+                'class': 'form-input',
+                'placeholder': '0.00',
+                'step': '0.01',
+                'min': '0',
+                'required': True
+            }),
+            'cost_price': forms.NumberInput(attrs={
+                'class': 'form-input',
+                'placeholder': '0.00',
+                'step': '0.01',
+                'min': '0',
+            }),
+            'stock_quantity': forms.NumberInput(attrs={
+                'class': 'form-input',
+                'placeholder': '0',
+                'min': '0',
+            }),
+            'low_stock_threshold': forms.NumberInput(attrs={
+                'class': 'form-input',
+                'placeholder': '10',
+                'min': '0',
+            }),
+            'weight': forms.NumberInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Weight in kg',
+                'step': '0.01',
+                'min': '0',
+            }),
+            'image': forms.FileInput(attrs={
+                'class': 'form-file',
+                'accept': 'image/*'
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'form-checkbox',
+            }),
+            'is_default': forms.CheckboxInput(attrs={
+                'class': 'form-checkbox',
+            }),
+        }
+        labels = {
+            'sku': 'SKU',
+            'barcode': 'Barcode / UPC',
+            'cost_price': 'Cost Price',
+            'is_active': 'Active',
+            'is_default': 'Set as Default Variant',
+            'attribute_values': 'Variant Attributes',
+        }
+        help_texts = {
+            'name': 'Variant name (e.g., "Small", "Red", "500ml"). Leave blank to auto-generate from attributes.',
+            'attribute_values': 'Select the attributes that define this variant (e.g., Size: Small, Color: Red)',
+            'sku': 'Unique identifier - leave blank to auto-generate',
+            'barcode': 'For barcode scanning at checkout. Optional - leave blank if not using barcodes.',
+            'price': 'Selling price for this variant',
+            'cost_price': 'Your cost to purchase/produce this variant',
+            'low_stock_threshold': 'Alert when stock falls below this number',
+            'weight': 'Product weight for shipping calculations',
+            'is_default': 'This variant will be shown by default when viewing the product',
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Group attribute values by attribute for better display
-        from collections import defaultdict
-        from .models import VariantAttribute
 
-        attr_groups = defaultdict(list)
-        for attr_val in VariantAttributeValue.objects.select_related('attribute').order_by('attribute__display_order',
-                                                                                           'display_order'):
-            attr_groups[attr_val.attribute].append(attr_val)
+        # Create attribute_groups for the template
+        # This organizes attributes by type (Size, Color, etc.)
+        self.attribute_groups = {}
 
-        self.attribute_groups = dict(attr_groups)
+        attributes = VariantAttribute.objects.prefetch_related('values').all()
+        for attribute in attributes:
+            values = attribute.values.all()
+            if values:
+                self.attribute_groups[attribute] = list(values)
 
     def clean_sku(self):
+        """
+        Validate SKU uniqueness
+        Convert empty string to None to allow auto-generation
+        """
         sku = self.cleaned_data.get('sku')
-        if sku:
-            qs = ProductVariant.objects.filter(sku=sku)
-            if self.instance.pk:
-                qs = qs.exclude(pk=self.instance.pk)
-            if qs.exists():
-                raise forms.ValidationError('A variant with this SKU already exists.')
+
+        # If SKU is empty, return None to trigger auto-generation
+        if not sku or sku.strip() == '':
+            return None
+
+        # Clean and normalize
+        sku = sku.strip().upper()
+
+        # Check uniqueness
+        existing = ProductVariant.objects.filter(sku__iexact=sku)
+
+        # Exclude current instance if editing
+        if self.instance.pk:
+            existing = existing.exclude(pk=self.instance.pk)
+
+        if existing.exists():
+            variant = existing.first()
+            raise ValidationError(
+                f'SKU "{sku}" is already used by '
+                f'{variant.product.name} - {variant.name}. '
+                f'Please use a different SKU or leave blank to auto-generate.'
+            )
+
         return sku
 
     def clean_barcode(self):
+        """
+        Validate barcode uniqueness
+        Convert empty string to None (allows multiple variants without barcodes)
+        """
         barcode = self.cleaned_data.get('barcode')
-        if barcode:
-            qs = ProductVariant.objects.filter(barcode=barcode)
-            if self.instance.pk:
-                qs = qs.exclude(pk=self.instance.pk)
-            if qs.exists():
-                raise forms.ValidationError('A variant with this barcode already exists.')
+
+        # Convert empty string to None (NULL in database)
+        # This allows unlimited variants without barcodes
+        if not barcode or barcode.strip() == '':
+            return None
+
+        # Clean and normalize
+        barcode = barcode.strip()
+
+        # Check uniqueness only for non-empty barcodes
+        existing = ProductVariant.objects.filter(barcode=barcode)
+
+        # Exclude current instance if editing
+        if self.instance.pk:
+            existing = existing.exclude(pk=self.instance.pk)
+
+        if existing.exists():
+            variant = existing.first()
+            raise ValidationError(
+                f'Barcode "{barcode}" is already used by '
+                f'{variant.product.name} - {variant.name} '
+                f'(SKU: {variant.sku}). '
+                f'Please use a different barcode or leave blank.'
+            )
+
         return barcode
 
+    def clean_price(self):
+        """Validate price is not negative"""
+        price = self.cleaned_data.get('price')
+
+        if price is None:
+            raise ValidationError('Price is required.')
+
+        if price < 0:
+            raise ValidationError('Price cannot be negative.')
+
+        return price
+
     def clean(self):
+        """Form-level validation"""
         cleaned_data = super().clean()
+
         price = cleaned_data.get('price')
         cost_price = cleaned_data.get('cost_price')
 
+        # Warn if selling below cost (don't prevent, just warn)
         if price and cost_price and price < cost_price:
-            self.add_error('price', 'Price cannot be less than cost price.')
+            self.add_error('price',
+                           ValidationError(
+                               'Warning: Selling price is lower than cost price. '
+                               'You will be selling at a loss.',
+                               code='price_below_cost'
+                           )
+                           )
 
         return cleaned_data
 

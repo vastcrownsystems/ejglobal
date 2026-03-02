@@ -110,15 +110,28 @@
 
                         <div class="item-summary">
                             <span class="item-number">{{ forloop.counter }}</span>
-                            <span class="cart-item-name">{{ item.variant_name }}</span>
+
+                            <span class="cart-item-name">
+                                {{ item.variant_name }}
+                            </span>
+
                             <span class="cart-item-quantity-badge">
                                 {{ item.quantity }}
                             </span>
-                        </div>
 
-                        <!-- Line Total -->
-                        <div class="cart-item-total">
-                            <span class="total-amount">₦{{ item.line_total|floatformat:2 }}</span>
+                            <!-- PRICE DISPLAY -->
+                            <span class="cart-item-total">
+                                {% if item.discount_amount > 0 %}
+                                    <span class="total-amount price-old">
+                                        ₦{{ item.subtotal|floatformat:2 }}
+                                    </span>
+                                    <span class="total-amount price-new">
+                                        ₦{{ item.line_total|floatformat:2 }}
+                                    </span>
+                                {% else %}
+                                    <span class="total-amount">₦{{ item.line_total|floatformat:2 }}</span>
+                                {% endif %}
+                            </span>
                         </div>
 
                         <button
@@ -213,16 +226,28 @@
                                 <!-- Discount Section -->
                                 <div class="cart-item-actions discount-div">
                                     <div class="discount-control">
-                                        <button class="discount-type" title="DISCOUNT">%</button>
+                                        <button class="discount-type" title="DISCOUNT">₦</button>
                                         <input
                                             type="number"
                                             class="discount-input"
+                                            id="discount-input-{{ item.id }}"
                                             value="{% if item.discount_amount > 0 %}{{ item.discount_amount }}{% else %}0{% endif %}"
                                             min="0"
-                                            placeholder="0"
+                                            max="{{ item.subtotal }}"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                            name="discount-input-{{ item.id }}"
                                         >
                                     </div>
-                                    <button class="btn-apply-discount">
+                                    <button
+                                            class="btn-apply-discount"
+                                            hx-post="{% url 'orders:cart_apply_item_discount' item.id %}"
+                                            hx-include="#discount-input-{{ item.id }}"
+                                            hx-target="#cartPanel"
+                                            hx-swap="outerHTML"
+                                            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                                            title="Apply discount"
+                                    >
                                         <i class="fas fa-check-circle"></i>
                                     </button>
                                 </div>
@@ -407,6 +432,24 @@
         background: #e2e5eb;
         color: #0033A0;
         border-color: #0033A0;
+    }
+
+    .cart-item-summary-price {
+        margin-left: auto;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .price-old {
+        text-decoration: line-through;
+        opacity: 0.4;
+        margin-right: 6px;
+        font-weight: 500;
+    }
+
+    .price-new {
+        color: #d90429;
+        font-weight: 700;
     }
 
     /* Search Results Dropdown */

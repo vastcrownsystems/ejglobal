@@ -12,7 +12,7 @@ urlpatterns = [
     path('cart/line/<int:item_id>/remove/', views.cart_remove_line, name='cart_remove_item'),
 
     # Apply item discount (returns single item partial)
-    path('cart/line/<int:item_id>/discount/', views.cart_apply_discount, name='cart_apply_item_discount'),
+    path('cart/line/<int:item_id>/discount/', views.cart_apply_item_discount, name='cart_apply_item_discount'),
 
     path('cart/clear/', views.cart_clear, name='cart_clear'),
     # Clear entire cart

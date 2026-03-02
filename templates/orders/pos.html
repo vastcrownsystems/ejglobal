@@ -78,8 +78,9 @@
                                 {% csrf_token %}
                                 <button type="submit" class="variant-btn">
                                     <span class="variant-size">
-                                        {{ variant.name }}
-                                        {# OR variant.get_attribute_display #}
+<!--                                        {{ variant.name }}-->
+<!--                                        {{ variant.get_attribute_display }}-->
+                                        {{ variant.get_attribute_values_display }}
                                     </span>
                                     <span class="variant-price">
                                         ₦{{ variant.price }}

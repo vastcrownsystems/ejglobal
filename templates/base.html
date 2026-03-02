@@ -111,6 +111,17 @@
                     <i class="fas fa-box"></i> Catalog
                 </div>
                 {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
+                    <a href="{% url 'catalog:category_list' %}"
+                       class="nav-item
+                       {% if ns == 'catalog' and 'category_' in name or 'categories' in name %}
+                           active
+                       {% endif %}"
+                       data-title="Categories">
+                        <i class="fas fa-tags"></i>
+                        <span>Categories</span>
+                    </a>
+                {% endwith %}
+                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
                     <a href="{% url 'catalog:product_list' %}"
                        class="nav-item
                        {% if ns == 'catalog' and 'product_' in name %}

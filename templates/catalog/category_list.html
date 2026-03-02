@@ -1,0 +1,579 @@
+<!-- apps/catalog/templates/catalog/category_list.html -->
+{% extends 'base.html' %}
+
+{% block title %}Categories - EJ Global Services{% endblock %}
+{% block page_title %}Categories{% endblock %}
+
+{% block content %}
+<div class="categories-page">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <h1>
+                <i class="fas fa-folder-tree"></i>
+                Categories
+            </h1>
+            <p class="subtitle">Manage product categories and organization</p>
+        </div>
+        <div class="header-right">
+            <a href="{% url 'catalog:category_create' %}" class="btn-primary">
+                <i class="fas fa-plus"></i>
+                Create Category
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+        <form method="get" class="filters-form">
+            <div class="search-group">
+                <i class="fas fa-search"></i>
+                <input
+                    type="text"
+                    name="search"
+                    class="search-input"
+                    placeholder="Search categories..."
+                    value="{{ search_query }}"
+                >
+            </div>
+
+            <select name="status" class="filter-select" onchange="this.form.submit()">
+                <option value="">All Status</option>
+                <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active Only</option>
+                <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive Only</option>
+            </select>
+
+            <button type="submit" class="btn-filter">
+                <i class="fas fa-filter"></i>
+                Filter
+            </button>
+
+            {% if request.GET %}
+                <a href="{% url 'catalog:category_list' %}" class="btn-clear">
+                    <i class="fas fa-times"></i>
+                    Clear
+                </a>
+            {% endif %}
+        </form>
+
+        <div class="results-info">
+            <i class="fas fa-info-circle"></i>
+            Showing {{ categories|length }} of {{ total_count }} categories
+        </div>
+    </div>
+
+    <!-- Categories Table -->
+    {% if categories %}
+        <div class="table-wrapper">
+            <table class="categories-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Parent</th>
+                        <th>Products</th>
+                        <th class="text-center">Display Order</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category in categories %}
+                    <tr>
+                        <td>
+                            <div class="category-name">
+                                <i class="fas fa-folder"></i>
+                                <strong>{{ category.name }}</strong>
+                            </div>
+                            {% if category.description %}
+                            <div class="category-desc">{{ category.description|truncatewords:15 }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if category.parent %}
+                                <span class="parent-badge">
+                                    <i class="fas fa-level-up-alt"></i>
+                                    {{ category.parent.name }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="products-count">
+                                {{ category.products_count }} product{{ category.products_count|pluralize }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span class="order-badge">{{ category.display_order }}</span>
+                        </td>
+                        <td class="text-center">
+                            {% if category.is_active %}
+                                <span class="badge badge-success">
+                                    <i class="fas fa-check-circle"></i>
+                                    Active
+                                </span>
+                            {% else %}
+                                <span class="badge badge-danger">
+                                    <i class="fas fa-times-circle"></i>
+                                    Inactive
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="action-buttons">
+                                <a href="{% url 'catalog:category_detail' category.pk %}" class="btn-icon" title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'catalog:category_edit' category.pk %}" class="btn-icon" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="post" action="{% url 'catalog:category_toggle_status' category.pk %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-icon" title="{% if category.is_active %}Deactivate{% else %}Activate{% endif %}">
+                                        <i class="fas fa-{% if category.is_active %}toggle-on{% else %}toggle-off{% endif %}"></i>
+                                    </button>
+                                </form>
+                                <a href="{% url 'catalog:category_delete' category.pk %}" class="btn-icon btn-danger" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+                <div class="pagination">
+                    {% if page_obj.has_previous %}
+                        <a href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="page-link">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                        <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="page-link">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    {% endif %}
+
+                    <span class="page-info">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="page-link">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                        <a href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="page-link">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fas fa-folder-open"></i>
+            </div>
+            <h3>No categories found</h3>
+            {% if request.GET %}
+                <p>Try adjusting your search or filters</p>
+                <a href="{% url 'catalog:category_list' %}" class="btn-secondary">Clear Filters</a>
+            {% else %}
+                <p>Create your first category to organize products</p>
+                <a href="{% url 'catalog:category_create' %}" class="btn-primary">
+                    <i class="fas fa-plus"></i>
+                    Create Category
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    .categories-page {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .page-header h1 {
+        margin: 0 0 0.5rem 0;
+        font-size: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: #1A1A1A;
+    }
+
+    .subtitle {
+        margin: 0;
+        color: #666;
+        font-size: 0.95rem;
+    }
+
+    .btn-primary {
+        padding: 0.875rem 1.5rem;
+        background: linear-gradient(135deg, #0033A0 0%, #002470 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(0, 51, 160, 0.2);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 51, 160, 0.3);
+    }
+
+    .filters-section {
+        background: white;
+        border: 1px solid #E8E8E8;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .filters-form {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
+
+    .search-group {
+        flex: 1;
+        min-width: 250px;
+        position: relative;
+    }
+
+    .search-group i {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #999;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 0.875rem 1rem 0.875rem 2.75rem;
+        border: 2px solid #E8E8E8;
+        border-radius: 8px;
+        font-size: 0.9375rem;
+        transition: all 0.2s;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: #0033A0;
+        box-shadow: 0 0 0 3px rgba(0, 51, 160, 0.1);
+    }
+
+    .filter-select {
+        padding: 0.875rem 1rem;
+        border: 2px solid #E8E8E8;
+        border-radius: 8px;
+        font-size: 0.9375rem;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .filter-select:focus {
+        outline: none;
+        border-color: #0033A0;
+        box-shadow: 0 0 0 3px rgba(0, 51, 160, 0.1);
+    }
+
+    .btn-filter, .btn-clear {
+        padding: 0.875rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-filter {
+        background: #0033A0;
+        color: white;
+    }
+
+    .btn-filter:hover {
+        background: #002470;
+    }
+
+    .btn-clear {
+        background: #F5F5F5;
+        color: #666;
+    }
+
+    .btn-clear:hover {
+        background: #E8E8E8;
+    }
+
+    .results-info {
+        color: #666;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .table-wrapper {
+        background: white;
+        border: 1px solid #E8E8E8;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .categories-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .categories-table th {
+        background: #FAFAFA;
+        padding: 1rem 1.25rem;
+        text-align: left;
+        font-weight: 700;
+        font-size: 0.8125rem;
+        color: #666;
+        text-transform: uppercase;
+        border-bottom: 2px solid #E8E8E8;
+    }
+
+    .categories-table td {
+        padding: 1.25rem;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .categories-table tbody tr:hover {
+        background: #FAFAFA;
+    }
+
+    .category-name {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .category-name i {
+        color: #7FBA00;
+    }
+
+    .category-desc {
+        font-size: 0.875rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+
+    .parent-badge {
+        padding: 0.375rem 0.75rem;
+        background: #F0F0F0;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+    }
+
+    .products-count {
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    .order-badge {
+        padding: 0.375rem 0.75rem;
+        background: #F0F0F0;
+        border-radius: 6px;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .badge {
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+    }
+
+    .badge-success { background: #D1FAE5; color: #065F46; }
+    .badge-danger { background: #FEE2E2; color: #991B1B; }
+
+    .text-center { text-align: center; }
+    .text-muted { color: #999; }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+    }
+
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+        background: #F5F5F5;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-icon:hover {
+        background: #0033A0;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .btn-icon.btn-danger:hover {
+        background: #DC3545;
+        color: white;
+    }
+
+    .pagination {
+        padding: 1.5rem;
+        border-top: 1px solid #E8E8E8;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .page-link {
+        width: 36px;
+        height: 36px;
+        background: #F5F5F5;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .page-link:hover {
+        background: #0033A0;
+        color: white;
+    }
+
+    .page-info {
+        padding: 0 1rem;
+        font-weight: 600;
+        color: #666;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border: 1px solid #E8E8E8;
+        border-radius: 12px;
+    }
+
+    .empty-icon {
+        width: 100px;
+        height: 100px;
+        background: #F5F5F5;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+    }
+
+    .empty-icon i {
+        font-size: 3rem;
+        color: #D0D0D0;
+    }
+
+    .empty-state h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.5rem;
+    }
+
+    .empty-state p {
+        margin: 0 0 1.5rem 0;
+        color: #666;
+    }
+
+    .btn-secondary {
+        padding: 0.875rem 1.5rem;
+        background: #F5F5F5;
+        color: #666;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+        background: #E8E8E8;
+    }
+
+    @media (max-width: 768px) {
+        .categories-page {
+            padding: 1rem;
+        }
+
+        .page-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .filters-form {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .search-group {
+            width: 100%;
+        }
+
+        .categories-table {
+            font-size: 0.875rem;
+        }
+
+        .categories-table th,
+        .categories-table td {
+            padding: 0.875rem;
+        }
+    }
+</style>
+{% endblock %}

@@ -294,6 +294,13 @@ class ProductVariant(TimeStampedModel):
             return "Standard"
         return ", ".join([f"{av.attribute.display_name}: {av.value}" for av in attrs])
 
+    def get_attribute_values_display(self):
+        """Return only attribute values (e.g., Large, 500g)"""
+        attrs = self.attribute_values.all().order_by('attribute__display_order')
+        if not attrs:
+            return "Standard"
+        return ", ".join([av.value for av in attrs])
+
     def is_low_stock(self):
         """Check if stock is below threshold"""
         if not self.product.track_inventory:

@@ -215,38 +215,75 @@ class OrderService:
         OrderService._recalculate_totals(order)
         return order
 
+    # @staticmethod
+    # def _recalculate_totals(order):
+    #     """
+    #     Recalculate order totals
+    #
+    #     THIS IS CRITICAL - Make sure it saves!
+    #     """
+    #     print(f"  [_recalculate_totals] START for order {order.order_number}")
+    #
+    #     # Calculate subtotal from items
+    #     items = order.items.all()
+    #     subtotal = sum(item.line_total for item in items)
+    #
+    #     print(f"  [_recalculate_totals] Items count: {items.count()}")
+    #     print(f"  [_recalculate_totals] Subtotal: ₦{subtotal}")
+    #
+    #     # Update order
+    #     order.subtotal = subtotal
+    #     order.tax_amount = Decimal('0.00')  # No tax for now
+    #     order.total = subtotal + order.tax_amount - order.discount_amount
+    #
+    #     # Ensure total doesn't go negative
+    #     if order.total < 0:
+    #         order.total = Decimal('0.00')
+    #
+    #     print(f"  [_recalculate_totals] Total: ₦{order.total}")
+    #
+    #     # ✅ CRITICAL: Actually save the order!
+    #     order.save(update_fields=['subtotal', 'tax_amount', 'total', 'updated_at'])
+    #
+    #     print(f"  [_recalculate_totals] Order saved!")
+    #     print(f"  [_recalculate_totals] END\n")
+
     @staticmethod
     def _recalculate_totals(order):
         """
-        Recalculate order totals
-
-        THIS IS CRITICAL - Make sure it saves!
+        Recalculate order totals correctly
         """
-        print(f"  [_recalculate_totals] START for order {order.order_number}")
 
-        # Calculate subtotal from items
         items = order.items.all()
-        subtotal = sum(item.line_total for item in items)
 
-        print(f"  [_recalculate_totals] Items count: {items.count()}")
-        print(f"  [_recalculate_totals] Subtotal: ₦{subtotal}")
+        # Subtotal BEFORE any discount
+        subtotal = sum(item.unit_price * item.quantity for item in items)
+
+        # Total item-level discounts
+        total_item_discounts = sum(item.discount_amount for item in items)
+
+        # Cart-level discount (if you later support it)
+        cart_discount = order.discount_amount or Decimal('0.00')
+
+        total_discount = total_item_discounts + cart_discount
 
         # Update order
         order.subtotal = subtotal
-        order.tax_amount = Decimal('0.00')  # No tax for now
-        order.total = subtotal + order.tax_amount - order.discount_amount
+        order.discount_amount = total_item_discounts
+        order.tax_amount = Decimal('0.00')
 
-        # Ensure total doesn't go negative
+        order.total = subtotal - total_item_discounts + order.tax_amount
+
         if order.total < 0:
             order.total = Decimal('0.00')
 
-        print(f"  [_recalculate_totals] Total: ₦{order.total}")
-
-        # ✅ CRITICAL: Actually save the order!
-        order.save(update_fields=['subtotal', 'tax_amount', 'total', 'updated_at'])
-
-        print(f"  [_recalculate_totals] Order saved!")
-        print(f"  [_recalculate_totals] END\n")
+        order.save(update_fields=[
+            'subtotal',
+            'discount_amount',
+            'tax_amount',
+            'total',
+            'updated_at'
+        ])
 
     """Service for managing orders with payment and inventory integration"""
 

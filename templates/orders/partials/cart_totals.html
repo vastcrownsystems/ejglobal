@@ -14,15 +14,15 @@
         </div>
 
         <!-- Discount (if any) -->
-{#        {% if order.discount_amount > 0 %}#}
+        {% if order.discount_amount > 0 %}
         <div class="total-line total-line-discount">
             <span class="total-line-label">
                 <i class="fas fa-tag"></i>
                 Discount
             </span>
-            <span class="total-line-value discount-amount">₦{{ order.discount_amount|floatformat:2 }}</span>
+            <span class="total-line-value discount-amount">-₦{{ order.discount_amount|floatformat:2 }}</span>
         </div>
-{#        {% endif %}#}
+       {% endif %}
 
         <!-- Tax (if any) -->
 {#        {% if order.tax_amount > 0 %}#}

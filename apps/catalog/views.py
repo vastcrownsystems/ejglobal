@@ -1,5 +1,4 @@
 # apps/catalog/views.py
-
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -11,7 +10,8 @@ from .forms import (
     ProductForm,
     ProductVariantForm,
     ProductSearchForm,
-    VariantSearchForm
+    VariantSearchForm,
+    CategoryForm
 )
 from .models import VariantAttribute, VariantAttributeValue
 from .forms import (
@@ -19,6 +19,230 @@ from .forms import (
     VariantAttributeValueForm,
     BulkAttributeValueForm
 )
+
+
+def group_required(*group_names):
+    """Decorator to require user to be in specific groups"""
+
+    def decorator(view_func):
+        def wrapper(request, *args, **kwargs):
+            if request.user.is_superuser:
+                return view_func(request, *args, **kwargs)
+
+            if request.user.groups.filter(name__in=group_names).exists():
+                return view_func(request, *args, **kwargs)
+
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect('dashboard')
+
+        return wrapper
+
+    return decorator
+
+@login_required
+@group_required('Admin', 'Manager')
+def category_list(request):
+    """
+    List all categories with search and filtering
+    Only accessible by Admin and Manager
+    """
+    # Get search query
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '')
+
+    # Base queryset
+    categories = Category.objects.annotate(
+        products_count=Count('products')
+    ).select_related('parent')
+
+    # Apply search
+    if search_query:
+        categories = categories.filter(
+            Q(name__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(slug__icontains=search_query)
+        )
+
+    # Apply status filter
+    if status_filter == 'active':
+        categories = categories.filter(is_active=True)
+    elif status_filter == 'inactive':
+        categories = categories.filter(is_active=False)
+
+    # Order by display_order, then name
+    categories = categories.order_by('display_order', 'name')
+
+    # Pagination
+    paginator = Paginator(categories, 20)  # 20 categories per page
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'categories': page_obj,
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'total_count': categories.count(),
+    }
+
+    return render(request, 'catalog/category_list.html', context)
+
+
+@login_required
+@group_required('Admin', 'Manager')
+def category_create(request):
+    """
+    Create a new category
+    Only accessible by Admin and Manager
+    """
+    if request.method == 'POST':
+        form = CategoryForm(request.POST)
+        if form.is_valid():
+            category = form.save()
+            messages.success(
+                request,
+                f'Category "{category.name}" has been created successfully.'
+            )
+            return redirect('catalog:category_list')
+    else:
+        form = CategoryForm()
+
+    context = {
+        'form': form,
+        'title': 'Create Category',
+        'submit_text': 'Create Category',
+    }
+
+    return render(request, 'catalog/category_form.html', context)
+
+
+@login_required
+@group_required('Admin', 'Manager')
+def category_edit(request, pk):
+    """
+    Edit an existing category
+    Only accessible by Admin and Manager
+    """
+    category = get_object_or_404(Category, pk=pk)
+
+    if request.method == 'POST':
+        form = CategoryForm(request.POST, instance=category)
+        if form.is_valid():
+            category = form.save()
+            messages.success(
+                request,
+                f'Category "{category.name}" has been updated successfully.'
+            )
+            return redirect('catalog:category_list')
+    else:
+        form = CategoryForm(instance=category)
+
+    context = {
+        'form': form,
+        'category': category,
+        'title': f'Edit Category: {category.name}',
+        'submit_text': 'Update Category',
+    }
+
+    return render(request, 'catalog/category_form.html', context)
+
+
+@login_required
+@group_required('Admin', 'Manager')
+def category_detail(request, pk):
+    """
+    View category details including associated products
+    Only accessible by Admin and Manager
+    """
+    category = get_object_or_404(
+        Category.objects.annotate(
+            products_count=Count('products')
+        ).select_related('parent').prefetch_related('children'),
+        pk=pk
+    )
+
+    # Get products in this category
+    products = category.products.filter(is_active=True).select_related('category')[:10]
+
+    # Get child categories
+    children = category.children.all()
+
+    context = {
+        'category': category,
+        'products': products,
+        'children': children,
+    }
+
+    return render(request, 'catalog/category_detail.html', context)
+
+
+@login_required
+@group_required('Admin', 'Manager')
+def category_delete(request, pk):
+    """
+    Delete a category (with confirmation)
+    Only accessible by Admin and Manager
+    """
+    category = get_object_or_404(Category, pk=pk)
+
+    # Check if category has products
+    products_count = category.products.count()
+    children_count = category.children.count()
+
+    if request.method == 'POST':
+        if products_count > 0:
+            messages.error(
+                request,
+                f'Cannot delete category "{category.name}" because it has {products_count} product(s). '
+                f'Please reassign or delete the products first.'
+            )
+            return redirect('catalog:category_detail', pk=pk)
+
+        if children_count > 0:
+            messages.error(
+                request,
+                f'Cannot delete category "{category.name}" because it has {children_count} sub-category(ies). '
+                f'Please delete or reassign the sub-categories first.'
+            )
+            return redirect('catalog:category_detail', pk=pk)
+
+        category_name = category.name
+        category.delete()
+
+        messages.success(
+            request,
+            f'Category "{category_name}" has been deleted successfully.'
+        )
+        return redirect('catalog:category_list')
+
+    context = {
+        'category': category,
+        'products_count': products_count,
+        'children_count': children_count,
+    }
+
+    return render(request, 'catalog/category_delete_confirm.html', context)
+
+
+@login_required
+@group_required('Admin', 'Manager')
+def category_toggle_status(request, pk):
+    """
+    Toggle category active status (AJAX endpoint)
+    Only accessible by Admin and Manager
+    """
+    if request.method == 'POST':
+        category = get_object_or_404(Category, pk=pk)
+        category.is_active = not category.is_active
+        category.save(update_fields=['is_active'])
+
+        status_text = 'activated' if category.is_active else 'deactivated'
+        messages.success(
+            request,
+            f'Category "{category.name}" has been {status_text}.'
+        )
+
+    return redirect('catalog:category_list')
 
 
 # ==================== PRODUCT VIEWS ====================

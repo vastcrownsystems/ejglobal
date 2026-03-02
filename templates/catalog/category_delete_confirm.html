@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Category - EJ Global Services{% endblock %}
+{% block page_title %}Delete Category{% endblock %}
+
+{% block content %}
+<div class="delete-page">
+    <div class="delete-container">
+        <div class="delete-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+
+        <h1>Delete Category</h1>
+        <p class="delete-message">
+            Are you sure you want to delete the category
+            <strong>"{{ category.name }}"</strong>?
+        </p>
+
+        {% if products_count > 0 or children_count > 0 %}
+            <div class="alert alert-error">
+                <i class="fas fa-times-circle"></i>
+                <div>
+                    <strong>Cannot delete this category!</strong>
+                    <ul>
+                        {% if products_count > 0 %}
+                            <li>This category has {{ products_count }} product(s)</li>
+                        {% endif %}
+                        {% if children_count > 0 %}
+                            <li>This category has {{ children_count }} sub-category(ies)</li>
+                        {% endif %}
+                    </ul>
+                    <p>Please reassign or delete them first.</p>
+                </div>
+            </div>
+
+            <div class="delete-actions">
+                <a href="{% url 'catalog:category_detail' category.pk %}" class="btn-primary">
+                    <i class="fas fa-arrow-left"></i>
+                    Back to Category
+                </a>
+                <a href="{% url 'catalog:category_list' %}" class="btn-secondary">
+                    Back to List
+                </a>
+            </div>
+        {% else %}
+            <div class="alert alert-warning">
+                <i class="fas fa-info-circle"></i>
+                <strong>Warning:</strong> This action cannot be undone!
+            </div>
+
+            <form method="post" class="delete-form">
+                {% csrf_token %}
+                <div class="delete-actions">
+                    <button type="submit" class="btn-danger">
+                        <i class="fas fa-trash"></i>
+                        Yes, Delete Category
+                    </button>
+                    <a href="{% url 'catalog:category_list' %}" class="btn-secondary">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .delete-page {
+        max-width: 600px;
+        margin: 4rem auto;
+        padding: 2rem;
+    }
+
+    .delete-container {
+        background: white;
+        border-radius: 12px;
+        padding: 3rem;
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .delete-icon {
+        width: 100px;
+        height: 100px;
+        background: #FEE2E2;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+    }
+
+    .delete-icon i {
+        font-size: 3rem;
+        color: #DC3545;
+    }
+
+    .delete-container h1 {
+        margin: 0 0 1rem 0;
+        font-size: 2rem;
+        color: #1A1A1A;
+    }
+
+    .delete-message {
+        font-size: 1.125rem;
+        color: #666;
+        margin-bottom: 2rem;
+    }
+
+    .alert {
+        padding: 1rem 1.25rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        text-align: left;
+    }
+
+    .alert-error {
+        background: #FEE2E2;
+        color: #991B1B;
+        border: 1px solid #FCA5A5;
+    }
+
+    .alert-warning {
+        background: #FEF3C7;
+        color: #92400E;
+        border: 1px solid #FDE68A;
+    }
+
+    .alert ul {
+        margin: 0.5rem 0 1rem 1.25rem;
+    }
+
+    .delete-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+    }
+
+    .btn-danger {
+        padding: 1rem 2rem;
+        background: #DC3545;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-danger:hover {
+        background: #C82333;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(220, 53, 69, 0.3);
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        padding: 1rem 2rem;
+        border-radius: 10px;
+        font-weight: 700;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-primary {
+        background: #0033A0;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #002470;
+    }
+
+    .btn-secondary {
+        background: #F5F5F5;
+        color: #666;
+    }
+
+    .btn-secondary:hover {
+        background: #E8E8E8;
+    }
+</style>
+{% endblock %}
