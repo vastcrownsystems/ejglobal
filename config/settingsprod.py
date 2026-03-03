@@ -37,7 +37,11 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['144.126.193.210']
+ALLOWED_HOSTS = [
+    "144.126.193.210",
+    "ejglobalservices.com",
+    "www.ejglobalservices.com",
+]
 
 
 # Application definition

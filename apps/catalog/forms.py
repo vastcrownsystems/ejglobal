@@ -189,14 +189,13 @@ class ProductVariantForm(forms.ModelForm):
         fields = [
             'product',
             'name',
-            'attribute_values',  # ✅ Added this
+            'attribute_values',
             'sku',
             'barcode',
             'price',
-            'cost_price',
+            # 'cost_price',
             'stock_quantity',
             'low_stock_threshold',
-            'weight',
             'image',
             'is_active',
             'is_default',
@@ -228,12 +227,12 @@ class ProductVariantForm(forms.ModelForm):
                 'min': '0',
                 'required': True
             }),
-            'cost_price': forms.NumberInput(attrs={
-                'class': 'form-input',
-                'placeholder': '0.00',
-                'step': '0.01',
-                'min': '0',
-            }),
+            # 'cost_price': forms.NumberInput(attrs={
+            #     'class': 'form-input',
+            #     'placeholder': '0.00',
+            #     'step': '0.01',
+            #     'min': '0',
+            # }),
             'stock_quantity': forms.NumberInput(attrs={
                 'class': 'form-input',
                 'placeholder': '0',
@@ -242,12 +241,6 @@ class ProductVariantForm(forms.ModelForm):
             'low_stock_threshold': forms.NumberInput(attrs={
                 'class': 'form-input',
                 'placeholder': '10',
-                'min': '0',
-            }),
-            'weight': forms.NumberInput(attrs={
-                'class': 'form-input',
-                'placeholder': 'Weight in kg',
-                'step': '0.01',
                 'min': '0',
             }),
             'image': forms.FileInput(attrs={
@@ -264,7 +257,7 @@ class ProductVariantForm(forms.ModelForm):
         labels = {
             'sku': 'SKU',
             'barcode': 'Barcode / UPC',
-            'cost_price': 'Cost Price',
+            # 'cost_price': 'Cost Price',
             'is_active': 'Active',
             'is_default': 'Set as Default Variant',
             'attribute_values': 'Variant Attributes',
@@ -275,9 +268,8 @@ class ProductVariantForm(forms.ModelForm):
             'sku': 'Unique identifier - leave blank to auto-generate',
             'barcode': 'For barcode scanning at checkout. Optional - leave blank if not using barcodes.',
             'price': 'Selling price for this variant',
-            'cost_price': 'Your cost to purchase/produce this variant',
+            # 'cost_price': 'Your cost to purchase/produce this variant',
             'low_stock_threshold': 'Alert when stock falls below this number',
-            'weight': 'Product weight for shipping calculations',
             'is_default': 'This variant will be shown by default when viewing the product',
         }
 

@@ -12,7 +12,42 @@
     }
 
     .form-header {
-        margin-bottom: 2rem;
+        margin-bottom: 1rem;
+        border-radius: 16px;
+    }
+
+    .form-header {
+        background: linear-gradient(135deg, #7FBA00 0%, #6BA500 100%);
+        color: white;
+        padding: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .form-header h1 {
+        margin: 0;
+        font-size: 1.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .btn-back {
+        padding: 0.75rem 1.25rem;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-back:hover {
+        background: rgba(255, 255, 255, 0.3);
     }
 
     .form-title {
@@ -380,15 +415,26 @@
 {% block content %}
 <div class="form-container">
     <!-- Form Header -->
+<!--    <div class="form-header">-->
+<!--        <h1 class="form-title">{{ title }}</h1>-->
+<!--        <p class="form-subtitle">-->
+<!--            {% if variant %}-->
+<!--                Update variant information and pricing-->
+<!--            {% else %}-->
+<!--                Add a new variant to a product-->
+<!--            {% endif %}-->
+<!--        </p>-->
+<!--    </div>-->
+    <!-- Header -->
     <div class="form-header">
-        <h1 class="form-title">{{ title }}</h1>
-        <p class="form-subtitle">
-            {% if variant %}
-                Update variant information and pricing
-            {% else %}
-                Add a new variant to a product
-            {% endif %}
-        </p>
+        <h1>
+            <i class="fas fa-folder"></i>
+            {{ title }}
+        </h1>
+        <a href="{% url 'catalog:variant_list' %}" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+            Back to List
+        </a>
     </div>
 
     <!-- Info Box -->
@@ -498,7 +544,7 @@
             <div class="form-section">
                 <h2 class="section-title">Pricing</h2>
 
-                <div class="form-grid-2">
+<!--                <div class="form-grid-2">-->
                     <div class="form-group">
                         <label class="form-label" for="id_price">
                             Selling Price (₦) <span class="required">*</span>
@@ -510,34 +556,34 @@
                         {% endif %}
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="id_cost_price">
-                            Cost Price (₦)
-                        </label>
-                        {{ form.cost_price }}
-                        <div class="form-help-text">Your cost to produce/purchase</div>
-                        {% if form.cost_price.errors %}
-                            {{ form.cost_price.errors }}
-                        {% endif %}
-                    </div>
-                </div>
+<!--                    <div class="form-group">-->
+<!--                        <label class="form-label" for="id_cost_price">-->
+<!--                            Cost Price (₦)-->
+<!--                        </label>-->
+<!--                        {{ form.cost_price }}-->
+<!--                        <div class="form-help-text">Your cost to produce/purchase</div>-->
+<!--                        {% if form.cost_price.errors %}-->
+<!--                            {{ form.cost_price.errors }}-->
+<!--                        {% endif %}-->
+<!--                    </div>-->
+<!--                </div>-->
 
-                <!-- Profit Calculator -->
-                <div class="profit-calculator">
-                    <div class="profit-calc-title">
-                        <i class="fas fa-calculator"></i> Profit Calculation
-                    </div>
-                    <div class="profit-stats">
-                        <div class="profit-stat">
-                            <div class="profit-stat-label">Profit Amount</div>
-                            <div class="profit-stat-value" id="profitAmount">₦0.00</div>
-                        </div>
-                        <div class="profit-stat">
-                            <div class="profit-stat-label">Profit Margin</div>
-                            <div class="profit-stat-value" id="profitMargin">0%</div>
-                        </div>
-                    </div>
-                </div>
+<!--                &lt;!&ndash; Profit Calculator &ndash;&gt;-->
+<!--                <div class="profit-calculator">-->
+<!--                    <div class="profit-calc-title">-->
+<!--                        <i class="fas fa-calculator"></i> Profit Calculation-->
+<!--                    </div>-->
+<!--                    <div class="profit-stats">-->
+<!--                        <div class="profit-stat">-->
+<!--                            <div class="profit-stat-label">Profit Amount</div>-->
+<!--                            <div class="profit-stat-value" id="profitAmount">₦0.00</div>-->
+<!--                        </div>-->
+<!--                        <div class="profit-stat">-->
+<!--                            <div class="profit-stat-label">Profit Margin</div>-->
+<!--                            <div class="profit-stat-value" id="profitMargin">0%</div>-->
+<!--                        </div>-->
+<!--                    </div>-->
+<!--                </div>-->
             </div>
         </div>
 
@@ -546,7 +592,7 @@
             <div class="form-section">
                 <h2 class="section-title">Inventory</h2>
 
-                <div class="form-grid-3">
+                <div class="form-grid-2">
                     <div class="form-group">
                         <label class="form-label" for="id_stock_quantity">
                             Stock Quantity
@@ -565,16 +611,6 @@
                         <div class="form-help-text">Alert threshold</div>
                         {% if form.low_stock_threshold.errors %}
                             {{ form.low_stock_threshold.errors }}
-                        {% endif %}
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="id_weight">
-                            Weight (kg)
-                        </label>
-                        {{ form.weight }}
-                        {% if form.weight.errors %}
-                            {{ form.weight.errors }}
                         {% endif %}
                     </div>
                 </div>
