@@ -64,6 +64,15 @@ class StockAdjustmentForm(forms.Form):
         })
     )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Show stock quantity in dropdown options
+        variant_field = self.fields['variant']
+        variant_field.label_from_instance = lambda obj: (
+            f"{obj.product.name} - {obj.name} (Stock: {obj.stock_quantity})"
+        )
+
     def clean(self):
         cleaned_data = super().clean()
         adjustment_type = cleaned_data.get('adjustment_type')
