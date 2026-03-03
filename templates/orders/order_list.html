@@ -1,9 +1,6 @@
-<!-- apps/orders/templates/orders/order_list.html -->
-<!-- Orders List Page - UPDATED -->
-
 {% extends "base.html" %}
 
-{% block title %}Orders{% endblock %}
+{% block title %}Orders - {{ selected_date|date:"M d, Y" }}{% endblock %}
 {% block page_title %}Order Management{% endblock %}
 
 {% block content %}
@@ -17,17 +14,127 @@
             </h1>
             <p class="subtitle">
                 {% if is_manager %}
-                    Viewing all orders across all cashiers
+                    Viewing all completed orders
                 {% else %}
-                    Your orders
+                    Your completed orders
                 {% endif %}
             </p>
         </div>
     </div>
 
+    <!-- Daily Sales Breakdown -->
+    <div class="daily-sales-section">
+        <div class="section-header">
+            <div class="section-header-left">
+                <h2>
+                    <i class="fas fa-chart-line"></i>
+                    Daily Sales Breakdown
+                </h2>
+            </div>
+
+            <!-- Date Picker -->
+            <div class="date-picker-wrapper">
+                <label for="salesDate" class="date-label">
+                    <i class="fas fa-calendar-alt"></i>
+                    Select Date:
+                </label>
+                <input
+                    type="date"
+                    id="salesDate"
+                    class="date-input"
+                    value="{{ selected_date|date:'Y-m-d' }}"
+                    max="{{ today|date:'Y-m-d' }}"
+                    onchange="filterByDate(this.value)"
+                >
+                <button class="btn-today" onclick="goToToday()">
+                    <i class="fas fa-calendar-day"></i>
+                    Today
+                </button>
+            </div>
+        </div>
+
+        <!-- Sales Summary Card -->
+        <div class="sales-summary-card">
+            <div class="summary-header">
+                <div class="summary-date">
+                    <i class="fas fa-calendar-check"></i>
+                    <div>
+                        <div class="date-main">{{ selected_date|date:"l" }}</div>
+                        <div class="date-sub">{{ selected_date|date:"F d, Y" }}</div>
+                    </div>
+                </div>
+
+                <div class="summary-stats">
+                    <div class="stat-item">
+                        <div class="stat-label">Orders</div>
+                        <div class="stat-value">{{ orders_count }}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Items Sold</div>
+                        <div class="stat-value">{{ total_items_sold }}</div>
+                    </div>
+                    <div class="stat-item stat-revenue">
+                        <div class="stat-label">Revenue</div>
+                        <div class="stat-value">₦{{ total_revenue|floatformat:2 }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products List -->
+            {% if daily_products %}
+            <div class="products-list-wrapper">
+                <div class="products-list-header">
+                    <div class="header-col">Product</div>
+                    <div class="header-col text-center">Quantity</div>
+                    <div class="header-col text-center">Orders</div>
+                    <div class="header-col text-right">Revenue</div>
+                </div>
+
+                <div class="products-list">
+                    {% for item in daily_products %}
+                    <div class="product-row">
+                        <div class="product-info">
+                            <div class="product-name">{{ item.product }}</div>
+                            {% if item.variant != item.product %}
+                            <div class="product-variant">{{ item.variant }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="product-quantity">
+                            <span class="quantity-badge">
+                                <i class="fas fa-box"></i>
+                                {{ item.quantity }}
+                            </span>
+                        </div>
+                        <div class="product-orders text-center">
+                            <span class="orders-badge">{{ item.orders }}</span>
+                        </div>
+                        <div class="product-revenue text-right">
+                            <span class="revenue-amount">₦{{ item.revenue|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div class="no-sales-message">
+                <i class="fas fa-inbox"></i>
+                <h3>No sales on this date</h3>
+                <p>No completed orders found for {{ selected_date|date:"F d, Y" }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
     <!-- Filters -->
     <div class="filters-section">
-        <form method="get" class="filters-form">
+        <div class="section-header-small">
+            <h3>Order History</h3>
+        </div>
+
+        <form method="get" class="filters-form" id="filtersForm">
+            <!-- Hidden date field to preserve date filter -->
+            <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+
             <select name="status" class="filter-select" onchange="this.form.submit()">
                 <option value="">All Statuses</option>
                 <option value="CONFIRMED" {% if request.GET.status == 'CONFIRMED' %}selected{% endif %}>Confirmed</option>
@@ -47,10 +154,10 @@
             </select>
             {% endif %}
 
-            {% if request.GET %}
-                <a href="{% url 'orders:order_list' %}" class="btn-clear">
+            {% if request.GET.status or request.GET.cashier %}
+                <a href="?date={{ selected_date|date:'Y-m-d' }}" class="btn-clear">
                     <i class="fas fa-times"></i>
-                    Clear
+                    Clear Filters
                 </a>
             {% endif %}
         </form>
@@ -59,11 +166,6 @@
     <!-- Orders Table -->
     {% if orders %}
         <div class="orders-table-wrapper">
-            <div class="table-scroll-hint">
-                <i class="fas fa-arrow-right"></i>
-                <span>Scroll to see more</span>
-            </div>
-
             <div class="table-container">
                 <table class="orders-table">
                     <thead>
@@ -102,35 +204,59 @@
                             </td>
                             {% endif %}
                             <td data-label="Customer">
-                                <div class="customer-name">{{ order.customer_display_name }}</div>
+                                {{ order.customer_display_name }}
                             </td>
-                            <td class="text-center" data-label="Items">
-                                <strong>{{ order.item_count }}</strong>
+                            <td data-label="Items" class="text-center">
+                                <span class="items-badge">{{ order.items.count }}</span>
                             </td>
-                            <td class="text-right" data-label="Total">
-                                <strong class="amount">₦{{ order.total|floatformat:2 }}</strong>
+                            <td data-label="Total" class="text-right">
+                                <span class="amount">₦{{ order.total|floatformat:2 }}</span>
                             </td>
-                            <td class="text-center" data-label="Payment">
-                                <span class="badge badge-payment-{{ order.payment_status|lower }}">
-                                    {{ order.get_payment_status_display }}
-                                </span>
+                            <td data-label="Payment" class="text-center">
+                                {% if order.payment_status == 'PAID' %}
+                                    <span class="badge badge-success">
+                                        <i class="fas fa-check-circle"></i>
+                                        Paid
+                                    </span>
+                                {% elif order.payment_status == 'PARTIAL' %}
+                                    <span class="badge badge-warning">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        Partial
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-danger">
+                                        <i class="fas fa-times-circle"></i>
+                                        Unpaid
+                                    </span>
+                                {% endif %}
                             </td>
-                            <td class="text-center" data-label="Status">
-                                <span class="badge badge-status-{{ order.status|lower }}">
-                                    {{ order.get_status_display }}
-                                </span>
+                            <td data-label="Status" class="text-center">
+                                {% if order.status == 'COMPLETED' %}
+                                    <span class="status-badge status-completed">
+                                        <i class="fas fa-check-double"></i>
+                                        Completed
+                                    </span>
+                                {% elif order.status == 'CONFIRMED' %}
+                                    <span class="status-badge status-confirmed">
+                                        <i class="fas fa-check"></i>
+                                        Confirmed
+                                    </span>
+                                {% elif order.status == 'PROCESSING' %}
+                                    <span class="status-badge status-processing">
+                                        <i class="fas fa-spinner"></i>
+                                        Processing
+                                    </span>
+                                {% elif order.status == 'CANCELLED' %}
+                                    <span class="status-badge status-cancelled">
+                                        <i class="fas fa-ban"></i>
+                                        Cancelled
+                                    </span>
+                                {% endif %}
                             </td>
-                            <td class="text-center actions-cell" data-label="Actions">
-                                <div class="actions-group">
-                                    <a href="{% url 'orders:order_detail' order.pk %}" class="btn-icon" title="View">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    {% if order.status == 'COMPLETED' and order.receipt %}
-                                        <a href="{% url 'receipts:receipt_detail' order.receipt.pk %}" class="btn-icon" title="Receipt">
-                                            <i class="fas fa-receipt"></i>
-                                        </a>
-                                    {% endif %}
-                                </div>
+                            <td data-label="Actions" class="text-center">
+                                <a href="{% url 'orders:order_detail' order.pk %}" class="btn-icon" title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -140,43 +266,30 @@
 
             <!-- Pagination -->
             {% if page_obj.has_other_pages %}
-                <div class="pagination">
-                    {% if page_obj.has_previous %}
-                        <a href="?page=1{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.cashier %}&cashier={{ request.GET.cashier }}{% endif %}" class="page-link">
-                            <i class="fas fa-angle-double-left"></i>
-                        </a>
-                        <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.cashier %}&cashier={{ request.GET.cashier }}{% endif %}" class="page-link">
-                            <i class="fas fa-angle-left"></i>
-                        </a>
-                    {% endif %}
+            <div class="pagination">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}&date={{ selected_date|date:'Y-m-d' }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.cashier %}&cashier={{ request.GET.cashier }}{% endif %}" class="page-link">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+                {% endif %}
 
-                    <span class="page-info">
-                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-                    </span>
+                <span class="page-info">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
 
-                    {% if page_obj.has_next %}
-                        <a href="?page={{ page_obj.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.cashier %}&cashier={{ request.GET.cashier }}{% endif %}" class="page-link">
-                            <i class="fas fa-angle-right"></i>
-                        </a>
-                        <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.cashier %}&cashier={{ request.GET.cashier }}{% endif %}" class="page-link">
-                            <i class="fas fa-angle-double-right"></i>
-                        </a>
-                    {% endif %}
-                </div>
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}&date={{ selected_date|date:'Y-m-d' }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.cashier %}&cashier={{ request.GET.cashier }}{% endif %}" class="page-link">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                {% endif %}
+            </div>
             {% endif %}
         </div>
     {% else %}
         <div class="empty-state">
             <div class="empty-icon">
-                <i class="fas fa-shopping-bag"></i>
+                <i class="fas fa-inbox"></i>
             </div>
             <h3>No orders found</h3>
-            {% if request.GET %}
-                <p>Try adjusting your filters</p>
-                <a href="{% url 'orders:order_list' %}" class="btn-secondary">Clear Filters</a>
-            {% else %}
-                <p>Orders will appear here once completed</p>
-            {% endif %}
+            <p>No orders match your current filters</p>
         </div>
     {% endif %}
 </div>
@@ -188,21 +301,299 @@
         padding: 2rem;
     }
 
+    /* Page Header */
     .page-header {
         margin-bottom: 2rem;
     }
 
     .page-header h1 {
-        margin: 0 0 0.5rem 0;
         font-size: 2rem;
+        font-weight: 700;
+        color: #1A1A1A;
         display: flex;
         align-items: center;
         gap: 0.75rem;
+        margin: 0 0 0.5rem 0;
     }
 
     .subtitle {
-        margin: 0;
         color: #666;
+        font-size: 0.9375rem;
+        margin: 0;
+    }
+
+    /* Daily Sales Section */
+    .daily-sales-section {
+        margin-bottom: 3rem;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .section-header h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1A1A1A;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 0;
+    }
+
+    /* Date Picker */
+    .date-picker-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: white;
+        padding: 0.75rem 1.25rem;
+        border-radius: 12px;
+        border: 2px solid #E8E8E8;
+    }
+
+    .date-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        color: #666;
+        font-size: 0.9375rem;
+        margin: 0;
+    }
+
+    .date-input {
+        padding: 0.625rem 1rem;
+        border: 2px solid #E8E8E8;
+        border-radius: 8px;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: #1A1A1A;
+        cursor: pointer;
+        transition: all 0.2s;
+        min-width: 160px;
+    }
+
+    .date-input:focus {
+        outline: none;
+        border-color: #0033A0;
+        box-shadow: 0 0 0 3px rgba(0, 51, 160, 0.1);
+    }
+
+    .btn-today {
+        padding: 0.625rem 1.25rem;
+        background: linear-gradient(135deg, #0033A0 0%, #002470 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.875rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-today:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 51, 160, 0.3);
+    }
+
+    /* Sales Summary Card */
+    .sales-summary-card {
+        background: white;
+        border: 2px solid #E8E8E8;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .summary-header {
+        background: linear-gradient(135deg, #0033A0 0%, #002470 100%);
+        color: white;
+        padding: 1.5rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+
+    .summary-date {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .summary-date i {
+        font-size: 2rem;
+        opacity: 0.9;
+    }
+
+    .date-main {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .date-sub {
+        font-size: 1rem;
+        opacity: 0.9;
+        margin-top: 0.25rem;
+    }
+
+    .summary-stats {
+        display: flex;
+        gap: 2rem;
+    }
+
+    .stat-item {
+        text-align: right;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        opacity: 0.9;
+        margin-bottom: 0.375rem;
+    }
+
+    .stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-revenue .stat-value {
+        color: #7FBA00;
+    }
+
+    /* Products List */
+    .products-list-wrapper {
+        padding: 1.5rem 2rem;
+    }
+
+    .products-list-header {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        background: #FAFAFA;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.8125rem;
+        color: #666;
+        text-transform: uppercase;
+        margin-bottom: 1rem;
+    }
+
+    .products-list {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    .products-list::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .products-list::-webkit-scrollbar-thumb {
+        background: #E8E8E8;
+        border-radius: 3px;
+    }
+
+    .product-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+        gap: 1rem;
+        padding: 1rem;
+        border-bottom: 1px solid #F5F5F5;
+        align-items: center;
+        transition: background 0.2s;
+    }
+
+    .product-row:hover {
+        background: #FAFAFA;
+    }
+
+    .product-row:last-child {
+        border-bottom: none;
+    }
+
+    .product-name {
+        font-weight: 700;
+        color: #1A1A1A;
+        font-size: 0.9375rem;
+    }
+
+    .product-variant {
+        font-size: 0.8125rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+
+    .product-quantity {
+        text-align: center;
+    }
+
+    .quantity-badge {
+        background: #E8F4FF;
+        color: #0033A0;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1rem;
+    }
+
+    .orders-badge {
+        background: #F0F0F0;
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.875rem;
+    }
+
+    .revenue-amount {
+        font-size: 1.0625rem;
+        font-weight: 700;
+        color: #7FBA00;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .no-sales-message {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #666;
+    }
+
+    .no-sales-message i {
+        font-size: 3rem;
+        color: #D0D0D0;
+        margin-bottom: 1rem;
+    }
+
+    .no-sales-message h3 {
+        margin: 0 0 0.5rem 0;
+        color: #1A1A1A;
+    }
+
+    /* Rest of existing styles */
+    .section-header-small {
+        margin-bottom: 1rem;
+    }
+
+    .section-header-small h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1A1A1A;
+        margin: 0;
     }
 
     .filters-section {
@@ -216,42 +607,31 @@
     .filters-form {
         display: flex;
         gap: 1rem;
-        align-items: center;
         flex-wrap: wrap;
+        align-items: center;
+        margin-top: 1rem;
     }
 
     .filter-select {
-        padding: 0.875rem 1rem;
+        padding: 0.75rem 1rem;
         border: 2px solid #E8E8E8;
         border-radius: 8px;
         font-size: 0.9375rem;
-        min-width: 180px;
         background: white;
         cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .filter-select:focus {
-        outline: none;
-        border-color: #0033A0;
-        box-shadow: 0 0 0 3px rgba(0, 51, 160, 0.1);
+        min-width: 180px;
     }
 
     .btn-clear {
-        padding: 0.875rem 1.25rem;
+        padding: 0.75rem 1.25rem;
         background: #F5F5F5;
         color: #666;
         border-radius: 8px;
         text-decoration: none;
         font-weight: 600;
-        display: flex;
+        display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        transition: all 0.2s;
-    }
-
-    .btn-clear:hover {
-        background: #E8E8E8;
     }
 
     .orders-table-wrapper {
@@ -261,50 +641,29 @@
         overflow: hidden;
     }
 
-    .table-scroll-hint {
-        background: #FEF3C7;
-        color: #92400E;
-        padding: 0.75rem 1.25rem;
-        text-align: center;
-        font-size: 0.875rem;
-        font-weight: 600;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-    }
-
     .table-container {
         overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
     }
 
     .orders-table {
         width: 100%;
         border-collapse: collapse;
-        min-width: 900px;
     }
 
     .orders-table th {
         background: #FAFAFA;
-        padding: 1rem 1.25rem;
+        padding: 1rem;
         text-align: left;
         font-weight: 700;
         font-size: 0.8125rem;
         color: #666;
         text-transform: uppercase;
         border-bottom: 2px solid #E8E8E8;
-        white-space: nowrap;
     }
 
     .orders-table td {
-        padding: 1.25rem;
+        padding: 1rem;
         border-bottom: 1px solid #F5F5F5;
-        vertical-align: middle;
-    }
-
-    .orders-table tbody tr {
-        transition: background 0.2s;
     }
 
     .orders-table tbody tr:hover {
@@ -315,8 +674,6 @@
         font-weight: 700;
         color: #0033A0;
         text-decoration: none;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.9rem;
     }
 
     .order-number:hover {
@@ -325,66 +682,64 @@
 
     .date {
         font-weight: 600;
-        font-size: 0.875rem;
         color: #1A1A1A;
     }
 
     .time {
-        font-size: 0.75rem;
-        color: #999;
-        margin-top: 0.25rem;
+        font-size: 0.8125rem;
+        color: #666;
+        margin-top: 0.125rem;
     }
 
     .cashier-info {
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        font-size: 0.9rem;
+        color: #666;
     }
 
-    .cashier-info i {
-        color: #0033A0;
-    }
-
-    .customer-name {
-        font-size: 0.9375rem;
-        color: #1A1A1A;
+    .items-badge {
+        background: #F0F0F0;
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
     }
 
     .amount {
-        color: #10B981;
+        font-weight: 700;
         font-family: 'JetBrains Mono', monospace;
-        font-size: 1rem;
+        font-size: 1.0625rem;
     }
 
     .badge {
         padding: 0.375rem 0.75rem;
-        border-radius: 12px;
+        border-radius: 6px;
         font-size: 0.75rem;
         font-weight: 700;
-        text-transform: uppercase;
-        display: inline-block;
-        letter-spacing: 0.025em;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
     }
 
-    .badge-payment-paid { background: #D1FAE5; color: #065F46; }
-    .badge-payment-partial { background: #FEF3C7; color: #92400E; }
-    .badge-payment-unpaid { background: #FEE2E2; color: #991B1B; }
+    .badge-success { background: #D1FAE5; color: #065F46; }
+    .badge-warning { background: #FEF3C7; color: #92400E; }
+    .badge-danger { background: #FEE2E2; color: #991B1B; }
 
-    .badge-status-confirmed { background: #DBEAFE; color: #1E40AF; }
-    .badge-status-processing { background: #FEF3C7; color: #92400E; }
-    .badge-status-completed { background: #D1FAE5; color: #065F46; }
-    .badge-status-cancelled { background: #FEE2E2; color: #991B1B; }
-    .badge-status-draft { background: #F3F4F6; color: #6B7280; }
-
-    .text-center { text-align: center; }
-    .text-right { text-align: right; }
-
-    .actions-group {
-        display: flex;
-        gap: 0.5rem;
-        justify-content: center;
+    .status-badge {
+        padding: 0.375rem 0.875rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
     }
+
+    .status-completed { background: #D1FAE5; color: #065F46; }
+    .status-confirmed { background: #DBEAFE; color: #1E40AF; }
+    .status-processing { background: #FEF3C7; color: #92400E; }
+    .status-cancelled { background: #FEE2E2; color: #991B1B; }
 
     .btn-icon {
         width: 36px;
@@ -396,13 +751,12 @@
         justify-content: center;
         color: #666;
         text-decoration: none;
-        transition: all 0.2s ease;
+        transition: all 0.2s;
     }
 
     .btn-icon:hover {
         background: #0033A0;
         color: white;
-        transform: translateY(-2px);
     }
 
     .pagination {
@@ -411,20 +765,19 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        gap: 0.5rem;
+        gap: 1rem;
     }
 
     .page-link {
         width: 36px;
         height: 36px;
         background: #F5F5F5;
-        border-radius: 8px;
+        border-radius: 6px;
         display: flex;
         align-items: center;
         justify-content: center;
         color: #666;
         text-decoration: none;
-        transition: all 0.2s;
     }
 
     .page-link:hover {
@@ -433,10 +786,8 @@
     }
 
     .page-info {
-        padding: 0 1rem;
         font-weight: 600;
         color: #666;
-        font-size: 0.9rem;
     }
 
     .empty-state {
@@ -463,47 +814,38 @@
         color: #D0D0D0;
     }
 
-    .empty-state h3 {
-        margin: 0 0 0.5rem 0;
-        font-size: 1.5rem;
-    }
-
-    .empty-state p {
-        margin: 0 0 1.5rem 0;
-        color: #666;
-    }
-
-    .btn-secondary {
-        padding: 0.875rem 1.5rem;
-        background: #F5F5F5;
-        color: #666;
-        border-radius: 8px;
-        text-decoration: none;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        transition: all 0.2s;
-    }
-
-    .btn-secondary:hover {
-        background: #E8E8E8;
-    }
-
-    /* Responsive Design */
-    @media (max-width: 1200px) {
-        .table-scroll-hint {
-            display: flex;
-        }
-    }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
 
     @media (max-width: 768px) {
-        .orders-page {
-            padding: 1rem;
+        .section-header {
+            flex-direction: column;
+            align-items: stretch;
         }
 
-        .page-header h1 {
-            font-size: 1.5rem;
+        .date-picker-wrapper {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .date-input {
+            width: 100%;
+        }
+
+        .summary-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .summary-stats {
+            width: 100%;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .products-list-header,
+        .product-row {
+            grid-template-columns: 1fr;
         }
 
         .filters-form {
@@ -514,66 +856,20 @@
         .filter-select {
             width: 100%;
         }
-
-        /* Mobile Card View */
-        .orders-table {
-            min-width: auto;
-        }
-
-        .orders-table thead {
-            display: none;
-        }
-
-        .orders-table tbody tr {
-            display: block;
-            margin-bottom: 1rem;
-            border: 1px solid #E8E8E8;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .orders-table td {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.875rem 1rem;
-            border-bottom: 1px solid #F5F5F5;
-        }
-
-        .orders-table td:last-child {
-            border-bottom: none;
-        }
-
-        .orders-table td::before {
-            content: attr(data-label);
-            font-weight: 700;
-            color: #666;
-            font-size: 0.8125rem;
-            text-transform: uppercase;
-        }
-
-        .orders-table td .date,
-        .orders-table td .customer-name,
-        .orders-table td .cashier-info {
-            text-align: right;
-        }
-
-        .text-center,
-        .text-right {
-            text-align: right !important;
-        }
-
-        .actions-cell {
-            justify-content: flex-end;
-        }
-
-        .actions-cell::before {
-            display: none;
-        }
-
-        .actions-group {
-            justify-content: flex-end;
-        }
     }
 </style>
+
+<script>
+    function filterByDate(date) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('date', date);
+        window.location.href = url.toString();
+    }
+
+    function goToToday() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('date'); // Remove date param to show today
+        window.location.href = url.toString();
+    }
+</script>
 {% endblock %}

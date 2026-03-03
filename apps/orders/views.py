@@ -19,6 +19,9 @@ from django.core.paginator import Paginator
 from django.contrib.auth import get_user_model
 from django.db.models import Count
 from decimal import Decimal, InvalidOperation
+from django.db.models import Sum
+from collections import defaultdict
+from datetime import datetime, timedelta
 
 import logging
 logger = logging.getLogger(__name__)
@@ -920,52 +923,104 @@ def get_held_orders_count(user):
 @login_required
 def order_list(request):
     """
-    List orders with role-based filtering
-
-    - Cashiers see only their own orders
-    - Managers/Admins see all orders with cashier filter
+    List orders with daily sales breakdown for selected date
     """
-
-    # Check if user is manager/admin
     is_manager = request.user.is_superuser or request.user.groups.filter(
         name__in=['Admin', 'Manager']
     ).exists()
 
-    # Base queryset
+    # Exclude DRAFT and HELD
     if is_manager:
-        # Managers see all orders
-        orders = Order.objects.all()
+        orders = Order.objects.exclude(status__in=['DRAFT', 'HELD'])
     else:
-        # Cashiers see only their own orders
-        orders = Order.objects.filter(created_by=request.user)
+        orders = Order.objects.filter(
+            created_by=request.user
+        ).exclude(status__in=['DRAFT', 'HELD'])
 
-    # Select related for optimization
     orders = orders.select_related(
-        'created_by',
-        'customer',
-        'cashier_session'
+        'created_by', 'customer', 'cashier_session'
     ).prefetch_related('items')
 
-    # Filter by status if provided
+    # Status filter
     status_filter = request.GET.get('status')
     if status_filter:
         orders = orders.filter(status=status_filter)
 
-    # Filter by cashier if provided (managers only)
+    # Cashier filter (managers only)
     if is_manager:
         cashier_filter = request.GET.get('cashier')
         if cashier_filter:
             orders = orders.filter(created_by_id=cashier_filter)
 
-    # Order by most recent first
     orders = orders.order_by('-created_at')
 
+    # ===== DATE FILTER FOR DAILY BREAKDOWN =====
+    today = datetime.now().date()
+
+    # Get selected date from query param (default to today)
+    selected_date_str = request.GET.get('date')
+    if selected_date_str:
+        try:
+            selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            selected_date = today
+    else:
+        selected_date = today
+
+    # ===== DAILY BREAKDOWN FOR SELECTED DATE =====
+    daily_sales = OrderItem.objects.filter(
+        order__status='COMPLETED',
+        order__created_at__date=selected_date  # ✅ Only selected date
+    )
+
+    if not is_manager:
+        daily_sales = daily_sales.filter(order__created_by=request.user)
+    elif is_manager and request.GET.get('cashier'):
+        daily_sales = daily_sales.filter(order__created_by_id=request.GET.get('cashier'))
+
+    daily_sales = daily_sales.values(
+        'product_name',
+        'variant_name'
+    ).annotate(
+        total_quantity=Sum('quantity'),
+        total_revenue=Sum('line_total'),
+        total_orders=Count('order', distinct=True)
+    ).order_by('-total_quantity')
+
+    # Convert to list for template
+    daily_products = []
+    total_items_sold = 0
+    total_revenue = Decimal('0.00')
+
+    for sale in daily_sales:
+        daily_products.append({
+            'product': sale['product_name'],
+            'variant': sale['variant_name'],
+            'quantity': sale['total_quantity'],
+            'revenue': sale['total_revenue'],
+            'orders': sale['total_orders'],
+        })
+        total_items_sold += sale['total_quantity']
+        total_revenue += sale['total_revenue']
+
+    # Get order count for selected date
+    orders_on_date = Order.objects.filter(
+        status='COMPLETED',
+        created_at__date=selected_date
+    )
+
+    if not is_manager:
+        orders_on_date = orders_on_date.filter(created_by=request.user)
+    elif is_manager and request.GET.get('cashier'):
+        orders_on_date = orders_on_date.filter(created_by_id=request.GET.get('cashier'))
+
+    orders_count = orders_on_date.count()
+
     # Pagination
-    paginator = Paginator(orders, 10)  # 10 orders per page
+    paginator = Paginator(orders, 25)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
-    # Get list of cashiers for filter dropdown (managers only)
     cashiers = None
     if is_manager:
         cashiers = User.objects.filter(
@@ -977,6 +1032,14 @@ def order_list(request):
         'page_obj': page_obj,
         'is_manager': is_manager,
         'cashiers': cashiers,
+
+        # Daily breakdown data
+        'selected_date': selected_date,
+        'today': today,
+        'daily_products': daily_products,
+        'total_items_sold': total_items_sold,
+        'total_revenue': total_revenue,
+        'orders_count': orders_count,
     }
 
     return render(request, 'orders/order_list.html', context)
