@@ -147,6 +147,51 @@ class Customer(TimeStampedModel):
         """Get all orders for this customer"""
         return self.orders.all().order_by('-created_at')
 
+    @property
+    def outstanding_balance(self):
+        """
+        Total unpaid balance across all orders
+
+        Returns sum of balance_due for all COMPLETED orders
+        with UNPAID or PARTIAL payment status
+        """
+        from apps.orders.models import Order
+
+        unpaid_orders = Order.objects.filter(
+            customer=self,
+            status='COMPLETED',
+            payment_status__in=['UNPAID', 'PARTIAL']
+        )
+
+        total_outstanding = sum(order.balance_due for order in unpaid_orders)
+        return total_outstanding
+
+    @property
+    def credit_orders_count(self):
+        """Number of orders with outstanding balance"""
+        from apps.orders.models import Order
+
+        return Order.objects.filter(
+            customer=self,
+            status='COMPLETED',
+            payment_status__in=['UNPAID', 'PARTIAL']
+        ).count()
+
+    def get_credit_orders(self):
+        """Get all orders with outstanding balance"""
+        from apps.orders.models import Order
+
+        return Order.objects.filter(
+            customer=self,
+            status='COMPLETED',
+            payment_status__in=['UNPAID', 'PARTIAL']
+        ).select_related('created_by').order_by('-created_at')
+
+    @property
+    def has_outstanding_balance(self):
+        """Check if customer has any unpaid orders"""
+        return self.outstanding_balance > 0
+
 
 class CustomerNote(models.Model):
     """

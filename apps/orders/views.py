@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from apps.sales.models import CashierSession
@@ -489,10 +490,7 @@ def checkout_modal(request):
 @require_http_methods(["POST"])
 def add_payment(request):
     """
-    Add payment to order
-
-    URL: POST /orders/checkout/add-payment/
-    Returns: Payment summary HTML partial
+    Add payment to order - handles CREDIT as payment method
     """
     order_id = request.session.get('current_order_id')
 
@@ -502,11 +500,29 @@ def add_payment(request):
     try:
         order = Order.objects.get(pk=order_id, status='DRAFT')
 
-        # Get payment details
-        amount = Decimal(request.POST.get('amount', '0'))
         payment_method = request.POST.get('payment_method', 'CASH')
-        reference = request.POST.get('reference', '').strip()
-        notes = request.POST.get('notes', '').strip()
+
+        # ✅ CREDIT METHOD - Use full order total as amount
+        if payment_method == 'CREDIT':
+            # Must have customer for credit
+            if not order.customer:
+                return render(request, 'orders/partials/payment_summary.html', {
+                    'order': order,
+                    'payments': order.order_payments.all(),
+                    'balance_due': order.balance_due,
+                    'message': '❌ Customer required for credit sales',
+                    'message_type': 'error'
+                })
+
+            # Use full order total
+            amount = order.total
+            reference = f'CREDIT-{order.order_number}'
+            notes = 'Credit sale - Payment deferred'
+        else:
+            # Normal payment
+            amount = Decimal(request.POST.get('amount', '0'))
+            reference = request.POST.get('reference', '').strip()
+            notes = request.POST.get('notes', '').strip()
 
         # Add payment
         payment = OrderService.add_payment(
@@ -522,11 +538,17 @@ def add_payment(request):
 
         payments = order.order_payments.all().order_by('-created_at')
 
+        # ✅ Different message for credit
+        if payment_method == 'CREDIT':
+            message = f'✅ Credit sale registered - Balance: ₦{order.total}'
+        else:
+            message = f'✅ Payment of ₦{amount} added'
+
         context = {
             'order': order,
             'payments': payments,
             'balance_due': order.balance_due,
-            'message': f'✅ Payment of ₦{amount} added',
+            'message': message,
             'message_type': 'success'
         }
 
@@ -547,10 +569,7 @@ def add_payment(request):
 @require_http_methods(["POST"])
 def complete_sale(request):
     """
-    Complete sale - confirm, reduce stock, generate receipt
-
-    URL: POST /orders/checkout/complete/
-    Returns: Redirect to receipt
+    Complete sale - handles both paid and credit sales
     """
     order_id = request.session.get('current_order_id')
 
@@ -570,43 +589,94 @@ def complete_sale(request):
             if order.items.count() == 0:
                 raise ValueError("Cannot complete empty order")
 
-            if order.balance_due > 0:
-                raise ValueError(f"Order not fully paid. Balance: ₦{order.balance_due}")
+            # ✅ CHECK IF CREDIT SALE
+            has_credit_payment = order.order_payments.filter(
+                payment_method='CREDIT'
+            ).exists()
 
-            # Confirm and complete
-            OrderService.confirm_order(order, reduce_stock=True)
-            order.complete()
+            if has_credit_payment:
+                # ============================================
+                # CREDIT SALE - Allow completion with UNPAID
+                # ============================================
 
-            # Generate receipt
-            from apps.receipts.services import ReceiptService
-            receipt = ReceiptService.generate_receipt(order)
+                # Must have customer
+                if not order.customer:
+                    raise ValueError("Credit sales require a customer")
 
-            # Clear session
-            if 'current_order_id' in request.session:
-                del request.session['current_order_id']
-                request.session.modified = True
+                # Confirm and complete
+                OrderService.confirm_order(order, reduce_stock=True)
+                order.status = 'COMPLETED'
+                order.payment_status = 'UNPAID'  # ✅ Stays UNPAID
+                order.completed_at = timezone.now()
+                order.save()
 
-            messages.success(request, f'✅ Sale completed! Order: {order.order_number}')
+                # Generate receipt
+                from apps.receipts.services import ReceiptService
+                receipt = ReceiptService.generate_receipt(order)
 
-            # return redirect('receipts:receipt_modal', pk=receipt.id)
-            html = render_to_string(
-                "receipts/receipt_modal.html",
-                {
-                    "receipt": receipt,
-                    "data": receipt.payload
-                },
-                request=request
-            )
+                # Clear session
+                if 'current_order_id' in request.session:
+                    del request.session['current_order_id']
+                    request.session.modified = True
 
-            response = HttpResponse(html)
-            response["HX-Trigger"] = "saleCompleted"
-            return response
+                messages.success(request, f'✅ Credit sale completed! Order: {order.order_number}')
+
+                html = render_to_string(
+                    "receipts/receipt_modal.html",
+                    {
+                        "receipt": receipt,
+                        "data": receipt.payload,
+                        "is_credit_sale": True,  # ✅ Flag for template
+                    },
+                    request=request
+                )
+
+                response = HttpResponse(html)
+                response["HX-Trigger"] = "saleCompleted"
+                return response
+
+            else:
+                # ============================================
+                # NORMAL PAID SALE
+                # ============================================
+
+                # Must be fully paid
+                if order.balance_due > 0:
+                    raise ValueError(f"Order not fully paid. Balance: ₦{order.balance_due}")
+
+                # Confirm and complete
+                OrderService.confirm_order(order, reduce_stock=True)
+                order.complete()
+
+                # Generate receipt
+                from apps.receipts.services import ReceiptService
+                receipt = ReceiptService.generate_receipt(order)
+
+                # Clear session
+                if 'current_order_id' in request.session:
+                    del request.session['current_order_id']
+                    request.session.modified = True
+
+                messages.success(request, f'✅ Sale completed! Order: {order.order_number}')
+
+                html = render_to_string(
+                    "receipts/receipt_modal.html",
+                    {
+                        "receipt": receipt,
+                        "data": receipt.payload,
+                        "is_credit_sale": False,
+                    },
+                    request=request
+                )
+
+                response = HttpResponse(html)
+                response["HX-Trigger"] = "saleCompleted"
+                return response
 
     except Exception as e:
         logger.exception(f"Error completing sale: {e}")
         messages.error(request, f'❌ Error: {str(e)}')
         return redirect('orders:pos')
-
 
 @login_required
 @require_http_methods(["POST"])

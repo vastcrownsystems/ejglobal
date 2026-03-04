@@ -218,6 +218,59 @@
         .print-button:hover {
             background: #059669;
         }
+        /* Credit payment row highlight */
+    .rp-credit-payment {
+        background: rgba(251, 191, 36, 0.15);
+        padding: 4px 8px;
+        margin: 0 -8px;
+        border-radius: 4px;
+        font-weight: 900;
+    }
+
+    /* Credit notice box */
+    .rp-credit-notice {
+        background: #FFFBEB;
+        border: 2px solid #FBBF24;
+        border-radius: 8px;
+        padding: 12px;
+        margin-top: 12px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .rp-credit-icon {
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+
+    .rp-credit-text {
+        flex: 1;
+    }
+
+    .rp-credit-status {
+        font-size: 14px;
+        font-weight: 900;
+        color: #92400E;
+        margin-bottom: 4px;
+        letter-spacing: 0.5px;
+    }
+
+    .rp-credit-msg {
+        font-size: 12px;
+        color: #78350F;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+
+    .rp-credit-amount {
+        font-size: 14px;
+        font-weight: 900;
+        color: #DC2626;
+        font-family: monospace;
+        letter-spacing: 0.5px;
+    }
+
 
         @media print {
             .print-button {
@@ -363,8 +416,9 @@
         <!-- Payment -->
         <div class="rp-section">
             <div class="rp-items-hdr">PAYMENT</div>
+
             {% for payment in receipt.payload.payments %}
-            <div class="rp-row">
+            <div class="rp-row {% if payment.payment_method == 'CREDIT' %}rp-credit-payment{% endif %}">
                 <span>{{ payment.payment_method_display }}:</span>
                 <span>₦{{ payment.amount|floatformat:2 }}</span>
             </div>
@@ -375,11 +429,18 @@
             </div>
             {% endif %}
             {% endfor %}
+
             <div class="rp-thin"></div>
+
             <div class="rp-row rp-bold">
-                <span>Paid:</span>
+                {%  if payment.payment_method == 'CREDIT' %}
+                    <span>Paid:</span>
+                {% else %}
+                    <span>Outstanding:</span>
+                {% endif %}
                 <span>₦{{ receipt.payload.totals.paid_amount|floatformat:2 }}</span>
             </div>
+
             {% if receipt.payload.totals.balance_due > 0 %}
             <div class="rp-row">
                 <span>Balance:</span>
@@ -389,6 +450,24 @@
             <div class="rp-row">
                 <span>Change:</span>
                 <span>₦0.00</span>
+            </div>
+            {% endif %}
+
+            <!-- ✅ NEW: Credit Sale Indicator -->
+            {% if receipt.payload.order.payment_status == 'UNPAID' or receipt.payload.order.payment_status == 'PARTIAL' %}
+            <div class="rp-dash"></div>
+            <div class="rp-credit-notice">
+                <div class="rp-credit-icon">⚠️</div>
+                <div class="rp-credit-text">
+                    {% if receipt.payload.order.payment_status == 'UNPAID' %}
+                    <div class="rp-credit-status">CREDIT SALE</div>
+                    <div class="rp-credit-msg">Full payment deferred</div>
+                    {% else %}
+                    <div class="rp-credit-status">PARTIAL PAYMENT</div>
+                    <div class="rp-credit-msg">Remaining on credit</div>
+                    {% endif %}
+                    <div class="rp-credit-amount">Outstanding: ₦{{ receipt.payload.order.balance_due|floatformat:2 }}</div>
+                </div>
             </div>
             {% endif %}
         </div>
