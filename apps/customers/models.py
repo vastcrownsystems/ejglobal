@@ -33,9 +33,10 @@ class Customer(TimeStampedModel):
         validators=[phone_regex],
         max_length=17,
         blank=True,
+        null=True,
         db_index=True
     )
-    email = models.EmailField(blank=True)
+    email = models.EmailField(blank=True, null=True)
     address = models.TextField(blank=True)
     is_walk_in = models.BooleanField(default=False)
 
