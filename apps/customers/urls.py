@@ -26,4 +26,6 @@ urlpatterns = [
     path('quick-add/', views.quick_add_customer, name='quick_add'),
     path('select/', views.select_customer, name='select_customer'),
     path('skip/', views.skip_customer, name='skip_customer'),
+
+    path('<int:pk>/refresh-stats/', views.refresh_customer_stats, name='refresh_stats'),
 ]

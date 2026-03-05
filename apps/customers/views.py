@@ -397,3 +397,30 @@ def customer_delete(request, pk):
     return redirect('customers:customer_list')
 
 
+@login_required
+@require_http_methods(["POST"])
+def refresh_customer_stats(request, pk):
+    """
+    Manually refresh customer statistics
+
+    URL: POST /customers/<pk>/refresh-stats/
+    """
+    customer = get_object_or_404(Customer, pk=pk)
+
+    try:
+        # Update statistics
+        customer.update_stats()
+
+        messages.success(
+            request,
+            f'✅ Statistics refreshed for {customer.full_name}'
+        )
+    except Exception as e:
+        messages.error(
+            request,
+            f'❌ Error refreshing statistics: {str(e)}'
+        )
+
+    return redirect('customers:customer_detail', pk=customer.pk)
+
+
