@@ -430,28 +430,28 @@
             {% endif %}
             {% endfor %}
 
-            <div class="rp-thin"></div>
+<!--            <div class="rp-thin"></div>-->
 
-            <div class="rp-row rp-bold">
-                {%  if payment.payment_method == 'CREDIT' %}
-                    <span>Paid:</span>
-                {% else %}
-                    <span>Outstanding:</span>
-                {% endif %}
-                <span>₦{{ receipt.payload.totals.paid_amount|floatformat:2 }}</span>
-            </div>
+<!--            <div class="rp-row rp-bold">-->
+<!--                {%  if payment.payment_method == 'CREDIT' %}-->
+<!--                    <span>Paid:</span>-->
+<!--                {% else %}-->
+<!--                    <span>Outstanding:</span>-->
+<!--                {% endif %}-->
+<!--                <span>₦{{ receipt.payload.totals.paid_amount|floatformat:2 }}</span>-->
+<!--            </div>-->
 
-            {% if receipt.payload.totals.balance_due > 0 %}
-            <div class="rp-row">
-                <span>Balance:</span>
-                <span>₦{{ receipt.payload.totals.balance_due|floatformat:2 }}</span>
-            </div>
-            {% else %}
-            <div class="rp-row">
-                <span>Change:</span>
-                <span>₦0.00</span>
-            </div>
-            {% endif %}
+<!--            {% if receipt.payload.totals.balance_due > 0 %}-->
+<!--            <div class="rp-row">-->
+<!--                <span>Balance:</span>-->
+<!--                <span>₦{{ receipt.payload.totals.balance_due|floatformat:2 }}</span>-->
+<!--            </div>-->
+<!--            {% else %}-->
+<!--            <div class="rp-row">-->
+<!--                <span>Change:</span>-->
+<!--                <span>₦0.00</span>-->
+<!--            </div>-->
+<!--            {% endif %}-->
 
             <!-- ✅ NEW: Credit Sale Indicator -->
             {% if receipt.payload.order.payment_status == 'UNPAID' or receipt.payload.order.payment_status == 'PARTIAL' %}

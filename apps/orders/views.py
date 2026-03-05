@@ -23,6 +23,8 @@ from decimal import Decimal, InvalidOperation
 from django.db.models import Sum
 from collections import defaultdict
 from datetime import datetime, timedelta
+from apps.receipts.services import ReceiptService
+
 
 import logging
 logger = logging.getLogger(__name__)
@@ -463,10 +465,10 @@ def checkout_modal(request):
     order_id = request.session.get('current_order_id')
 
     if not order_id:
-        return HttpResponse('<div class="alert-error">No active order</div>')
+        return HttpResponse("")
 
     try:
-        order = Order.objects.prefetch_related('order_payments').get(
+        order = Order.objects.select_related("customer").prefetch_related("items", "order_payments").get(
             pk=order_id,
             status='DRAFT',
             created_by=request.user
@@ -498,7 +500,11 @@ def add_payment(request):
         return JsonResponse({'error': 'No active order'}, status=400)
 
     try:
-        order = Order.objects.get(pk=order_id, status='DRAFT')
+        order = Order.objects.select_for_update().get(
+            pk=order_id,
+            status='DRAFT',
+            created_by=request.user
+        )
 
         payment_method = request.POST.get('payment_method', 'CASH')
 
@@ -571,112 +577,79 @@ def complete_sale(request):
     """
     Complete sale - handles both paid and credit sales
     """
-    order_id = request.session.get('current_order_id')
+    order_id = request.session.get("current_order_id")
 
     if not order_id:
-        messages.error(request, '❌ No active order')
-        return redirect('pos:pos_interface')
+        messages.error(request, "No active order")
+        return redirect("orders:pos")
 
     try:
         with transaction.atomic():
             order = Order.objects.select_for_update().get(
                 pk=order_id,
-                status='DRAFT',
+                status="DRAFT",
                 created_by=request.user
             )
 
-            # Validate
-            if order.items.count() == 0:
+            if not order.items.exists():
                 raise ValueError("Cannot complete empty order")
 
-            # ✅ CHECK IF CREDIT SALE
+            # Check if has credit payment
             has_credit_payment = order.order_payments.filter(
                 payment_method='CREDIT'
             ).exists()
 
             if has_credit_payment:
-                # ============================================
-                # CREDIT SALE - Allow completion with UNPAID
-                # ============================================
-
-                # Must have customer
+                # Credit sale - must have customer
                 if not order.customer:
                     raise ValueError("Credit sales require a customer")
-
-                # Confirm and complete
-                OrderService.confirm_order(order, reduce_stock=True)
-                order.status = 'COMPLETED'
-                order.payment_status = 'UNPAID'  # ✅ Stays UNPAID
-                order.completed_at = timezone.now()
-                order.save()
-
-                # Generate receipt
-                from apps.receipts.services import ReceiptService
-                receipt = ReceiptService.generate_receipt(order)
-
-                # Clear session
-                if 'current_order_id' in request.session:
-                    del request.session['current_order_id']
-                    request.session.modified = True
-
-                messages.success(request, f'✅ Credit sale completed! Order: {order.order_number}')
-
-                html = render_to_string(
-                    "receipts/receipt_modal.html",
-                    {
-                        "receipt": receipt,
-                        "data": receipt.payload,
-                        "is_credit_sale": True,  # ✅ Flag for template
-                    },
-                    request=request
-                )
-
-                response = HttpResponse(html)
-                response["HX-Trigger"] = "saleCompleted"
-                return response
-
             else:
-                # ============================================
-                # NORMAL PAID SALE
-                # ============================================
-
-                # Must be fully paid
+                # Normal sale - must be fully paid
+                order.update_payment_status()
                 if order.balance_due > 0:
-                    raise ValueError(f"Order not fully paid. Balance: ₦{order.balance_due}")
+                    raise ValueError(
+                        f"Order not fully paid. Balance: ₦{order.balance_due}"
+                    )
 
-                # Confirm and complete
-                OrderService.confirm_order(order, reduce_stock=True)
-                order.complete()
+            # Confirm order and reduce stock
+            OrderService.confirm_order(order, reduce_stock=True)
 
-                # Generate receipt
-                from apps.receipts.services import ReceiptService
-                receipt = ReceiptService.generate_receipt(order)
+            # Mark as completed
+            order.status = "COMPLETED"
+            order.completed_at = timezone.now()
+            order.save(update_fields=["status", "completed_at"])
 
-                # Clear session
-                if 'current_order_id' in request.session:
-                    del request.session['current_order_id']
-                    request.session.modified = True
+            # Update payment status
+            order.update_payment_status()
 
-                messages.success(request, f'✅ Sale completed! Order: {order.order_number}')
+            # Generate receipt
+            from apps.receipts.services import ReceiptService
+            receipt = ReceiptService.generate_receipt(order)
 
-                html = render_to_string(
-                    "receipts/receipt_modal.html",
-                    {
-                        "receipt": receipt,
-                        "data": receipt.payload,
-                        "is_credit_sale": False,
-                    },
-                    request=request
-                )
+            # Clear session
+            request.session.pop("current_order_id", None)
 
-                response = HttpResponse(html)
-                response["HX-Trigger"] = "saleCompleted"
-                return response
+            # Render receipt modal
+            html = render_to_string(
+                "receipts/receipt_modal.html",
+                {
+                    "receipt": receipt,
+                    "data": receipt.payload,
+                },
+                request=request
+            )
+
+            response = HttpResponse(html)
+            # ✅ DON'T send HX-Trigger - let receipt stay open
+            # response["HX-Trigger"] = "saleCompleted"  # ❌ This causes immediate redirect
+
+            return response
 
     except Exception as e:
         logger.exception(f"Error completing sale: {e}")
-        messages.error(request, f'❌ Error: {str(e)}')
-        return redirect('orders:pos')
+        messages.error(request, f"❌ Error: {str(e)}")
+        return redirect("orders:pos")
+
 
 @login_required
 @require_http_methods(["POST"])
@@ -1297,7 +1270,9 @@ def cart_set_customer(request):
             order.save(update_fields=['customer'])
 
         logger.info(f"Customer '{customer.full_name}' linked to order {order.pk}")
-        return _render_cart(request, f'{customer.full_name} added to order', 'success')
+        response = _render_cart(request, f'{customer.full_name} added to order', 'success')
+        response["HX-Trigger"] = "customerSelected"
+        return response
 
     except Exception as e:
         logger.exception(f"Error setting cart customer: {e}")
@@ -1424,3 +1399,64 @@ def cart_quick_add_customer(request):
         logger.exception(f"Error quick-adding customer: {e}")
         return _render_cart(request, f'Could not create customer: {str(e)}', 'error')
 
+
+@login_required
+@require_POST
+def mark_as_credit_sale(request):
+    """
+    Mark current order as credit sale by adding a CREDIT payment record
+    """
+    order_id = request.session.get('current_order_id')
+
+    if not order_id:
+        return JsonResponse({'error': 'No active order found in session'}, status=400)
+
+    try:
+        order = Order.objects.get(
+            pk=order_id,
+            status='DRAFT'
+        )
+
+        # Validate customer exists
+        if not order.customer:
+            return JsonResponse({
+                'success': False,
+                'error': 'Customer required for credit sales. Please link a customer first.'
+            }, status=400)
+
+        # Remove any existing CREDIT payments to avoid duplicates
+        OrderPayment.objects.filter(
+            order=order,
+            payment_method='CREDIT'
+        ).delete()
+
+        # Create CREDIT payment marker (zero amount)
+        OrderPayment.objects.create(
+            order=order,
+            amount=Decimal('0.00'),
+            payment_method='CREDIT',
+            notes=f'Credit sale for {order.customer.full_name}',
+            processed_by=request.user,
+            created_by=request.user
+        )
+
+        logger.info(f"Order {order.order_number} marked as credit sale for customer {order.customer.full_name}")
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Order marked as credit sale for {order.customer.full_name}',
+            'customer_name': order.customer.full_name
+        })
+
+    except Order.DoesNotExist:
+        logger.error(f"Order {order_id} not found or not in DRAFT status")
+        return JsonResponse({
+            'success': False,
+            'error': 'Order not found or already completed'
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Error marking credit sale: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Error: {str(e)}'
+        }, status=500)

@@ -364,8 +364,7 @@ class OrderPayment(models.Model):
     PAYMENT_METHODS = [
         ('CASH', 'Cash'),
         ('CARD', 'Card'),
-        ('TRANSFER', 'Bank Transfer'),
-        ('CREDIT', 'Credit (Pay Later)'),  # ✅ NEW
+        ('TRANSFER', 'Bank Transfer')
     ]
 
     order = models.ForeignKey(

@@ -46,7 +46,8 @@ class Customer(TimeStampedModel):
         unique=True,
         db_index=True,
         help_text="Format: CUST-YYYYMMDD-NNNN",
-        default=""
+        blank=True,
+        null = True
     )
 
     # Optional

@@ -4,7 +4,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}{{ customer.name }} - Customer{% endblock %}
+{% block title %}{{ customer.full_name }} - Customer{% endblock %}
 
 {% block content %}
 <div class="customer-detail-page">
@@ -15,7 +15,7 @@
                 <i class="fas fa-arrow-left"></i>
                 Back to Customers
             </a>
-            <h1>{{ customer.name }}</h1>
+            <h1>{{ customer.full_name }}</h1>
             <div class="customer-meta">
                 <span class="customer-number">{{ customer.customer_number }}</span>
                 <span class="badge badge-{{ customer.customer_type|lower }}">

@@ -283,5 +283,14 @@
 
     searchInput.addEventListener('input', filterProducts);
     categoryFilter.addEventListener('change', filterProducts);
+
+
+    // ✅ OR REPLACE WITH THIS (keeps receipt open):
+    document.body.addEventListener("saleCompleted", function () {
+        console.log("Sale completed - receipt modal open");
+        // Don't redirect - let user close receipt manually
+        // They can refresh page by closing receipt and clicking "New Sale"
+    });
+
 </script>
 {% endblock %}

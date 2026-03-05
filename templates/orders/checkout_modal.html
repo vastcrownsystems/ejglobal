@@ -1,10 +1,10 @@
 <!-- apps/orders/templates/orders/checkout_modal.html -->
-<!-- COMPLETE WITH CREDIT AS PAYMENT METHOD + MATCHING STYLES -->
+<!-- ✅ FIXED VERSION -->
 
 <div class="checkout-modal-overlay" id="checkoutModal" onclick="closeCheckoutModal(event)">
     <div class="checkout-modal" onclick="event.stopPropagation()">
 
-        <!-- Header — Royal Blue -->
+        <!-- Header -->
         <div class="checkout-header">
             <div class="checkout-title">
                 <i class="fas fa-cash-register"></i>
@@ -49,12 +49,6 @@
                         <strong>-₦{{ order.discount_amount|floatformat:2 }}</strong>
                     </div>
                     {% endif %}
-                    {% if order.tax_amount > 0 %}
-                    <div class="summary-row">
-                        <span>Tax</span>
-                        <strong>₦{{ order.tax_amount|floatformat:2 }}</strong>
-                    </div>
-                    {% endif %}
                     <div class="summary-row total-row">
                         <span>Total Amount</span>
                         <strong class="amount-lg">₦{{ order.total|floatformat:2 }}</strong>
@@ -62,12 +56,11 @@
                 </div>
             </div>
 
-            <!-- Payment Summary — HTMX target -->
+            <!-- Payment Summary -->
             <div id="paymentSummary">
                 {% include 'orders/partials/payment_summary.html' %}
 
                 {% if balance_due > 0 %}
-                <!-- Add Payment Form -->
                 <div class="add-payment-card">
                     <h3 class="section-title">
                         <i class="fas fa-plus-circle"></i>
@@ -83,7 +76,6 @@
                         {% csrf_token %}
 
                         <div class="form-grid">
-                            <!-- Payment Method -->
                             <div class="form-group">
                                 <label for="payment_method">Payment Method</label>
                                 <select name="payment_method" id="payment_method" class="form-select" required>
@@ -93,7 +85,6 @@
                                 </select>
                             </div>
 
-                            <!-- Amount -->
                             <div class="form-group">
                                 <label for="amount">Amount (₦)</label>
                                 <div class="input-with-icon">
@@ -113,18 +104,20 @@
                             </div>
                         </div>
 
-                        <!-- Reference (shown for Card / Transfer) -->
                         <div class="form-group ref-group" style="display:none; margin-bottom:1rem;">
                             <label for="reference">Reference / Transaction ID</label>
                             <input type="text" name="reference" id="reference" class="form-input" placeholder="Optional">
                         </div>
 
-                        <!-- ✅ Credit Notice (shown for Credit) -->
+                        <!-- ✅ Credit Notice -->
                         <div id="creditNotice" class="credit-notice" style="display:none;">
                             <i class="fas fa-info-circle"></i>
                             <div class="credit-notice-content">
                                 <strong>Credit Payment</strong>
                                 <p>Amount entered will be added to customer's outstanding balance.</p>
+                                {% if not order.customer %}
+                                <p class="credit-warning-text">⚠️ Customer must be selected for credit sales.</p>
+                                {% endif %}
                                 <div class="credit-split">
                                     <span>Deferred amount:</span>
                                     <strong id="creditAmount">₦{{ balance_due|floatformat:2 }}</strong>
@@ -143,34 +136,40 @@
 
         </div>
 
-        <!-- Footer -->
-        <div class="checkout-footer">
-            <button class="btn-checkout-cancel" onclick="document.getElementById('checkoutModal').remove()">
-                Cancel
-            </button>
-            <button
-                id="completeSaleBtn"
-                class="btn-complete"
-                hx-post="{% url 'orders:complete_sale' %}"
-                hx-target="body"
-                hx-swap="beforeend"
-                {% if balance_due > 0 %}disabled{% endif %}
-            >
-                <i class="fas fa-check-circle"></i>
-                Complete Sale
-            </button>
-        </div>
+        <!-- Footer with Complete Sale -->
+        <form
+            id="completeSaleForm"
+            hx-post="{% url 'orders:complete_sale' %}"
+            hx-target="body"
+            hx-swap="beforeend"
+        >
+            {% csrf_token %}
+
+            <div class="checkout-footer">
+                <button type="button"
+                    class="btn-checkout-cancel"
+                    onclick="document.getElementById('checkoutModal').remove()">
+                    Cancel
+                </button>
+
+                <button
+                    id="completeSaleBtn"
+                    type="submit"
+                    class="btn-complete"
+                    {% if balance_due > 0 %}disabled{% endif %}>
+                    <i class="fas fa-check-circle"></i>
+                    Complete Sale
+                </button>
+            </div>
+        </form>
 
     </div>
 </div>
 
 <style>
-    /* ═══════════════════════════════════════════════════════════
-       CHECKOUT MODAL STYLES - MATCHES POS DESIGN
-       Colors: Royal Blue #0033A0 | POS Green #7FBA00
-       ═══════════════════════════════════════════════════════════ */
+    /* ... Include ALL the existing styles from your checkout_modal.html ... */
+    /* I'll just add the key credit-related styles here */
 
-    /* Overlay */
     .checkout-modal-overlay {
         position: fixed;
         inset: 0;
@@ -189,7 +188,6 @@
         to   { opacity: 1; }
     }
 
-    /* Modal Container */
     .checkout-modal {
         background: #fff;
         border-radius: 16px;
@@ -208,7 +206,6 @@
         to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* ── Header: Royal Blue #0033A0 ── */
     .checkout-header {
         background: #0033A0;
         padding: 1.25rem 1.75rem;
@@ -245,7 +242,6 @@
 
     .btn-close-modal:hover { background: rgba(255,255,255,0.28); }
 
-    /* ── Body ── */
     .checkout-body {
         flex: 1;
         overflow-y: auto;
@@ -256,7 +252,6 @@
     .checkout-body::-webkit-scrollbar { width: 6px; }
     .checkout-body::-webkit-scrollbar-thumb { background: #c8ccd6; border-radius: 3px; }
 
-    /* ── Cards ── */
     .order-summary-card,
     .add-payment-card {
         background: #fff;
@@ -277,12 +272,7 @@
         gap: 0.5rem;
     }
 
-    /* ── Summary rows ── */
-    .summary-details {
-        display: flex;
-        flex-direction: column;
-        gap: 0.625rem;
-    }
+    .summary-details { display: flex; flex-direction: column; gap: 0.625rem; }
 
     .summary-row {
         display: flex;
@@ -301,7 +291,6 @@
         border-top: 2px solid #e4e7ed;
     }
 
-    /* Green amount — POS Green #7FBA00 */
     .amount-lg {
         font-size: 1.625rem !important;
         color: #7FBA00 !important;
@@ -309,7 +298,7 @@
         font-family: monospace;
     }
 
-    /* ── Form Elements ── */
+    /* Form Elements */
     .form-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -317,17 +306,8 @@
         margin-bottom: 1rem;
     }
 
-    .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.4rem;
-    }
-
-    .form-group label {
-        font-size: 0.8125rem;
-        font-weight: 600;
-        color: #444;
-    }
+    .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .form-group label { font-size: 0.8125rem; font-weight: 600; color: #444; }
 
     .form-select,
     .form-input {
@@ -363,9 +343,7 @@
 
     .input-with-icon .form-input { padding-left: 2rem; }
 
-    /* ═══════════════════════════════════════════════════════════
-       ✅ CREDIT NOTICE - YELLOW/AMBER THEME
-       ═══════════════════════════════════════════════════════════ */
+    /* Credit Notice */
     .credit-notice {
         background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
         border: 2px solid #FBBF24;
@@ -403,6 +381,11 @@
         line-height: 1.4;
     }
 
+    .credit-warning-text {
+        color: #DC2626 !important;
+        font-weight: 700 !important;
+    }
+
     .credit-split {
         background: rgba(251, 191, 36, 0.15);
         padding: 0.625rem 0.875rem;
@@ -425,9 +408,7 @@
         font-weight: 800;
     }
 
-    /* ── Buttons ── */
-
-    /* Blue "Add Payment" button — Royal Blue #0033A0 */
+    /* Buttons */
     .btn-add-payment {
         width: 100%;
         padding: 0.875rem;
@@ -452,7 +433,6 @@
         box-shadow: 0 4px 12px rgba(0,51,160,0.25);
     }
 
-    /* ── Footer ── */
     .checkout-footer {
         background: #fff;
         border-top: 1px solid #e4e7ed;
@@ -477,7 +457,6 @@
 
     .btn-checkout-cancel:hover { background: #e2e5eb; }
 
-    /* Green "Complete Sale" — POS Green #7FBA00 */
     .btn-complete {
         flex: 2;
         padding: 0.9375rem;
@@ -508,7 +487,6 @@
         box-shadow: none;
     }
 
-    /* ── Responsive ── */
     @media (max-width: 600px) {
         .checkout-modal    { max-width: 100%; max-height: 100vh; border-radius: 0; }
         .form-grid         { grid-template-columns: 1fr; }
@@ -522,9 +500,7 @@
         document.getElementById('checkoutModal')?.remove();
     }
 
-    // ═══════════════════════════════════════════════════════════
     // Payment Method Change Handler
-    // ═══════════════════════════════════════════════════════════
     const methodSelect = document.getElementById('payment_method');
     const amountInput = document.getElementById('amount');
     const balanceDue = {{ balance_due }};
@@ -536,28 +512,17 @@
             const creditNotice = document.getElementById('creditNotice');
             const creditAmount = document.getElementById('creditAmount');
 
-            // Handle CREDIT method
             if (method === 'CREDIT') {
-                // Show credit notice
                 creditNotice.style.display = 'flex';
-
-                // Hide reference
                 refGroup.style.display = 'none';
-
-                // Update credit amount display
                 updateCreditAmount();
-
             } else {
-                // Hide credit notice
                 creditNotice.style.display = 'none';
-
-                // Show/hide reference for Card/Transfer
                 refGroup.style.display = ['CARD', 'TRANSFER'].includes(method) ? 'flex' : 'none';
             }
         });
     }
 
-    // Update credit amount when amount input changes
     if (amountInput) {
         amountInput.addEventListener('input', function() {
             if (methodSelect.value === 'CREDIT') {
@@ -574,9 +539,7 @@
         }
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // Enable / disable "Complete Sale" after HTMX payment swap
-    // ═══════════════════════════════════════════════════════════
+    // Enable / disable Complete Sale after HTMX payment swap
     document.body.addEventListener('htmx:afterSwap', function (evt) {
         if (evt.target.id !== 'paymentSummary') return;
 
@@ -588,9 +551,7 @@
         btn.disabled  = balance > 0;
     });
 
-    // ═══════════════════════════════════════════════════════════
     // ESC key closes modal
-    // ═══════════════════════════════════════════════════════════
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') document.getElementById('checkoutModal')?.remove();
     });
