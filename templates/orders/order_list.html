@@ -68,14 +68,28 @@
                     <div class="stat-item">
                         <div class="stat-label">Orders</div>
                         <div class="stat-value">{{ orders_count }}</div>
+                        <div class="stat-breakdown">
+                            <span class="breakdown-item paid">{{ paid_orders_count }} Paid</span>
+                            {% if credit_orders_count > 0 %}
+                            <span class="breakdown-item credit">{{ credit_orders_count }} Credit</span>
+                            {% endif %}
+                            {% if partial_orders_count > 0 %}
+                            <span class="breakdown-item partial">{{ partial_orders_count }} Partial</span>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-label">Items Sold</div>
                         <div class="stat-value">{{ total_items_sold }}</div>
                     </div>
                     <div class="stat-item stat-revenue">
-                        <div class="stat-label">Revenue</div>
+                        <div class="stat-label">Revenue (Paid)</div>
                         <div class="stat-value">₦{{ total_revenue|floatformat:2 }}</div>
+                        {% if credit_sales > 0 %}
+                        <div class="stat-breakdown">
+                            <span class="breakdown-item credit">₦{{ credit_sales|floatformat:2 }} Credit</span>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -143,6 +157,15 @@
                 <option value="CANCELLED" {% if request.GET.status == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
             </select>
 
+            <!-- ✅ NEW: Payment Status Filter -->
+            <select name="payment_status" class="filter-select" onchange="this.form.submit()">
+                <option value="">All Payment Status</option>
+                <option value="UNPAID" {% if request.GET.payment_status == 'UNPAID' %}selected{% endif %}>Unpaid</option>
+                <option value="PARTIAL" {% if request.GET.payment_status == 'PARTIAL' %}selected{% endif %}>Partially Paid</option>
+                <option value="PAID" {% if request.GET.payment_status == 'PAID' %}selected{% endif %}>Paid</option>
+                <option value="REFUNDED" {% if request.GET.payment_status == 'REFUNDED' %}selected{% endif %}>Refunded</option>
+            </select>
+
             {% if is_manager %}
             <select name="cashier" class="filter-select" onchange="this.form.submit()">
                 <option value="">All Cashiers</option>
@@ -154,7 +177,7 @@
             </select>
             {% endif %}
 
-            {% if request.GET.status or request.GET.cashier %}
+            {% if request.GET.status or request.GET.payment_status or request.GET.cashier %}
                 <a href="?date={{ selected_date|date:'Y-m-d' }}" class="btn-clear">
                     <i class="fas fa-times"></i>
                     Clear Filters
@@ -470,6 +493,40 @@
 
     .stat-revenue .stat-value {
         color: #7FBA00;
+    }
+
+    /* Stat Breakdown */
+    .stat-breakdown {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .breakdown-item {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.625rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .breakdown-item.paid {
+        background: rgba(127, 186, 0, 0.1);
+        color: #7FBA00;
+        border: 1px solid rgba(127, 186, 0, 0.3);
+    }
+
+    .breakdown-item.credit {
+        background: rgba(239, 68, 68, 0.1);
+        color: #EF4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .breakdown-item.partial {
+        background: rgba(245, 158, 11, 0.1);
+        color: #F59E0B;
+        border: 1px solid rgba(245, 158, 11, 0.3);
     }
 
     /* Products List */

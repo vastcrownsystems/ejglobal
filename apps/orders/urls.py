@@ -80,8 +80,4 @@ urlpatterns = [
     path('cart/customer/walkin/', views.cart_set_walkin, name='cart_set_walkin'),
     path('cart/customer/quick-add/', views.cart_quick_add_customer_form, name='cart_quick_add_customer_form'),
     path('cart/customer/quick-add/create/', views.cart_quick_add_customer, name='cart_quick_add_customer'),
-
-    # Simple credit sale marker
-    path('mark-credit/', views.mark_as_credit_sale, name='mark_credit_sale'),
-
 ]

@@ -575,7 +575,7 @@ def add_payment(request):
 @require_http_methods(["POST"])
 def complete_sale(request):
     """
-    Complete sale - handles both paid and credit sales
+    Complete sale - handles Cash Sale (PAID) and Credit Sale (UNPAID)
     """
     order_id = request.session.get("current_order_id")
 
@@ -591,25 +591,52 @@ def complete_sale(request):
                 created_by=request.user
             )
 
+            # Validate order has items
             if not order.items.exists():
                 raise ValueError("Cannot complete empty order")
 
-            # Check if has credit payment
-            has_credit_payment = order.order_payments.filter(
-                payment_method='CREDIT'
-            ).exists()
+            # ✅ GET SALE TYPE from form
+            sale_type = request.POST.get("sale_type", "CASH")
 
-            if has_credit_payment:
-                # Credit sale - must have customer
+            if sale_type == "CREDIT":
+                # ════════════════════════════════════════════
+                # CREDIT SALE FLOW
+                # ════════════════════════════════════════════
+
+                # Must have customer
                 if not order.customer:
                     raise ValueError("Credit sales require a customer")
-            else:
-                # Normal sale - must be fully paid
+
+                # Create CREDIT payment for full amount
+                OrderPayment.objects.create(
+                    order=order,
+                    amount=Decimal("0.00"),
+                    payment_method="CREDIT",
+                    reference_number=f"CREDIT-{order.order_number}",
+                    notes="Credit sale - Payment deferred",
+                    created_by=request.user
+                )
+
+                # Update payment status - will be UNPAID
                 order.update_payment_status()
+
+            else:
+                # ════════════════════════════════════════════
+                # CASH SALE FLOW
+                # ════════════════════════════════════════════
+
+                # Update payment status
+                order.update_payment_status()
+
+                # Must be fully paid
                 if order.balance_due > 0:
                     raise ValueError(
                         f"Order not fully paid. Balance: ₦{order.balance_due}"
                     )
+
+            # ════════════════════════════════════════════
+            # COMMON COMPLETION LOGIC
+            # ════════════════════════════════════════════
 
             # Confirm order and reduce stock
             OrderService.confirm_order(order, reduce_stock=True)
@@ -618,9 +645,6 @@ def complete_sale(request):
             order.status = "COMPLETED"
             order.completed_at = timezone.now()
             order.save(update_fields=["status", "completed_at"])
-
-            # Update payment status
-            order.update_payment_status()
 
             # Generate receipt
             from apps.receipts.services import ReceiptService
@@ -640,9 +664,7 @@ def complete_sale(request):
             )
 
             response = HttpResponse(html)
-            # ✅ DON'T send HX-Trigger - let receipt stay open
-            # response["HX-Trigger"] = "saleCompleted"  # ❌ This causes immediate redirect
-
+            # Don't send HX-Trigger to avoid immediate redirect
             return response
 
     except Exception as e:
@@ -967,6 +989,7 @@ def get_held_orders_count(user):
 def order_list(request):
     """
     List orders with daily sales breakdown for selected date
+    Separates PAID revenue from UNPAID (credit) sales
     """
     is_manager = request.user.is_superuser or request.user.groups.filter(
         name__in=['Admin', 'Manager']
@@ -988,6 +1011,11 @@ def order_list(request):
     status_filter = request.GET.get('status')
     if status_filter:
         orders = orders.filter(status=status_filter)
+
+    # Payment Status filter
+    payment_status_filter = request.GET.get('payment_status')
+    if payment_status_filter:
+        orders = orders.filter(payment_status=payment_status_filter)
 
     # Cashier filter (managers only)
     if is_manager:
@@ -1011,9 +1039,26 @@ def order_list(request):
         selected_date = today
 
     # ===== DAILY BREAKDOWN FOR SELECTED DATE =====
+    # Base queryset for completed orders on selected date
+    base_orders = Order.objects.filter(
+        status='COMPLETED',
+        created_at__date=selected_date
+    )
+
+    if not is_manager:
+        base_orders = base_orders.filter(created_by=request.user)
+    elif is_manager and request.GET.get('cashier'):
+        base_orders = base_orders.filter(created_by_id=request.GET.get('cashier'))
+
+    # ✅ SEPARATE PAID AND UNPAID SALES
+    paid_orders = base_orders.filter(payment_status='PAID')
+    unpaid_orders = base_orders.filter(payment_status='UNPAID')
+    partial_orders = base_orders.filter(payment_status='PARTIAL')
+
+    # Products sold (all completed orders)
     daily_sales = OrderItem.objects.filter(
         order__status='COMPLETED',
-        order__created_at__date=selected_date  # ✅ Only selected date
+        order__created_at__date=selected_date
     )
 
     if not is_manager:
@@ -1033,7 +1078,6 @@ def order_list(request):
     # Convert to list for template
     daily_products = []
     total_items_sold = 0
-    total_revenue = Decimal('0.00')
 
     for sale in daily_sales:
         daily_products.append({
@@ -1044,45 +1088,65 @@ def order_list(request):
             'orders': sale['total_orders'],
         })
         total_items_sold += sale['total_quantity']
-        total_revenue += sale['total_revenue']
 
-    # Get order count for selected date
-    orders_on_date = Order.objects.filter(
-        status='COMPLETED',
-        created_at__date=selected_date
-    )
+    # ✅ CALCULATE SEPARATED REVENUES
+    # Actual Revenue (PAID only)
+    paid_revenue = paid_orders.aggregate(
+        total=Sum('total')
+    )['total'] or Decimal('0.00')
 
-    if not is_manager:
-        orders_on_date = orders_on_date.filter(created_by=request.user)
-    elif is_manager and request.GET.get('cashier'):
-        orders_on_date = orders_on_date.filter(created_by_id=request.GET.get('cashier'))
+    # Credit Sales (UNPAID)
+    credit_sales = unpaid_orders.aggregate(
+        total=Sum('total')
+    )['total'] or Decimal('0.00')
 
-    orders_count = orders_on_date.count()
+    # Partial Payments (amount paid from partial orders)
+    partial_revenue = partial_orders.aggregate(
+        total=Sum('amount_paid')
+    )['total'] or Decimal('0.00')
 
-    # Pagination
-    paginator = Paginator(orders, 25)
-    page_number = request.GET.get('page', 1)
-    page_obj = paginator.get_page(page_number)
+    # Total Revenue = Paid + Partial (actual cash received)
+    total_revenue = paid_revenue + partial_revenue
 
-    cashiers = None
+    # Total Sales Value (including credit)
+    total_sales_value = paid_revenue + partial_revenue + credit_sales
+
+    # Count of orders
+    orders_count = base_orders.count()
+    paid_orders_count = paid_orders.count()
+    credit_orders_count = unpaid_orders.count()
+    partial_orders_count = partial_orders.count()
+
+    # Get list of cashiers (managers only)
+    cashiers = []
     if is_manager:
         cashiers = User.objects.filter(
-            created_orders__isnull=False
-        ).distinct().order_by('first_name', 'last_name', 'username')
+            is_active=True
+        ).order_by('first_name', 'last_name', 'username')
 
     context = {
-        'orders': page_obj,
-        'page_obj': page_obj,
+        'orders': orders,
         'is_manager': is_manager,
         'cashiers': cashiers,
-
-        # Daily breakdown data
         'selected_date': selected_date,
         'today': today,
+
+        # Daily breakdown data
         'daily_products': daily_products,
         'total_items_sold': total_items_sold,
-        'total_revenue': total_revenue,
+
+        # ✅ SEPARATED REVENUE DATA
+        'total_revenue': total_revenue,  # Actual cash received (PAID + PARTIAL)
+        'paid_revenue': paid_revenue,  # Fully paid orders
+        'credit_sales': credit_sales,  # Unpaid (credit) orders
+        'partial_revenue': partial_revenue,  # Cash from partial payments
+        'total_sales_value': total_sales_value,  # Total including credit
+
+        # Order counts
         'orders_count': orders_count,
+        'paid_orders_count': paid_orders_count,
+        'credit_orders_count': credit_orders_count,
+        'partial_orders_count': partial_orders_count,
     }
 
     return render(request, 'orders/order_list.html', context)
@@ -1400,63 +1464,5 @@ def cart_quick_add_customer(request):
         return _render_cart(request, f'Could not create customer: {str(e)}', 'error')
 
 
-@login_required
-@require_POST
-def mark_as_credit_sale(request):
-    """
-    Mark current order as credit sale by adding a CREDIT payment record
-    """
-    order_id = request.session.get('current_order_id')
 
-    if not order_id:
-        return JsonResponse({'error': 'No active order found in session'}, status=400)
 
-    try:
-        order = Order.objects.get(
-            pk=order_id,
-            status='DRAFT'
-        )
-
-        # Validate customer exists
-        if not order.customer:
-            return JsonResponse({
-                'success': False,
-                'error': 'Customer required for credit sales. Please link a customer first.'
-            }, status=400)
-
-        # Remove any existing CREDIT payments to avoid duplicates
-        OrderPayment.objects.filter(
-            order=order,
-            payment_method='CREDIT'
-        ).delete()
-
-        # Create CREDIT payment marker (zero amount)
-        OrderPayment.objects.create(
-            order=order,
-            amount=Decimal('0.00'),
-            payment_method='CREDIT',
-            notes=f'Credit sale for {order.customer.full_name}',
-            processed_by=request.user,
-            created_by=request.user
-        )
-
-        logger.info(f"Order {order.order_number} marked as credit sale for customer {order.customer.full_name}")
-
-        return JsonResponse({
-            'success': True,
-            'message': f'Order marked as credit sale for {order.customer.full_name}',
-            'customer_name': order.customer.full_name
-        })
-
-    except Order.DoesNotExist:
-        logger.error(f"Order {order_id} not found or not in DRAFT status")
-        return JsonResponse({
-            'success': False,
-            'error': 'Order not found or already completed'
-        }, status=404)
-    except Exception as e:
-        logger.error(f"Error marking credit sale: {e}", exc_info=True)
-        return JsonResponse({
-            'success': False,
-            'error': f'Error: {str(e)}'
-        }, status=500)
