@@ -492,82 +492,110 @@ def checkout_modal(request):
 @require_http_methods(["POST"])
 def add_payment(request):
     """
-    Add payment to order - handles CREDIT as payment method
+    Add payment to order
+
+    FIXED: Wrapped select_for_update in transaction.atomic
     """
     order_id = request.session.get('current_order_id')
 
     if not order_id:
-        return JsonResponse({'error': 'No active order'}, status=400)
+        return render(request, 'orders/partials/payment_summary.html', {
+            'message': 'No active order found',
+            'message_type': 'error',
+        })
 
     try:
-        order = Order.objects.select_for_update().get(
-            pk=order_id,
-            status='DRAFT',
-            created_by=request.user
-        )
+        # ✅ FIX: Wrap select_for_update in transaction
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(
+                pk=order_id,
+                status='DRAFT',
+                created_by=request.user
+            )
 
-        payment_method = request.POST.get('payment_method', 'CASH')
-
-        # ✅ CREDIT METHOD - Use full order total as amount
-        if payment_method == 'CREDIT':
-            # Must have customer for credit
-            if not order.customer:
-                return render(request, 'orders/partials/payment_summary.html', {
-                    'order': order,
-                    'payments': order.order_payments.all(),
-                    'balance_due': order.balance_due,
-                    'message': '❌ Customer required for credit sales',
-                    'message_type': 'error'
-                })
-
-            # Use full order total
-            amount = order.total
-            reference = f'CREDIT-{order.order_number}'
-            notes = 'Credit sale - Payment deferred'
-        else:
-            # Normal payment
+            # Get payment details
+            payment_method = request.POST.get('payment_method')
             amount = Decimal(request.POST.get('amount', '0'))
             reference = request.POST.get('reference', '').strip()
-            notes = request.POST.get('notes', '').strip()
 
-        # Add payment
-        payment = OrderService.add_payment(
-            order=order,
-            amount=amount,
-            payment_method=payment_method,
-            reference_number=reference,
-            notes=notes,
-            user=request.user
-        )
+            # Validate
+            if amount <= 0:
+                raise ValueError("Payment amount must be greater than 0")
 
-        order.refresh_from_db()
+            if amount > order.balance_due:
+                raise ValueError(
+                    f"Payment amount (₦{amount:,.2f}) exceeds balance due (₦{order.balance_due:,.2f})"
+                )
 
+            # Create payment
+            payment = OrderPayment.objects.create(
+                order=order,
+                amount=amount,
+                payment_method=payment_method,
+                reference_number=reference,
+                created_by=request.user,
+                processed_by=request.user
+            )
+
+            # Update order payment status
+            order.update_payment_status()
+
+        # Return updated payment summary
         payments = order.order_payments.all().order_by('-created_at')
+        balance_due = order.balance_due
 
-        # ✅ Different message for credit
-        if payment_method == 'CREDIT':
-            message = f'✅ Credit sale registered - Balance: ₦{order.total}'
-        else:
-            message = f'✅ Payment of ₦{amount} added'
-
-        context = {
-            'order': order,
-            'payments': payments,
-            'balance_due': order.balance_due,
-            'message': message,
-            'message_type': 'success'
-        }
-
-        return render(request, 'orders/partials/payment_summary.html', context)
-
-    except Exception as e:
-        logger.exception(f"Error adding payment: {e}")
         return render(request, 'orders/partials/payment_summary.html', {
             'order': order,
-            'payments': order.order_payments.all(),
-            'balance_due': order.balance_due,
-            'message': f'❌ Error: {str(e)}',
-            'message_type': 'error'
+            'payments': payments,
+            'balance_due': balance_due,
+            'message': f'✅ Payment of ₦{amount:,.2f} added successfully',
+            'message_type': 'success',
+        })
+
+    except Order.DoesNotExist:
+        return render(request, 'orders/partials/payment_summary.html', {
+            'message': 'Order not found',
+            'message_type': 'error',
+        })
+    except ValueError as e:
+        # Get order without lock for error display
+        try:
+            order = Order.objects.get(pk=order_id, status='DRAFT')
+            payments = order.order_payments.all().order_by('-created_at')
+            balance_due = order.balance_due
+        except Order.DoesNotExist:
+            return render(request, 'orders/partials/payment_summary.html', {
+                'message': str(e),
+                'message_type': 'error',
+            })
+
+        return render(request, 'orders/partials/payment_summary.html', {
+            'order': order,
+            'payments': payments,
+            'balance_due': balance_due,
+            'message': str(e),
+            'message_type': 'error',
+        })
+    except Exception as e:
+        logger.error(f"Error adding payment: {e}")
+
+        # Get order without lock for error display
+        try:
+            order = Order.objects.get(pk=order_id, status='DRAFT')
+            payments = order.order_payments.all().order_by('-created_at')
+            balance_due = order.balance_due
+        except Order.DoesNotExist:
+            return render(request, 'orders/partials/payment_summary.html', {
+                'message': 'An unexpected error occurred',
+                'message_type': 'error',
+            })
+
+        return render(request, 'orders/partials/payment_summary.html', {
+            'order': order,
+            'payments': payments,
+            'balance_due': balance_due,
+            'message': f'Error: {str(e)}',
+            'message_type': 'error',
         })
 
 
