@@ -1016,8 +1016,8 @@ def get_held_orders_count(user):
 @login_required
 def order_list(request):
     """
-    List orders with daily sales breakdown for selected date
-    Separates PAID revenue from UNPAID (credit) sales
+    List orders with daily sales breakdown
+    NOW WITH ITEMS BREAKDOWN: Paid items vs Credit items
     """
     is_manager = request.user.is_superuser or request.user.groups.filter(
         name__in=['Admin', 'Manager']
@@ -1053,10 +1053,22 @@ def order_list(request):
 
     orders = orders.order_by('-created_at')
 
+    # ✅ PAGINATION FOR ORDER HISTORY
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+    paginator = Paginator(orders, 15)  # 15 orders per page
+    page_number = request.GET.get('page', 1)
+
+    try:
+        page_obj = paginator.page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
     # ===== DATE FILTER FOR DAILY BREAKDOWN =====
     today = datetime.now().date()
 
-    # Get selected date from query param (default to today)
     selected_date_str = request.GET.get('date')
     if selected_date_str:
         try:
@@ -1067,7 +1079,6 @@ def order_list(request):
         selected_date = today
 
     # ===== DAILY BREAKDOWN FOR SELECTED DATE =====
-    # Base queryset for completed orders on selected date
     base_orders = Order.objects.filter(
         status='COMPLETED',
         created_at__date=selected_date
@@ -1078,10 +1089,38 @@ def order_list(request):
     elif is_manager and request.GET.get('cashier'):
         base_orders = base_orders.filter(created_by_id=request.GET.get('cashier'))
 
-    # ✅ SEPARATE PAID AND UNPAID SALES
+    # Separate paid and unpaid orders
     paid_orders = base_orders.filter(payment_status='PAID')
     unpaid_orders = base_orders.filter(payment_status='UNPAID')
     partial_orders = base_orders.filter(payment_status='PARTIAL')
+
+    # ✅ ITEMS BREAKDOWN BY PAYMENT STATUS
+    # Paid items (from PAID orders)
+    paid_items_queryset = OrderItem.objects.filter(
+        order__in=paid_orders
+    )
+    paid_items_count = paid_items_queryset.aggregate(
+        total=Sum('quantity')
+    )['total'] or 0
+
+    # Credit items (from UNPAID orders)
+    credit_items_queryset = OrderItem.objects.filter(
+        order__in=unpaid_orders
+    )
+    credit_items_count = credit_items_queryset.aggregate(
+        total=Sum('quantity')
+    )['total'] or 0
+
+    # Partial items (from PARTIAL orders)
+    partial_items_queryset = OrderItem.objects.filter(
+        order__in=partial_orders
+    )
+    partial_items_count = partial_items_queryset.aggregate(
+        total=Sum('quantity')
+    )['total'] or 0
+
+    # Total items sold (all completed orders)
+    total_items_sold = paid_items_count + credit_items_count + partial_items_count
 
     # Products sold (all completed orders)
     daily_sales = OrderItem.objects.filter(
@@ -1105,8 +1144,6 @@ def order_list(request):
 
     # Convert to list for template
     daily_products = []
-    total_items_sold = 0
-
     for sale in daily_sales:
         daily_products.append({
             'product': sale['product_name'],
@@ -1115,31 +1152,27 @@ def order_list(request):
             'revenue': sale['total_revenue'],
             'orders': sale['total_orders'],
         })
-        total_items_sold += sale['total_quantity']
 
-    # ✅ CALCULATE SEPARATED REVENUES
-    # Actual Revenue (PAID only)
+    # ✅ REVENUE BREAKDOWN
     paid_revenue = paid_orders.aggregate(
         total=Sum('total')
     )['total'] or Decimal('0.00')
 
-    # Credit Sales (UNPAID)
     credit_sales = unpaid_orders.aggregate(
         total=Sum('total')
     )['total'] or Decimal('0.00')
 
-    # Partial Payments (amount paid from partial orders)
     partial_revenue = partial_orders.aggregate(
         total=Sum('amount_paid')
     )['total'] or Decimal('0.00')
 
-    # Total Revenue = Paid + Partial (actual cash received)
+    # Total revenue (actual cash received)
     total_revenue = paid_revenue + partial_revenue
 
-    # Total Sales Value (including credit)
+    # Total sales value (including credit)
     total_sales_value = paid_revenue + partial_revenue + credit_sales
 
-    # Count of orders
+    # Order counts
     orders_count = base_orders.count()
     paid_orders_count = paid_orders.count()
     credit_orders_count = unpaid_orders.count()
@@ -1153,7 +1186,8 @@ def order_list(request):
         ).order_by('first_name', 'last_name', 'username')
 
     context = {
-        'orders': orders,
+        'orders': page_obj.object_list,  # ✅ Use paginated orders
+        'page_obj': page_obj,  # ✅ Add page object for pagination
         'is_manager': is_manager,
         'cashiers': cashiers,
         'selected_date': selected_date,
@@ -1161,14 +1195,19 @@ def order_list(request):
 
         # Daily breakdown data
         'daily_products': daily_products,
-        'total_items_sold': total_items_sold,
 
-        # ✅ SEPARATED REVENUE DATA
-        'total_revenue': total_revenue,  # Actual cash received (PAID + PARTIAL)
-        'paid_revenue': paid_revenue,  # Fully paid orders
-        'credit_sales': credit_sales,  # Unpaid (credit) orders
-        'partial_revenue': partial_revenue,  # Cash from partial payments
-        'total_sales_value': total_sales_value,  # Total including credit
+        # ✅ ITEMS BREAKDOWN
+        'total_items_sold': total_items_sold,
+        'paid_items_count': paid_items_count,
+        'credit_items_count': credit_items_count,
+        'partial_items_count': partial_items_count,
+
+        # Revenue data
+        'total_revenue': total_revenue,
+        'paid_revenue': paid_revenue,
+        'credit_sales': credit_sales,
+        'partial_revenue': partial_revenue,
+        'total_sales_value': total_sales_value,
 
         # Order counts
         'orders_count': orders_count,
