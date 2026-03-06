@@ -82,12 +82,12 @@
                         <div class="stat-label">Items Sold</div>
                         <div class="stat-value">{{ total_items_sold }}</div>
                         <div class="stat-breakdown">
-                            <span class="breakdown-item paid">{{ paid_items_count }} Paid</span>
+                            <span class="breakdown-item paid">{{ paid_items_count }} Paid Item(s)</span>
                             {% if credit_items_count > 0 %}
-                            <span class="breakdown-item credit">{{ credit_items_count }} Credit</span>
+                            <span class="breakdown-item credit">{{ credit_items_count }} Credit Item(s)</span>
                             {% endif %}
                             {% if partial_items_count > 0 %}
-                            <span class="breakdown-item partial">{{ partial_items_count }} Partial</span>
+                            <span class="breakdown-item partial">{{ partial_items_count }} Partial Item(s)</span>
                             {% endif %}
                         </div>
                     </div>
