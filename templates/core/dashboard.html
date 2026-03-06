@@ -163,7 +163,7 @@
         {% else %}
         <h2 class="card-title">My Recent Orders</h2>
         {% endif %}
-        <button class="btn btn-primary">View All</button>
+        <button class="btn btn-primary"><a href="{% url 'orders:order_list' %}" style="color: #fff; text-decoration: none">View All</a></button>
     </div>
     <div class="table-scroll-hint">
         <i class="fas fa-arrow-right"></i>
