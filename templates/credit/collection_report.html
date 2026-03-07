@@ -1,0 +1,591 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Collection Report{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    
+    <!-- Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <div>
+                <h1>Credit Collections Report</h1>
+                <p class="page-subtitle">
+                    {{ start_date|date:"M d, Y" }} - {{ end_date|date:"M d, Y" }}
+                </p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button onclick="showDateFilter()" class="btn btn-secondary">
+                <i class="fas fa-calendar"></i>
+                Change Period
+            </button>
+            <button onclick="window.print()" class="btn btn-primary">
+                <i class="fas fa-print"></i>
+                Print
+            </button>
+        </div>
+    </div>
+
+    <!-- Collection Summary -->
+    <div class="summary-grid">
+        <div class="summary-card primary">
+            <div class="card-icon">
+                <i class="fas fa-hand-holding-dollar"></i>
+            </div>
+            <div class="card-content">
+                <div class="card-label">Total Collected</div>
+                <div class="card-value">₦{{ summary.total_collected|floatformat:2|default:"0.00" }}</div>
+            </div>
+        </div>
+
+        <div class="summary-card">
+            <div class="card-icon" style="background: #059669;">
+                <i class="fas fa-receipt"></i>
+            </div>
+            <div class="card-content">
+                <div class="card-label">Number of Payments</div>
+                <div class="card-value">{{ summary.payment_count|default:0 }}</div>
+            </div>
+        </div>
+
+        <div class="summary-card">
+            <div class="card-icon" style="background: #F59E0B;">
+                <i class="fas fa-calculator"></i>
+            </div>
+            <div class="card-content">
+                <div class="card-label">Average Payment</div>
+                <div class="card-value">₦{{ summary.average_payment|floatformat:2|default:"0.00" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="report-grid">
+
+        <!-- By Payment Method -->
+        <div class="report-card">
+            <h2 class="card-title">
+                <i class="fas fa-credit-card"></i>
+                By Payment Method
+            </h2>
+
+            {% if summary.by_method %}
+            <div class="table-responsive">
+                <table class="breakdown-table">
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th class="text-right">Count</th>
+                            <th class="text-right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for method in summary.by_method %}
+                        <tr>
+                            <td>
+                                <span class="badge badge-{{ method.payment_method|lower }}">
+                                    {% if method.payment_method == 'CASH' %}
+                                        💵 Cash
+                                    {% elif method.payment_method == 'CARD' %}
+                                        💳 Card
+                                    {% elif method.payment_method == 'TRANSFER' %}
+                                        🏦 Bank Transfer
+                                    {% elif method.payment_method == 'CHEQUE' %}
+                                        📝 Cheque
+                                    {% elif method.payment_method == 'MOBILE_MONEY' %}
+                                        📱 Mobile Money
+                                    {% else %}
+                                        {{ method.payment_method }}
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td class="text-right">{{ method.count }}</td>
+                            <td class="text-right"><strong>₦{{ method.total|floatformat:2 }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td><strong>Total</strong></td>
+                            <td class="text-right"><strong>{{ summary.payment_count }}</strong></td>
+                            <td class="text-right"><strong>₦{{ summary.total_collected|floatformat:2 }}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state-small">
+                <p>No payments by method in this period</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- By Cashier -->
+        <div class="report-card">
+            <h2 class="card-title">
+                <i class="fas fa-user-tie"></i>
+                By Cashier/Staff
+            </h2>
+
+            {% if summary.by_cashier %}
+            <div class="table-responsive">
+                <table class="breakdown-table">
+                    <thead>
+                        <tr>
+                            <th>Cashier</th>
+                            <th class="text-right">Payments</th>
+                            <th class="text-right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cashier in summary.by_cashier %}
+                        <tr>
+                            <td>
+                                <i class="fas fa-user-circle" style="color: #0033A0;"></i>
+                                <strong>{{ cashier.received_by__username|default:"Unknown" }}</strong>
+                            </td>
+                            <td class="text-right">
+                                <span class="count-badge">{{ cashier.count }}</span>
+                            </td>
+                            <td class="text-right"><strong>₦{{ cashier.total|floatformat:2 }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state-small">
+                <p>No cashier data available</p>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <!-- Daily Collections -->
+    <div class="data-table-container">
+        <div class="table-header">
+            <h2>Daily Collection Breakdown</h2>
+            <div class="table-stats">
+                <span class="stat-badge">{{ summary.by_day|length }} day{{ summary.by_day|length|pluralize }}</span>
+            </div>
+        </div>
+
+        {% if summary.by_day %}
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th class="text-center">Number of Payments</th>
+                        <th class="text-right">Total Collected</th>
+                        <th class="text-right">Average Payment</th>
+                        <th class="text-right">% of Period Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day in summary.by_day %}
+                    <tr>
+                        <td><strong>{{ day.payment_date__date|date:"D, M d, Y" }}</strong></td>
+                        <td class="text-center">
+                            <span class="count-badge">{{ day.count }}</span>
+                        </td>
+                        <td class="text-right"><strong>₦{{ day.total|floatformat:2 }}</strong></td>
+                        <td class="text-right text-muted">₦{{ day.avg_payment|floatformat:2 }}</td>
+                        <td class="text-right">
+                            {% if summary.total_collected > 0 %}
+                                <strong style="color: #0033A0;">
+                                    {{ day.total|floatformat:2|add:"0"|floatformat:0 }}
+                                    /
+                                    {{ summary.total_collected|floatformat:2|add:"0"|floatformat:0 }}
+                                    =
+                                    {% widthratio day.total summary.total_collected 100 %}%
+                                </strong>
+                            {% else %}
+                                0%
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="total-row">
+                        <td><strong>Period Total</strong></td>
+                        <td class="text-center"><strong>{{ summary.payment_count }}</strong></td>
+                        <td class="text-right"><strong>₦{{ summary.total_collected|floatformat:2 }}</strong></td>
+                        <td class="text-right"><strong>₦{{ summary.average_payment|floatformat:2 }}</strong></td>
+                        <td class="text-right"><strong>100%</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <h3>No Collections</h3>
+            <p>No credit payments were collected during this period.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Date Filter Modal -->
+<div id="dateFilterModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeDateFilter()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Select Date Range</h3>
+            <button onclick="closeDateFilter()" class="btn-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="get" class="modal-body">
+            <div class="form-group">
+                <label>Start Date</label>
+                <input type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label>End Date</label>
+                <input type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}" class="form-input" required>
+            </div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeDateFilter()" class="btn-secondary">Cancel</button>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-filter"></i>
+                    Apply Filter
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .header-actions {
+        margin: 1.5rem 0;
+    }
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .summary-card {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        transition: all 0.2s;
+    }
+
+    .summary-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .summary-card.primary {
+        border-color: #0033A0;
+        background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    }
+
+    .card-icon {
+        width: 64px;
+        height: 64px;
+        background: #0033A0;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .card-icon i {
+        font-size: 1.75rem;
+        color: white;
+    }
+
+    .card-label {
+        font-size: 0.875rem;
+        color: #6B7280;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+
+    .card-value {
+        font-size: 1.875rem;
+        font-weight: 800;
+        color: #1F2937;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .report-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 2rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .report-card {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 2rem;
+        /* ✅ FIX OVERFLOW */
+        overflow: hidden;
+    }
+
+    .card-title {
+        margin: 0 0 1.5rem 0;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #1F2937;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .card-title i {
+        color: #0033A0;
+    }
+
+    /* ✅ TABLE RESPONSIVE WRAPPER */
+    .table-responsive {
+        overflow-x: auto;
+        margin: 0 -0.5rem;
+        padding: 0 0.5rem;
+    }
+
+    .breakdown-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 400px; /* Prevent shrinking too much */
+    }
+
+    .breakdown-table th {
+        text-align: left;
+        padding: 0.75rem 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: #6B7280;
+        border-bottom: 2px solid #E5E7EB;
+        white-space: nowrap;
+    }
+
+    .breakdown-table td {
+        padding: 0.875rem 0.5rem;
+        border-bottom: 1px solid #F3F4F6;
+        font-size: 0.9375rem;
+    }
+
+    .breakdown-table tbody tr:hover {
+        background: #F9FAFB;
+    }
+
+    .breakdown-table tfoot {
+        background: #F3F4F6;
+        font-weight: 700;
+    }
+
+    .breakdown-table tfoot td {
+        border-top: 2px solid #E5E7EB;
+        border-bottom: none;
+        padding: 1rem 0.5rem;
+    }
+
+    .badge {
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        display: inline-block;
+        white-space: nowrap;
+    }
+
+    .badge-cash {
+        background: #D1FAE5;
+        color: #065F46;
+    }
+
+    .badge-card {
+        background: #DBEAFE;
+        color: #1E40AF;
+    }
+
+    .badge-transfer {
+        background: #E0E7FF;
+        color: #3730A3;
+    }
+
+    .badge-cheque {
+        background: #FEF3C7;
+        color: #92400E;
+    }
+
+    .badge-mobile_money {
+        background: #FCE7F3;
+        color: #9F1239;
+    }
+
+    .count-badge {
+        background: #F3F4F6;
+        color: #374151;
+        padding: 0.25rem 0.625rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .empty-state-small {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #9CA3AF;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #9CA3AF;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    /* ✅ TABLE SCROLL FOR DAILY BREAKDOWN */
+    .table-scroll {
+        overflow-x: auto;
+        margin: 0 -1rem;
+        padding: 0 1rem;
+    }
+
+    .data-table {
+        min-width: 900px; /* Prevent squishing */
+    }
+
+    .total-row {
+        background: #F3F4F6;
+        font-weight: 700;
+    }
+
+    .total-row td {
+        border-top: 2px solid #E5E7EB !important;
+        padding: 1rem 0.5rem !important;
+    }
+
+    /* Modal Styles */
+    .modal {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+        position: relative;
+        background: white;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 500px;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #E5E7EB;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+
+    .btn-close {
+        background: none;
+        border: none;
+        font-size: 1.25rem;
+        color: #6B7280;
+        cursor: pointer;
+        padding: 0.5rem;
+    }
+
+    .btn-close:hover {
+        color: #DC2626;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.875rem;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1.5px solid #E5E7EB;
+        border-radius: 8px;
+        font-size: 0.9375rem;
+    }
+
+    .modal-footer {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .modal-footer button {
+        flex: 1;
+    }
+
+    @media (max-width: 768px) {
+        .report-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<script>
+    function showDateFilter() {
+        document.getElementById('dateFilterModal').style.display = 'flex';
+    }
+
+    function closeDateFilter() {
+        document.getElementById('dateFilterModal').style.display = 'none';
+    }
+
+    // ESC key closes modal
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeDateFilter();
+        }
+    });
+</script>
+{% endblock %}

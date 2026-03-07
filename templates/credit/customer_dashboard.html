@@ -1,0 +1,721 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ customer.full_name }} - Credit Account{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    
+    <!-- Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <a href="{% url 'credit:customers_list' %}" class="btn-back">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div>
+                <h1>{{ customer.full_name }}</h1>
+                <p class="page-subtitle">Credit Account Dashboard</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'credit:customer_statement' customer.id %}" class="btn btn-primary">
+                <i class="fas fa-file-invoice"></i>
+                View Statement
+            </a>
+            <a href="{% url 'customers:customer_detail' customer.id %}" class="btn btn-secondary">
+                <i class="fas fa-user"></i>
+                Customer Profile
+            </a>
+        </div>
+    </div>
+
+    <!-- Credit Summary Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #0033A0 0%, #002a85 100%);">
+                <i class="fas fa-credit-card"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-label">Credit Limit</div>
+                <div class="stat-value">₦{{ summary.credit_limit|floatformat:2 }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);">
+                <i class="fas fa-file-invoice-dollar"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-label">Total Outstanding</div>
+                <div class="stat-value">₦{{ summary.total_outstanding|floatformat:2 }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #059669 0%, #047857 100%);">
+                <i class="fas fa-wallet"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-label">Available Credit</div>
+                <div class="stat-value">₦{{ summary.available_credit|floatformat:2 }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card {% if summary.overdue_balance > 0 %}warning{% endif %}">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-label">Overdue Amount</div>
+                <div class="stat-value">₦{{ summary.overdue_balance|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Credit Status Badge -->
+    <div class="credit-status-section">
+        <div class="status-badge status-{{ summary.credit_status|lower }}">
+            <i class="fas fa-circle"></i>
+            {{ summary.credit_status }}
+        </div>
+        <div class="status-info">
+            <span>Payment Terms: <strong>{{ customer.credit_terms_days }} days</strong></span>
+            <span class="separator">•</span>
+            <span>Open Credit Orders: <strong>{{ summary.credit_orders_count }}</strong></span>
+        </div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="data-table-container">
+        <div class="table-header">
+            <h2>Recent Credit Transactions</h2>
+            <div class="table-actions">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search transactions..." id="searchInput">
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Ledger ID</th>
+                        <th>Order</th>
+                        <th>Amount</th>
+                        <th>Paid</th>
+                        <th>Balance</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in recent_entries %}
+                    <tr class="{% if entry.is_overdue %}row-warning{% endif %}">
+                        <td data-label="Date">{{ entry.transaction_date|date:"M d, Y" }}</td>
+                        <td data-label="Ledger ID">
+                            <a href="{% url 'credit:ledger_detail' entry.ledger_id %}" class="link-primary">
+                                {{ entry.ledger_id }}
+                            </a>
+                        </td>
+                        <td data-label="Order">
+                            {% if entry.order %}
+                                <a href="{% url 'orders:order_detail' entry.order.id %}" class="link-secondary">
+                                    {{ entry.order.order_number }}
+                                </a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="text-right" data-label="Amount">₦{{ entry.total_amount|floatformat:2 }}</td>
+                        <td class="text-right" data-label="Paid">₦{{ entry.amount_paid|floatformat:2 }}</td>
+                        <td class="text-right" data-label="Balance">
+                            <strong class="{% if entry.balance_outstanding > 0 %}text-danger{% else %}text-success{% endif %}">
+                                ₦{{ entry.balance_outstanding|floatformat:2 }}
+                            </strong>
+                        </td>
+                        <td data-label="Due Date">
+                            {{ entry.due_date|date:"M d, Y" }}
+                            {% if entry.is_overdue %}
+                                <span class="badge badge-danger">{{ entry.days_overdue }} days overdue</span>
+                            {% endif %}
+                        </td>
+                        <td data-label="Status">
+                            <span class="badge badge-{{ entry.status|lower }}">
+                                {{ entry.get_status_display }}
+                            </span>
+                        </td>
+                        <td data-label="Actions">
+                            {% if entry.balance_outstanding > 0 %}
+                                <a href="{% url 'credit:record_payment' entry.ledger_id %}" class="btn-sm btn-success">
+                                    <i class="fas fa-dollar-sign"></i>
+                                    Pay
+                                </a>
+                            {% else %}
+                                <span class="text-muted">Paid</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted">
+                            No credit transactions found
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<style>
+
+    /* Page Header */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .btn-back {
+        width: 40px;
+        height: 40px;
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        color: #6B7280;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .btn-back:hover {
+        background: #F9FAFB;
+        border-color: #0033A0;
+        color: #0033A0;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9375rem;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.625rem;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+    .btn-primary {
+        background: #0033A0;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #002a85;
+    }
+
+    .btn-secondary {
+        background: #F3F4F6;
+        color: #374151;
+        border: 1px solid #E5E7EB;
+    }
+
+    .btn-secondary:hover {
+        background: #E5E7EB;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-card.warning {
+        border-color: #FBBF24;
+        background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+    }
+
+    .stat-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .stat-icon i {
+        font-size: 1.75rem;
+        color: white;
+    }
+
+    .stat-content {
+        flex: 1;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6B7280;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+
+    .stat-value {
+        font-size: 1.875rem;
+        font-weight: 800;
+        color: #1F2937;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Credit Status Section */
+    .credit-status-section {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.875rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .status-badge.status-approved {
+        background: #D1FAE5;
+        color: #065F46;
+    }
+
+    .status-badge.status-suspended {
+        background: #FEF3C7;
+        color: #92400E;
+    }
+
+    .status-badge.status-blocked {
+        background: #FEE2E2;
+        color: #991B1B;
+    }
+
+    .status-badge i {
+        font-size: 0.625rem;
+    }
+
+    .status-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        color: #6B7280;
+        font-size: 0.875rem;
+        flex-wrap: wrap;
+    }
+
+    .status-info strong {
+        color: #1F2937;
+        font-weight: 700;
+    }
+
+    .separator {
+        color: #D1D5DB;
+    }
+
+    /* Data Table Container */
+    .data-table-container {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .table-header {
+        padding: 1.5rem;
+        background: #F9FAFB;
+        border-bottom: 1px solid #E5E7EB;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .table-header h2 {
+        margin: 0;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #1F2937;
+    }
+
+    .search-box {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        padding: 0.625rem 1rem;
+    }
+
+    .search-box i {
+        color: #9CA3AF;
+        font-size: 0.875rem;
+    }
+
+    .search-box input {
+        border: none;
+        outline: none;
+        font-size: 0.9375rem;
+        color: #374151;
+        min-width: 200px;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table thead {
+        background: #F9FAFB;
+    }
+
+    .data-table th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 700;
+        color: #6B7280;
+        font-size: 0.875rem;
+        border-bottom: 2px solid #E5E7EB;
+        white-space: nowrap;
+    }
+
+    .data-table tbody tr {
+        border-bottom: 1px solid #F3F4F6;
+        transition: background 0.2s;
+    }
+
+    .data-table tbody tr:hover {
+        background: #F9FAFB;
+    }
+
+    .data-table tbody tr.row-warning {
+        background: #FFFBEB;
+    }
+
+    .data-table tbody tr.row-warning:hover {
+        background: #FEF3C7;
+    }
+
+    .data-table td {
+        padding: 1rem;
+        color: #374151;
+    }
+
+    .link-primary {
+        color: #0033A0;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .link-primary:hover {
+        text-decoration: underline;
+    }
+
+    .link-secondary {
+        color: #6B7280;
+        text-decoration: none;
+    }
+
+    .link-secondary:hover {
+        color: #0033A0;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+
+    .badge-pending {
+        background: #FEF3C7;
+        color: #92400E;
+    }
+
+    .badge-partial {
+        background: #FED7AA;
+        color: #9A3412;
+    }
+
+    .badge-paid {
+        background: #D1FAE5;
+        color: #065F46;
+    }
+
+    .badge-overdue {
+        background: #FEE2E2;
+        color: #991B1B;
+    }
+
+    .badge-danger {
+        background: #FEE2E2;
+        color: #991B1B;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-left: 0.5rem;
+    }
+
+    .btn-sm {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.5rem 0.875rem;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.875rem;
+        transition: all 0.2s;
+    }
+
+    .btn-sm.btn-success {
+        background: #D1FAE5;
+        color: #059669;
+    }
+
+    .btn-sm.btn-success:hover {
+        background: #059669;
+        color: white;
+    }
+
+    .text-right {
+        text-align: right;
+    }
+
+    .text-center {
+        text-align: center;
+    }
+
+    .text-danger {
+        color: #DC2626;
+    }
+
+    .text-success {
+        color: #059669;
+    }
+
+    .text-muted {
+        color: #9CA3AF;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        /* Header */
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .header-left {
+            width: 100%;
+        }
+
+        .header-actions {
+            width: 100%;
+        }
+
+        .btn {
+            flex: 1;
+            justify-content: center;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        /* Reduce stat card size */
+        .stat-icon {
+            width: 52px;
+            height: 52px;
+        }
+
+        .stat-icon i {
+            font-size: 1.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+        }
+
+        /* Credit Status Section */
+        .credit-status-section {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .status-info {
+            gap: 0.75rem;
+        }
+
+        /* Table Header */
+        .table-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .search-box {
+            width: 100%;
+        }
+
+        .search-box input {
+            min-width: 0;
+            flex: 1;
+        }
+
+        /* Convert table to cards */
+        .data-table thead {
+            display: none;
+        }
+
+        .data-table,
+        .data-table tbody,
+        .data-table tr,
+        .data-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .data-table tr {
+            margin-bottom: 1.5rem;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .data-table td {
+            padding: 0.75rem 0;
+            border: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .data-table td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            color: #6B7280;
+            font-size: 0.875rem;
+        }
+
+        .data-table td:last-child {
+            border-top: 1px solid #E5E7EB;
+            padding-top: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .data-table .text-right {
+            text-align: right;
+        }
+
+        /* Badge on mobile */
+        .badge-danger {
+            display: block;
+            margin-left: 0;
+            margin-top: 0.5rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        /* Even smaller cards */
+        .stat-card {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+        }
+
+        /* Stack header actions */
+        .header-actions {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+        }
+
+        /* Hide separator on tiny screens */
+        .separator {
+            display: none;
+        }
+
+        .status-info {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}

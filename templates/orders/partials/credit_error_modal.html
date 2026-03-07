@@ -1,0 +1,396 @@
+<!-- apps/orders/templates/orders/partials/credit_error_modal.html -->
+<!-- ✅ ERROR MODAL FOR CREDIT LIMIT EXCEEDED -->
+
+<div class="error-modal-overlay" id="errorModal" onclick="closeErrorModal(event)">
+    <div class="error-modal" onclick="event.stopPropagation()">
+
+        <!-- Header -->
+        <div class="error-header">
+            <div class="error-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h2>Credit Limit Exceeded</h2>
+        </div>
+
+        <!-- Body -->
+        <div class="error-body">
+
+            <!-- Error Message -->
+            <div class="error-message">
+                <p>{{ error }}</p>
+            </div>
+
+            <!-- Customer Credit Info -->
+            {% if customer %}
+            <div class="credit-info-card">
+                <h3>{{ customer.full_name }}'s Credit Account</h3>
+
+                <div class="credit-details">
+                    <div class="credit-row">
+                        <span>Credit Limit:</span>
+                        <strong>₦{{ customer.credit_limit|floatformat:2 }}</strong>
+                    </div>
+                    <div class="credit-row">
+                        <span>Currently Owing:</span>
+                        <strong>₦{{ customer.total_credit_outstanding|floatformat:2 }}</strong>
+                    </div>
+                    <div class="credit-row highlight">
+                        <span>Available Credit:</span>
+                        <strong class="available-amount">₦{{ customer.available_credit|floatformat:2 }}</strong>
+                    </div>
+                </div>
+
+                <div class="credit-divider"></div>
+
+                <div class="credit-row">
+                    <span>This Order Total:</span>
+                    <strong class="order-amount">₦{{ order.total|floatformat:2 }}</strong>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Solutions -->
+            <div class="solutions-card">
+                <h3>What can you do?</h3>
+                <ul class="solutions-list">
+                    <li>
+                        <i class="fas fa-money-bill-wave"></i>
+                        <span>Accept partial payment now and reduce credit amount</span>
+                    </li>
+                    <li>
+                        <i class="fas fa-credit-card"></i>
+                        <span>Complete as cash sale with full payment</span>
+                    </li>
+                    <li>
+                        <i class="fas fa-user-plus"></i>
+                        <span>Contact manager to increase customer's credit limit</span>
+                    </li>
+                    <li>
+                        <i class="fas fa-receipt"></i>
+                        <span>Ask customer to pay outstanding balance first</span>
+                    </li>
+                </ul>
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="error-footer">
+            <button class="btn-error-secondary" onclick="closeErrorModal()">
+                <i class="fas fa-arrow-left"></i>
+                Back to Checkout
+            </button>
+            <button class="btn-error-primary" onclick="switchToCashSale()">
+                <i class="fas fa-money-bill-wave"></i>
+                Switch to Cash Sale
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    /* Error Modal Overlay */
+    .error-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    /* Error Modal */
+    .error-modal {
+        background: #fff;
+        border-radius: 16px;
+        width: 100%;
+        max-width: 600px;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+        animation: slideUp 0.3s ease;
+        overflow: hidden;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Header - Red Theme */
+    .error-header {
+        background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+        padding: 2rem 1.75rem;
+        text-align: center;
+        color: #fff;
+    }
+
+    .error-icon {
+        width: 64px;
+        height: 64px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    .error-icon i {
+        font-size: 2rem;
+    }
+
+    .error-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    /* Body */
+    .error-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.75rem;
+        background: #f9fafb;
+    }
+
+    .error-body::-webkit-scrollbar { width: 6px; }
+    .error-body::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 3px;
+    }
+
+    /* Error Message */
+    .error-message {
+        background: #FEF2F2;
+        border: 2px solid #FCA5A5;
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .error-message p {
+        margin: 0;
+        color: #991B1B;
+        font-weight: 600;
+        font-size: 0.9375rem;
+    }
+
+    /* Credit Info Card */
+    .credit-info-card,
+    .solutions-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .credit-info-card h3,
+    .solutions-card h3 {
+        margin: 0 0 1rem 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .credit-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .credit-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9375rem;
+    }
+
+    .credit-row span {
+        color: #6b7280;
+    }
+
+    .credit-row strong {
+        color: #1f2937;
+        font-weight: 700;
+        font-family: monospace;
+    }
+
+    .credit-row.highlight {
+        padding: 0.75rem;
+        background: #F3F4F6;
+        border-radius: 8px;
+        margin-top: 0.5rem;
+    }
+
+    .available-amount {
+        color: #059669 !important;
+        font-size: 1.125rem !important;
+    }
+
+    .order-amount {
+        color: #DC2626 !important;
+        font-size: 1.125rem !important;
+    }
+
+    .credit-divider {
+        height: 1px;
+        background: #e5e7eb;
+        margin: 1rem 0;
+    }
+
+    /* Solutions List */
+    .solutions-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.875rem;
+    }
+
+    .solutions-list li {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: #F9FAFB;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+
+    .solutions-list li:hover {
+        background: #F3F4F6;
+        transform: translateX(4px);
+    }
+
+    .solutions-list i {
+        color: #0033A0;
+        font-size: 1.125rem;
+        flex-shrink: 0;
+        margin-top: 0.125rem;
+    }
+
+    .solutions-list span {
+        color: #374151;
+        font-size: 0.875rem;
+        line-height: 1.5;
+    }
+
+    /* Footer */
+    .error-footer {
+        background: #fff;
+        border-top: 1px solid #e5e7eb;
+        padding: 1.25rem 1.75rem;
+        display: flex;
+        gap: 1rem;
+        flex-shrink: 0;
+    }
+
+    .btn-error-secondary,
+    .btn-error-primary {
+        flex: 1;
+        padding: 0.875rem 1.25rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.9375rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-error-secondary {
+        background: #f3f4f6;
+        color: #374151;
+    }
+
+    .btn-error-secondary:hover {
+        background: #e5e7eb;
+    }
+
+    .btn-error-primary {
+        background: #0033A0;
+        color: #fff;
+    }
+
+    .btn-error-primary:hover {
+        background: #002a85;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 51, 160, 0.3);
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+        .error-modal {
+            max-width: 100%;
+            max-height: 100vh;
+            border-radius: 0;
+        }
+
+        .error-footer {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<script>
+    function closeErrorModal(event) {
+        if (event && event.target.id !== 'errorModal') return;
+
+        const modal = document.getElementById('errorModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    function switchToCashSale() {
+        // Close error modal
+        closeErrorModal();
+
+        // Find checkout modal
+        const checkoutModal = document.getElementById('checkoutModal');
+        if (checkoutModal) {
+            // Find and click Cash Sale radio button
+            const cashRadio = checkoutModal.querySelector('input[name="sale_type"][value="CASH"]');
+            if (cashRadio) {
+                cashRadio.checked = true;
+                cashRadio.dispatchEvent(new Event('change'));
+            }
+        }
+    }
+
+    // ESC key closes modal
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeErrorModal();
+        }
+    });
+</script>

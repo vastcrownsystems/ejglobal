@@ -1,0 +1,582 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Credit Ledger{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    
+    <!-- Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <div>
+                <h1>Credit Ledger</h1>
+                <p class="page-subtitle">All credit transactions</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters (Always Visible) -->
+    <div class="filters-panel">
+        <form method="get" class="filters-form">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Statuses</option>
+                        {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Customer</label>
+                    <input type="text" name="customer_search" class="form-input" placeholder="Search by customer name..." value="{{ request.GET.customer_search }}">
+                </div>
+                <div class="filter-actions">
+                    <button type="submit" class="btn-primary">Apply</button>
+                    <a href="{% url 'credit:ledger_list' %}" class="btn-secondary">Clear</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Ledger Table -->
+    <div class="data-table-container">
+        <div class="table-header">
+            <h2>Credit Ledger Entries</h2>
+            <div class="table-stats">
+                <span class="stat-badge">{{ page_obj.paginator.count }} total</span>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Ledger ID</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Order</th>
+                        <th class="text-right">Amount</th>
+                        <th class="text-right">Paid</th>
+                        <th class="text-right">Balance</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in page_obj %}
+                    <tr class="{% if entry.is_overdue %}row-warning{% endif %}">
+                        <td data-label="Ledger ID">
+                            <a href="{% url 'credit:ledger_detail' entry.ledger_id %}" class="link-primary">
+                                <code>{{ entry.ledger_id }}</code>
+                            </a>
+                        </td>
+                        <td data-label="Date">{{ entry.transaction_date|date:"M d, Y" }}</td>
+                        <td data-label="Customer">
+                            <a href="{% url 'credit:customer_dashboard' entry.customer.id %}" class="link-primary">
+                                {{ entry.customer.full_name }}
+                            </a>
+                        </td>
+                        <td data-label="Order">
+                            {% if entry.order %}
+                                <a href="{% url 'orders:order_detail' entry.order.id %}" class="link-secondary">
+                                    {{ entry.order.order_number }}
+                                </a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="text-right" data-label="Amount">₦{{ entry.total_amount|floatformat:2 }}</td>
+                        <td class="text-right text-success" data-label="Paid">₦{{ entry.amount_paid|floatformat:2 }}</td>
+                        <td class="text-right" data-label="Balance">
+                            <strong class="{% if entry.balance_outstanding > 0 %}text-danger{% else %}text-success{% endif %}">
+                                ₦{{ entry.balance_outstanding|floatformat:2 }}
+                            </strong>
+                        </td>
+                        <td data-label="Due Date">
+                            {{ entry.due_date|date:"M d, Y" }}
+                            {% if entry.is_overdue %}
+                                <span class="badge badge-danger">{{ entry.days_overdue }}d</span>
+                            {% endif %}
+                        </td>
+                        <td data-label="Status">
+                            <span class="badge badge-{{ entry.status|lower }}">
+                                {{ entry.get_status_display }}
+                            </span>
+                        </td>
+                        <td data-label="Actions">
+                            <div class="action-buttons">
+                                <a href="{% url 'credit:ledger_detail' entry.ledger_id %}" class="btn-sm btn-primary" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if entry.balance_outstanding > 0 %}
+                                    <a href="{% url 'credit:record_payment' entry.ledger_id %}" class="btn-sm btn-success" title="Record Payment">
+                                        <i class="fas fa-dollar-sign"></i>
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="text-center text-muted">
+                            <div class="empty-state">
+                                <i class="fas fa-inbox"></i>
+                                <p>No ledger entries found</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page=1{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.customer_search %}&customer_search={{ request.GET.customer_search }}{% endif %}" class="page-link">First</a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.customer_search %}&customer_search={{ request.GET.customer_search }}{% endif %}" class="page-link">Previous</a>
+            {% endif %}
+
+            <span class="page-info">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.customer_search %}&customer_search={{ request.GET.customer_search }}{% endif %}" class="page-link">Next</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.customer_search %}&customer_search={{ request.GET.customer_search }}{% endif %}" class="page-link">Last</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<style>
+    /* Filters */
+    .filters-panel {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .filters-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .filter-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 1rem;
+        align-items: end;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .filter-group label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .form-select,
+    .form-input {
+        padding: 0.75rem 1rem;
+        border: 1.5px solid #E5E7EB;
+        border-radius: 8px;
+        font-size: 0.9375rem;
+        transition: border 0.2s;
+    }
+
+    .form-select:focus,
+    .form-input:focus {
+        outline: none;
+        border-color: #0033A0;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9375rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-primary {
+        background: #0033A0;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #002a85;
+    }
+
+    .btn-secondary {
+        background: #F3F4F6;
+        color: #374151;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .btn-secondary:hover {
+        background: #E5E7EB;
+    }
+
+    /* Table Container */
+    .data-table-container {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .table-header {
+        padding: 1.5rem;
+        background: #F9FAFB;
+        border-bottom: 1px solid #E5E7EB;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .table-header h2 {
+        margin: 0;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #1F2937;
+    }
+
+    .stat-badge {
+        background: #EEF2FF;
+        color: #3730A3;
+        padding: 0.375rem 0.875rem;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    /* Responsive Table */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9375rem;
+    }
+
+    .data-table thead {
+        background: #F9FAFB;
+    }
+
+    .data-table th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 700;
+        color: #6B7280;
+        font-size: 0.875rem;
+        border-bottom: 2px solid #E5E7EB;
+        white-space: nowrap;
+    }
+
+    .data-table tbody tr {
+        border-bottom: 1px solid #F3F4F6;
+        transition: background 0.2s;
+    }
+
+    .data-table tbody tr:hover {
+        background: #F9FAFB;
+    }
+
+    .data-table tbody tr.row-warning {
+        background: #FFFBEB;
+    }
+
+    .data-table tbody tr.row-warning:hover {
+        background: #FEF3C7;
+    }
+
+    .data-table td {
+        padding: 1rem;
+        color: #374151;
+    }
+
+    .data-table code {
+        background: #F3F4F6;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        color: #0033A0;
+        font-family: monospace;
+    }
+
+    .link-primary {
+        color: #0033A0;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .link-primary:hover {
+        text-decoration: underline;
+    }
+
+    .link-secondary {
+        color: #6B7280;
+        text-decoration: none;
+    }
+
+    .link-secondary:hover {
+        color: #0033A0;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+
+    .badge-danger {
+        background: #FEE2E2;
+        color: #991B1B;
+    }
+
+    .badge-pending {
+        background: #FEF3C7;
+        color: #92400E;
+    }
+
+    .badge-partial {
+        background: #FED7AA;
+        color: #9A3412;
+    }
+
+    .badge-paid {
+        background: #D1FAE5;
+        color: #065F46;
+    }
+
+    .badge-overdue {
+        background: #FEE2E2;
+        color: #991B1B;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-sm {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .btn-sm.btn-primary {
+        background: #EEF2FF;
+        color: #0033A0;
+    }
+
+    .btn-sm.btn-primary:hover {
+        background: #0033A0;
+        color: white;
+    }
+
+    .btn-sm.btn-success {
+        background: #D1FAE5;
+        color: #059669;
+    }
+
+    .btn-sm.btn-success:hover {
+        background: #059669;
+        color: white;
+    }
+
+    /* Pagination */
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1.5rem;
+        border-top: 1px solid #E5E7EB;
+    }
+
+    .page-link {
+        padding: 0.5rem 1rem;
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 6px;
+        color: #374151;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.875rem;
+        transition: all 0.2s;
+    }
+
+    .page-link:hover {
+        background: #F3F4F6;
+        border-color: #0033A0;
+        color: #0033A0;
+    }
+
+    .page-info {
+        padding: 0 1rem;
+        color: #6B7280;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    /* Empty State */
+    .empty-state {
+        padding: 3rem 1rem;
+        text-align: center;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        color: #9CA3AF;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .empty-state p {
+        margin: 0;
+        color: #6B7280;
+    }
+
+    /* Utility Classes */
+    .text-right {
+        text-align: right;
+    }
+
+    .text-center {
+        text-align: center;
+    }
+
+    .text-success {
+        color: #059669;
+    }
+
+    .text-danger {
+        color: #DC2626;
+    }
+
+    .text-muted {
+        color: #9CA3AF;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        /* Stack filters vertically */
+        .filter-row {
+            grid-template-columns: 1fr;
+        }
+
+        .filter-actions {
+            flex-direction: column;
+        }
+
+        .btn-primary,
+        .btn-secondary {
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* Mobile table view - show labels */
+        .data-table thead {
+            display: none;
+        }
+
+        .data-table,
+        .data-table tbody,
+        .data-table tr,
+        .data-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .data-table tr {
+            margin-bottom: 1.5rem;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .data-table td {
+            padding: 0.75rem 0;
+            border: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .data-table td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            color: #6B7280;
+            font-size: 0.875rem;
+        }
+
+        .data-table td:last-child {
+            border-top: 1px solid #E5E7EB;
+            padding-top: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Fix action buttons in mobile */
+        .action-buttons {
+            margin-left: auto;
+        }
+
+        /* Keep text alignment on mobile */
+        .data-table .text-right {
+            text-align: right;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .filters-panel {
+            padding: 1rem;
+        }
+
+        .table-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,666 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ ledger.ledger_id }} - Ledger Detail{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    
+    <!-- Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <button onclick="window.history.back()" class="btn-back">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <div>
+                <h1>{{ ledger.ledger_id }}</h1>
+                <p class="page-subtitle">Credit Ledger Details</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            {% if ledger.balance_outstanding > 0 %}
+                <a href="{% url 'credit:record_payment' ledger.ledger_id %}" class="btn btn-success">
+                    <i class="fas fa-dollar-sign"></i>
+                    Record Payment
+                </a>
+            {% endif %}
+            <a href="{% url 'credit:customer_dashboard' ledger.customer.id %}" class="btn btn-primary">
+                <i class="fas fa-user"></i>
+                Customer Account
+            </a>
+        </div>
+    </div>
+
+    <div class="detail-container">
+
+        <!-- Left Column: Ledger Info -->
+        <div class="detail-main">
+
+            <!-- Ledger Information -->
+            <div class="info-card">
+                <h2 class="card-title">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    Ledger Information
+                </h2>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Ledger ID</span>
+                        <strong class="break-word">{{ ledger.ledger_id }}</strong>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Transaction Date</span>
+                        <strong>{{ ledger.transaction_date|date:"M d, Y g:i A" }}</strong>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Transaction Type</span>
+                        <span class="badge badge-{{ ledger.transaction_type|lower }}">
+                            {{ ledger.get_transaction_type_display }}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Status</span>
+                        <span class="badge badge-{{ ledger.status|lower }}">
+                            {{ ledger.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Customer</span>
+                        <strong>
+                            <a href="{% url 'credit:customer_dashboard' ledger.customer.id %}" class="link-primary">
+                                {{ ledger.customer.full_name }}
+                            </a>
+                        </strong>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Order</span>
+                        <strong>
+                            {% if ledger.order %}
+                                <a href="{% url 'orders:order_detail' ledger.order.id %}" class="link-primary break-word">
+                                    {{ ledger.order.order_number }}
+                                </a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </strong>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Payment Terms</span>
+                        <strong>{{ ledger.terms_days }} days</strong>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Due Date</span>
+                        <strong>
+                            {{ ledger.due_date|date:"M d, Y" }}
+                            {% if ledger.is_overdue %}
+                                <br><span class="badge badge-danger">{{ ledger.days_overdue }} days overdue</span>
+                            {% endif %}
+                        </strong>
+                    </div>
+                </div>
+
+                {% if ledger.notes %}
+                <div class="divider"></div>
+                <div class="notes-section">
+                    <span class="info-label">Notes</span>
+                    <p>{{ ledger.notes }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Payment History -->
+            <div class="info-card">
+                <h2 class="card-title">
+                    <i class="fas fa-history"></i>
+                    Payment History
+                </h2>
+
+                {% if payments %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Payment ID</th>
+                                <th class="text-right">Amount</th>
+                                <th>Method</th>
+                                <th>Reference</th>
+                                <th>Received By</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payment in payments %}
+                            <tr>
+                                <td data-label="Date">{{ payment.payment_date|date:"M d, Y g:i A" }}</td>
+                                <td data-label="Payment ID"><code class="break-word">{{ payment.payment_id }}</code></td>
+                                <td class="text-right" data-label="Amount">
+                                    <strong class="text-success">₦{{ payment.amount|floatformat:2 }}</strong>
+                                </td>
+                                <td data-label="Method">
+                                    <span class="badge badge-{{ payment.payment_method|lower }}">
+                                        {{ payment.get_payment_method_display }}
+                                    </span>
+                                </td>
+                                <td data-label="Reference" class="break-word">{{ payment.reference_number|default:"-" }}</td>
+                                <td data-label="Received By">{{ payment.received_by.username|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="2"><strong>Total Paid</strong></td>
+                                <td class="text-right">
+                                    <strong class="text-success">₦{{ ledger.amount_paid|floatformat:2 }}</strong>
+                                </td>
+                                <td colspan="3"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <p>No payments recorded yet</p>
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <!-- Right Column: Balance Summary -->
+        <div class="detail-sidebar">
+
+            <!-- Balance Card -->
+            <div class="balance-card">
+                <h3 class="balance-title">Balance Summary</h3>
+
+                <div class="balance-items">
+                    <div class="balance-row">
+                        <span>Total Amount</span>
+                        <strong class="amount-text">₦{{ ledger.total_amount|floatformat:2 }}</strong>
+                    </div>
+                    <div class="balance-row">
+                        <span>Amount Paid</span>
+                        <strong class="text-success amount-text">₦{{ ledger.amount_paid|floatformat:2 }}</strong>
+                    </div>
+                    <div class="divider-sm"></div>
+                    <div class="balance-row highlight">
+                        <span>Outstanding</span>
+                        <strong class="amount-lg {% if ledger.balance_outstanding > 0 %}text-danger{% else %}text-success{% endif %}">
+                            ₦{{ ledger.balance_outstanding|floatformat:2 }}
+                        </strong>
+                    </div>
+                </div>
+
+                <div class="progress-section">
+                    <div class="progress-label">
+                        <span>Payment Progress</span>
+                        <strong>{{ ledger.payment_percentage|floatformat:0 }}%</strong>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ ledger.payment_percentage }}%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Card -->
+            <div class="status-card">
+                <h3 class="status-title">Status</h3>
+                <div class="status-badge-lg badge-{{ ledger.status|lower }}">
+                    {{ ledger.get_status_display }}
+                </div>
+
+                {% if ledger.is_overdue %}
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div>
+                        <strong>{{ ledger.days_overdue }} Days Overdue</strong>
+                        <p>Payment was due on {{ ledger.due_date|date:"M d, Y" }}</p>
+                    </div>
+                </div>
+                {% elif ledger.days_until_due and ledger.days_until_due > 0 %}
+                <div class="alert alert-info">
+                    <i class="fas fa-clock"></i>
+                    <div>
+                        <strong>{{ ledger.days_until_due }} Days Until Due</strong>
+                        <p>Payment due on {{ ledger.due_date|date:"M d, Y" }}</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Timeline -->
+            <div class="timeline-card">
+                <h3 class="timeline-title">Timeline</h3>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content">
+                            <strong>Created</strong>
+                            <span>{{ ledger.created_at|date:"M d, Y g:i A" }}</span>
+                            <small>by {{ ledger.created_by.username|default:"System" }}</small>
+                        </div>
+                    </div>
+                    {% for payment in payments %}
+                    <div class="timeline-item">
+                        <div class="timeline-dot success"></div>
+                        <div class="timeline-content">
+                            <strong>Payment Received</strong>
+                            <span>{{ payment.payment_date|date:"M d, Y g:i A" }}</span>
+                            <small>₦{{ payment.amount|floatformat:2 }} via {{ payment.get_payment_method_display }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .btn-back {
+        width: 40px;
+        height: 40px;
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        color: #6B7280;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .btn-back:hover {
+        background: #F9FAFB;
+        border-color: #0033A0;
+        color: #0033A0;
+    }
+
+    .link-primary {
+        color: #0033A0;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .link-primary:hover {
+        text-decoration: underline;
+    }
+
+    /* ✅ WORD BREAKING FOR LONG IDs */
+    .break-word {
+        word-break: break-all;
+        overflow-wrap: break-word;
+    }
+
+    /* ✅ AMOUNT TEXT SIZING */
+    .amount-text {
+        font-size: 0.9375rem;
+        white-space: nowrap;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        margin: 0 -1rem;
+        padding: 0 1rem;
+    }
+
+    .detail-container {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 2rem;
+    }
+
+    .detail-main {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+        min-width: 0; /* ✅ Allow shrinking */
+    }
+
+    .detail-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        min-width: 0; /* ✅ Allow shrinking */
+    }
+
+    .info-card,
+    .balance-card,
+    .status-card,
+    .timeline-card {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 2rem;
+        overflow: hidden; /* ✅ Prevent overflow */
+    }
+
+    .card-title {
+        margin: 0 0 1.5rem 0;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1F2937;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .card-title i {
+        color: #0033A0;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 0; /* ✅ Allow shrinking */
+    }
+
+    .info-label {
+        font-size: 0.875rem;
+        color: #6B7280;
+        font-weight: 600;
+    }
+
+    .divider {
+        height: 1px;
+        background: #E5E7EB;
+        margin: 1.5rem 0;
+    }
+
+    .divider-sm {
+        height: 1px;
+        background: #E5E7EB;
+        margin: 0.75rem 0;
+    }
+
+    .notes-section p {
+        margin: 0.5rem 0 0 0;
+        color: #374151;
+        line-height: 1.6;
+        word-wrap: break-word;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #9CA3AF;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .empty-state p {
+        margin: 0;
+        font-size: 1rem;
+    }
+
+    .balance-title,
+    .status-title,
+    .timeline-title {
+        margin: 0 0 1.25rem 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1F2937;
+    }
+
+    .balance-items {
+        display: flex;
+        flex-direction: column;
+        gap: 0.875rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .balance-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9375rem;
+        gap: 1rem; /* ✅ Prevent touching */
+    }
+
+    .balance-row span {
+        color: #6B7280;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+
+    .balance-row strong {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+        text-align: right;
+    }
+
+    .balance-row.highlight {
+        background: #F3F4F6;
+        padding: 1rem;
+        border-radius: 8px;
+    }
+
+    .amount-lg {
+        font-size: 1.25rem !important; /* ✅ Reduced from 1.5rem */
+    }
+
+    .progress-section {
+        margin-top: 1rem;
+    }
+
+    .progress-label {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .progress-label span {
+        color: #6B7280;
+        font-weight: 600;
+    }
+
+    .progress-bar {
+        height: 8px;
+        background: #E5E7EB;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #0033A0 0%, #7FBA00 100%);
+        transition: width 0.3s;
+    }
+
+    .status-badge-lg {
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 1rem;
+        text-align: center;
+        margin-bottom: 1rem;
+        word-wrap: break-word;
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: 8px;
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-start;
+        margin-top: 1rem;
+    }
+
+    .alert i {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+        margin-top: 0.125rem;
+    }
+
+    .alert strong {
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    .alert p {
+        margin: 0;
+        font-size: 0.875rem;
+        word-wrap: break-word;
+    }
+
+    .alert-danger {
+        background: #FEE2E2;
+        color: #991B1B;
+    }
+
+    .alert-danger i {
+        color: #DC2626;
+    }
+
+    .alert-info {
+        background: #DBEAFE;
+        color: #1E40AF;
+    }
+
+    .alert-info i {
+        color: #3B82F6;
+    }
+
+    .timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    .timeline-item {
+        display: flex;
+        gap: 1rem;
+        position: relative;
+    }
+
+    .timeline-item:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        left: 7px;
+        top: 24px;
+        bottom: -20px;
+        width: 2px;
+        background: #E5E7EB;
+    }
+
+    .timeline-dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #0033A0;
+        border: 3px solid #E5E7EB;
+        flex-shrink: 0;
+        margin-top: 0.25rem;
+    }
+
+    .timeline-dot.success {
+        background: #059669;
+    }
+
+    .timeline-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-width: 0; /* ✅ Allow text wrapping */
+    }
+
+    .timeline-content strong {
+        color: #1F2937;
+        font-size: 0.9375rem;
+    }
+
+    .timeline-content span {
+        color: #6B7280;
+        font-size: 0.875rem;
+        word-wrap: break-word;
+    }
+
+    .timeline-content small {
+        color: #9CA3AF;
+        font-size: 0.8125rem;
+        word-wrap: break-word;
+    }
+
+    @media (max-width: 1024px) {
+        .detail-container {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .data-table thead {
+            display: none;
+        }
+
+        .data-table tbody tr {
+            display: block;
+            margin-bottom: 1rem;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .data-table tbody td {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: none;
+        }
+
+        .data-table tbody td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            color: #6B7280;
+            flex-shrink: 0;
+            margin-right: 1rem;
+        }
+
+        .data-table tfoot {
+            display: none;
+        }
+
+        .amount-lg {
+            font-size: 1.125rem !important;
+        }
+    }
+</style>
+{% endblock %}

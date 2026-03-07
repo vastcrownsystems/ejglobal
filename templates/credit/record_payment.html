@@ -1,0 +1,336 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Record Payment - {{ ledger.ledger_id }}{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    
+    <!-- Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <a href="{% url 'credit:ledger_detail' ledger.ledger_id %}" class="btn-back">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div>
+                <h1>Record Payment</h1>
+                <p class="page-subtitle">{{ ledger.customer.full_name }} - {{ ledger.ledger_id }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-container">
+        
+        <!-- Payment Details Card -->
+        <div class="info-card">
+            <h2 class="card-title">
+                <i class="fas fa-file-invoice"></i>
+                Credit Details
+            </h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Customer</span>
+                    <strong>{{ ledger.customer.full_name }}</strong>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Ledger ID</span>
+                    <strong>{{ ledger.ledger_id }}</strong>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Order</span>
+                    <strong>
+                        {% if ledger.order %}
+                            <a href="{% url 'orders:order_detail' ledger.order.id %}" class="link-primary">
+                                {{ ledger.order.order_number }}
+                            </a>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </strong>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Due Date</span>
+                    <strong>{{ ledger.due_date|date:"M d, Y" }}</strong>
+                </div>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="balance-summary">
+                <div class="balance-item">
+                    <span>Total Amount</span>
+                    <strong>₦{{ ledger.total_amount|floatformat:2 }}</strong>
+                </div>
+                <div class="balance-item">
+                    <span>Already Paid</span>
+                    <strong class="text-success">₦{{ ledger.amount_paid|floatformat:2 }}</strong>
+                </div>
+                <div class="balance-item highlight">
+                    <span>Outstanding Balance</span>
+                    <strong class="amount-lg">₦{{ ledger.balance_outstanding|floatformat:2 }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Form -->
+        <div class="form-card">
+            <h2 class="card-title">
+                <i class="fas fa-dollar-sign"></i>
+                Payment Information
+            </h2>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="amount">Payment Amount (₦)</label>
+                        <input 
+                            type="number" 
+                            name="amount" 
+                            id="amount" 
+                            class="form-input"
+                            step="0.01" 
+                            min="0.01"
+                            max="{{ ledger.balance_outstanding }}"
+                            required
+                            placeholder="Enter amount">
+                        <small class="form-hint">Maximum: ₦{{ ledger.balance_outstanding|floatformat:2 }}</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="payment_method">Payment Method</label>
+                        <select name="payment_method" id="payment_method" class="form-select" required>
+                            {% for value, label in payment_methods %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="reference">Reference Number</label>
+                    <input 
+                        type="text" 
+                        name="reference" 
+                        id="reference" 
+                        class="form-input"
+                        placeholder="Transaction reference (optional)">
+                </div>
+
+                <div class="form-group">
+                    <label for="notes">Notes</label>
+                    <textarea 
+                        name="notes" 
+                        id="notes" 
+                        class="form-textarea"
+                        rows="3"
+                        placeholder="Additional notes (optional)"></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <a href="{% url 'credit:ledger_detail' ledger.ledger_id %}" class="btn-secondary">
+                        <i class="fas fa-times"></i>
+                        Cancel
+                    </a>
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-check"></i>
+                        Record Payment
+                    </button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+    .form-container {
+        max-width: 900px;
+        margin: 0 auto;
+        display: grid;
+        gap: 2rem;
+    }
+
+    .info-card,
+    .form-card {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 2rem;
+    }
+
+    .card-title {
+        margin: 0 0 1.5rem 0;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1F2937;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .card-title i {
+        color: #0033A0;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .info-label {
+        font-size: 0.875rem;
+        color: #6B7280;
+        font-weight: 600;
+    }
+
+    .divider {
+        height: 1px;
+        background: #E5E7EB;
+        margin: 1.5rem 0;
+    }
+
+    .balance-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 0.875rem;
+    }
+
+    .balance-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9375rem;
+    }
+
+    .balance-item span {
+        color: #6B7280;
+        font-weight: 600;
+    }
+
+    .balance-item strong {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+    }
+
+    .balance-item.highlight {
+        background: #F3F4F6;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 0.5rem;
+    }
+
+    .amount-lg {
+        font-size: 1.5rem !important;
+        color: #DC2626 !important;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-group label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .form-input,
+    .form-select,
+    .form-textarea {
+        padding: 0.75rem 1rem;
+        border: 1.5px solid #E5E7EB;
+        border-radius: 8px;
+        font-size: 0.9375rem;
+        font-family: inherit;
+        transition: all 0.2s;
+    }
+
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+        outline: none;
+        border-color: #0033A0;
+        box-shadow: 0 0 0 3px rgba(0, 51, 160, 0.1);
+    }
+
+    .form-hint {
+        font-size: 0.8125rem;
+        color: #6B7280;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        justify-content: flex-end;
+    }
+
+    .btn-secondary {
+        padding: 0.875rem 1.5rem;
+        background: #F3F4F6;
+        color: #374151;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+        background: #E5E7EB;
+    }
+
+    .btn-primary {
+        padding: 0.875rem 1.5rem;
+        background: #0033A0;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+        background: #002a85;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 51, 160, 0.3);
+    }
+
+    @media (max-width: 768px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .form-actions {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}

@@ -1,10 +1,13 @@
 # apps/customers/models.py
+
 from django.db import models
 
 from apps.core.models import TimeStampedModel
 from django.core.validators import RegexValidator
 from django.utils import timezone
 from django.contrib.auth import get_user_model
+from django.db.models import Sum, Q
+from decimal import Decimal
 
 User = get_user_model()
 
@@ -22,6 +25,29 @@ class Customer(TimeStampedModel):
         ('INDIVIDUAL', 'Individual'),
         ('BUSINESS', 'Business/Corporate'),
     ]
+
+    # Add these fields to Customer model:
+    credit_limit = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Maximum credit allowed'
+    )
+
+    credit_terms_days = models.IntegerField(
+        default=30,
+        help_text='Default payment terms in days'
+    )
+
+    credit_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('APPROVED', 'Approved'),
+            ('SUSPENDED', 'Suspended'),
+            ('BLOCKED', 'Blocked'),
+        ],
+        default='APPROVED'
+    )
 
     full_name = models.CharField(max_length=200)
     # Contact Info
@@ -192,6 +218,66 @@ class Customer(TimeStampedModel):
     def has_outstanding_balance(self):
         """Check if customer has any unpaid orders"""
         return self.outstanding_balance > 0
+
+    @property
+    def total_credit_outstanding(self):
+        """Total outstanding credit balance"""
+        try:
+            total = self.credit_ledger_entries.filter(
+                status__in=['PENDING', 'PARTIAL', 'OVERDUE']
+            ).aggregate(
+                total=Sum('balance_outstanding')
+            )['total']
+            return total or Decimal('0.00')
+        except:
+            return Decimal('0.00')
+
+    @property
+    def available_credit(self):
+        """Remaining credit available"""
+        return self.credit_limit - self.total_credit_outstanding
+
+    def can_extend_credit(self, amount):
+        """Check if customer can be extended more credit"""
+        if self.credit_status != 'APPROVED':
+            return False
+
+        return self.available_credit >= amount
+
+    def get_credit_summary(self):
+        """
+        Returns summarized credit information for the customer
+        """
+
+        ledger = self.credit_ledger_entries.all()
+
+        total_outstanding = ledger.filter(
+            status__in=["PENDING", "PARTIAL", "OVERDUE"]
+        ).aggregate(
+            total=Sum("balance_outstanding")
+        )["total"] or Decimal("0.00")
+
+        overdue_balance = ledger.filter(
+            status="OVERDUE"
+        ).aggregate(
+            total=Sum("balance_outstanding")
+        )["total"] or Decimal("0.00")
+
+        credit_orders_count = ledger.filter(
+            status__in=["PENDING", "PARTIAL", "OVERDUE"]
+        ).count()
+
+        available_credit = (self.credit_limit or 0) - total_outstanding
+
+        return {
+            "credit_limit": self.credit_limit or Decimal("0.00"),
+            "total_outstanding": total_outstanding,
+            "available_credit": available_credit,
+            "overdue_balance": overdue_balance,
+            "credit_status": self.credit_status,
+            "credit_orders_count": credit_orders_count,
+        }
+
 
 
 class CustomerNote(models.Model):

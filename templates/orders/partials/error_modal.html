@@ -1,0 +1,196 @@
+<!-- apps/orders/templates/orders/partials/error_modal.html -->
+<!-- ✅ GENERIC ERROR MODAL -->
+
+<div class="error-modal-overlay" id="errorModal" onclick="closeErrorModal(event)">
+    <div class="error-modal" onclick="event.stopPropagation()">
+
+        <!-- Header -->
+        <div class="error-header">
+            <div class="error-icon">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <h2>Error</h2>
+        </div>
+
+        <!-- Body -->
+        <div class="error-body">
+
+            <!-- Error Message -->
+            <div class="error-message">
+                <p>{{ error }}</p>
+            </div>
+
+            {% if technical_error %}
+            <!-- Technical Details (for staff only) -->
+            <details class="technical-details">
+                <summary>Technical Details</summary>
+                <pre>{{ technical_error }}</pre>
+            </details>
+            {% endif %}
+
+        </div>
+
+        <!-- Footer -->
+        <div class="error-footer">
+            <button class="btn-error-close" onclick="closeErrorModal()">
+                <i class="fas fa-times"></i>
+                Close
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    /* Reuse styles from credit_error_modal.html */
+    /* Or include them inline here */
+
+    .error-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .error-modal {
+        background: #fff;
+        border-radius: 16px;
+        width: 100%;
+        max-width: 500px;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+        animation: slideUp 0.3s ease;
+        overflow: hidden;
+    }
+
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .error-header {
+        background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+        padding: 2rem 1.75rem;
+        text-align: center;
+        color: #fff;
+    }
+
+    .error-icon {
+        width: 64px;
+        height: 64px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+    }
+
+    .error-icon i {
+        font-size: 2rem;
+    }
+
+    .error-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .error-body {
+        padding: 1.75rem;
+    }
+
+    .error-message {
+        background: #FEF2F2;
+        border: 2px solid #FCA5A5;
+        border-radius: 10px;
+        padding: 1.25rem;
+    }
+
+    .error-message p {
+        margin: 0;
+        color: #991B1B;
+        font-weight: 600;
+        font-size: 1rem;
+    }
+
+    .technical-details {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #F9FAFB;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+    }
+
+    .technical-details summary {
+        cursor: pointer;
+        font-weight: 600;
+        color: #6B7280;
+        font-size: 0.875rem;
+    }
+
+    .technical-details pre {
+        margin: 0.75rem 0 0 0;
+        padding: 0.75rem;
+        background: #1F2937;
+        color: #F9FAFB;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        overflow-x: auto;
+    }
+
+    .error-footer {
+        background: #fff;
+        border-top: 1px solid #e5e7eb;
+        padding: 1.25rem 1.75rem;
+        text-align: right;
+    }
+
+    .btn-error-close {
+        padding: 0.875rem 1.5rem;
+        background: #0033A0;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.9375rem;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-error-close:hover {
+        background: #002a85;
+        transform: translateY(-2px);
+    }
+</style>
+
+<script>
+    function closeErrorModal(event) {
+        if (event && event.target.id !== 'errorModal') return;
+
+        const modal = document.getElementById('errorModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    // ESC key closes modal
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeErrorModal();
+        }
+    });
+</script>

@@ -2,6 +2,8 @@
 """
 Order management models
 """
+from datetime import timedelta
+
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
@@ -130,6 +132,36 @@ class Order(models.Model):
 
     # Notes
     notes = models.TextField(blank=True)
+
+    # ═══════════════════════════════════════════════════════════
+    # ✅ ADD THESE CREDIT SALE FIELDS
+    # ═══════════════════════════════════════════════════════════
+
+    SALE_TYPE_CHOICES = [
+        ('CASH', 'Cash Sale'),
+        ('CREDIT', 'Credit Sale'),
+    ]
+
+    sale_type = models.CharField(
+        max_length=10,
+        choices=SALE_TYPE_CHOICES,
+        default='CASH',
+        help_text='Sale type determines payment terms',
+        db_index=True
+    )
+
+    credit_terms_days = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text='Payment due in X days (for credit sales)'
+    )
+
+    credit_due_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text='Due date for credit payment',
+        db_index=True
+    )
 
     class Meta:
         ordering = ['-created_at']
@@ -285,6 +317,59 @@ class Order(models.Model):
         if self.status not in ['COMPLETED', 'CANCELLED']:
             self.status = 'CANCELLED'
             self.save()
+
+    # ═══════════════════════════════════════════════════════════
+    # ✅ ADD THESE PROPERTIES
+    # ═══════════════════════════════════════════════════════════
+
+    @property
+    def is_credit_sale(self):
+        """Check if this is a credit sale"""
+        return self.sale_type == 'CREDIT'
+
+    @property
+    def is_cash_sale(self):
+        """Check if this is a cash sale"""
+        return self.sale_type == 'CASH'
+
+    @property
+    def has_credit_ledger(self):
+        """Check if order has associated credit ledger entry"""
+        return hasattr(self, 'credit_ledger')
+
+    @property
+    def credit_balance_outstanding(self):
+        """Get outstanding credit balance for this order"""
+        if self.has_credit_ledger:
+            return self.credit_ledger.balance_outstanding
+        return Decimal('0.00')
+
+    @property
+    def is_credit_overdue(self):
+        """Check if credit payment is overdue"""
+        if self.has_credit_ledger:
+            return self.credit_ledger.is_overdue
+        return False
+
+    def set_credit_terms(self, days=None):
+        """
+        Set credit payment terms for this order
+
+        Args:
+            days (int): Number of days until payment due
+                       If None, uses customer's default terms
+        """
+        if not days:
+            if self.customer and self.customer.credit_terms_days:
+                days = self.customer.credit_terms_days
+            else:
+                days = 30  # Default to Net 30
+
+        self.credit_terms_days = days
+        self.credit_due_date = (
+                timezone.now().date() + timedelta(days=days)
+        )
+        self.save(update_fields=['credit_terms_days', 'credit_due_date'])
 
 
 class OrderItem(models.Model):

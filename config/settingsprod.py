@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     # apps
     'apps.accounts',
     'apps.catalog',
+    'apps.credit',
     'apps.customers',
     'apps.inventory',
     'apps.orders',

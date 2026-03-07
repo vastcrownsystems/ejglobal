@@ -1,0 +1,441 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Statement - {{ customer.full_name }}{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    
+    <!-- Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <a href="{% url 'credit:customer_dashboard' customer.id %}" class="btn-back">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div>
+                <h1>Customer Statement</h1>
+                <p class="page-subtitle">{{ customer.full_name }}</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button onclick="window.print()" class="btn btn-secondary">
+                <i class="fas fa-print"></i>
+                Print
+            </button>
+            <button onclick="exportStatement()" class="btn btn-primary">
+                <i class="fas fa-download"></i>
+                Export PDF
+            </button>
+        </div>
+    </div>
+
+    <div class="statement-container">
+        
+        <!-- Statement Header -->
+        <div class="statement-header">
+            <div class="company-info">
+                <h2>EJ GLOBAL SERVICES</h2>
+                <p>STATEMENT OF ACCOUNT</p>
+            </div>
+            <div class="statement-meta">
+                <div><strong>Statement Date:</strong> {{ statement.end_date|date:"M d, Y" }}</div>
+                <div><strong>Period:</strong> {{ statement.start_date|date:"M d, Y" }} - {{ statement.end_date|date:"M d, Y" }}</div>
+            </div>
+        </div>
+
+        <!-- Customer Information -->
+        <div class="customer-section">
+            <h3>Customer Details</h3>
+            <div class="customer-grid">
+                <div>
+                    <strong>{{ customer.full_name }}</strong><br>
+                    {{ customer.email }}<br>
+                    {{ customer.phone }}<br>
+                </div>
+                <div>
+                    <strong>Customer #:</strong> {{ customer.customer_number }}<br>
+                    <strong>Credit Limit:</strong> ₦{{ customer.credit_limit|floatformat:2 }}<br>
+                    <strong>Payment Terms:</strong> {{ customer.credit_terms_days }} days<br>
+                </div>
+            </div>
+        </div>
+
+        <!-- Balance Summary -->
+        <div class="balance-summary">
+            <div class="summary-box">
+                <div class="summary-label">Opening Balance</div>
+                <div class="summary-amount">₦{{ statement.opening_balance|floatformat:2 }}</div>
+            </div>
+            <div class="summary-box">
+                <div class="summary-label">Total Sales</div>
+                <div class="summary-amount">₦{{ statement.total_sales|floatformat:2 }}</div>
+            </div>
+            <div class="summary-box">
+                <div class="summary-label">Total Payments</div>
+                <div class="summary-amount text-success">-₦{{ statement.total_payments|floatformat:2 }}</div>
+            </div>
+            <div class="summary-box highlight">
+                <div class="summary-label">Closing Balance</div>
+                <div class="summary-amount-lg">₦{{ statement.closing_balance|floatformat:2 }}</div>
+            </div>
+        </div>
+
+        <!-- Transactions Table -->
+        <div class="transactions-section">
+            <h3>Transactions</h3>
+            
+            <table class="statement-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Order/Ref</th>
+                        <th class="text-right">Charges</th>
+                        <th class="text-right">Payments</th>
+                        <th class="text-right">Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if statement.opening_balance != 0 %}
+                    <tr class="opening-row">
+                        <td>{{ statement.start_date|date:"M d, Y" }}</td>
+                        <td colspan="2"><strong>Opening Balance</strong></td>
+                        <td></td>
+                        <td></td>
+                        <td class="text-right"><strong>₦{{ statement.opening_balance|floatformat:2 }}</strong></td>
+                    </tr>
+                    {% endif %}
+                    
+                    {% for entry in statement.entries %}
+                        {% if entry.transaction_type == 'SALE' %}
+                        <tr>
+                            <td>{{ entry.transaction_date|date:"M d, Y" }}</td>
+                            <td>Credit Sale</td>
+                            <td>
+                                {% if entry.order %}
+                                    {{ entry.order.order_number }}
+                                {% endif %}
+                            </td>
+                            <td class="text-right">₦{{ entry.total_amount|floatformat:2 }}</td>
+                            <td></td>
+                            <td class="text-right">₦{{ entry.balance_outstanding|floatformat:2 }}</td>
+                        </tr>
+                        
+                        <!-- Show payments for this entry -->
+                        {% for payment in entry.payments.all %}
+                        <tr class="payment-row">
+                            <td>{{ payment.payment_date|date:"M d, Y" }}</td>
+                            <td>Payment Received - {{ payment.get_payment_method_display }}</td>
+                            <td>{{ payment.payment_id }}</td>
+                            <td></td>
+                            <td class="text-right text-success">₦{{ payment.amount|floatformat:2 }}</td>
+                            <td class="text-right"></td>
+                        </tr>
+                        {% endfor %}
+                        {% endif %}
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">No transactions in this period</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="total-row">
+                        <td colspan="3"><strong>Period Totals</strong></td>
+                        <td class="text-right"><strong>₦{{ statement.total_sales|floatformat:2 }}</strong></td>
+                        <td class="text-right text-success"><strong>₦{{ statement.total_payments|floatformat:2 }}</strong></td>
+                        <td class="text-right"><strong>₦{{ statement.closing_balance|floatformat:2 }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Footer -->
+        <div class="statement-footer">
+            {% if customer.oldest_unpaid_debt %}
+            <p><strong>Please remit payment by {{ customer.oldest_unpaid_debt.due_date|date:"M d, Y" }}</strong></p>
+            {% endif %}
+            <p>Thank you for your business!</p>
+            <p class="footer-small">This is a computer-generated statement and does not require a signature.</p>
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .btn-back {
+        width: 40px;
+        height: 40px;
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        color: #6B7280;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .btn-back:hover {
+        background: #F9FAFB;
+        border-color: #0033A0;
+        color: #0033A0;
+    }
+
+    .link-primary {
+        color: #0033A0;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .link-primary:hover {
+        text-decoration: underline;
+    }
+    
+    .header-actions {
+        margin: 1.5rem 0;
+    }
+
+    @media print {
+        .sidebar,
+        .page-header,
+        .btn-back,
+        .header-actions {
+            display: none !important;
+        }
+        
+        .content-wrapper {
+            padding: 0 !important;
+        }
+        
+        .statement-container {
+            box-shadow: none !important;
+            border: none !important;
+        }
+    }
+
+    .statement-container {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 3rem;
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    .statement-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding-bottom: 2rem;
+        border-bottom: 2px solid #0033A0;
+        margin-bottom: 2rem;
+    }
+
+    .company-info h2 {
+        margin: 0;
+        color: #0033A0;
+        font-size: 1.75rem;
+        font-weight: 800;
+    }
+
+    .company-info p {
+        margin: 0.5rem 0 0 0;
+        color: #6B7280;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    .statement-meta {
+        text-align: right;
+        font-size: 0.875rem;
+        color: #374151;
+    }
+
+    .statement-meta div {
+        margin-bottom: 0.5rem;
+    }
+
+    .customer-section {
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background: #F9FAFB;
+        border-radius: 8px;
+    }
+
+    .customer-section h3 {
+        margin: 0 0 1rem 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1F2937;
+    }
+
+    .customer-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        font-size: 0.9375rem;
+        line-height: 1.6;
+    }
+
+    .balance-summary {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .summary-box {
+        text-align: center;
+        padding: 1.5rem;
+        background: #F9FAFB;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+    }
+
+    .summary-box.highlight {
+        background: linear-gradient(135deg, #F0F9FF 0%, #DBEAFE 100%);
+        border-color: #0033A0;
+    }
+
+    .summary-label {
+        font-size: 0.875rem;
+        color: #6B7280;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .summary-amount {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #1F2937;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .summary-amount-lg {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: #0033A0;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .transactions-section {
+        margin-bottom: 2rem;
+    }
+
+    .transactions-section h3 {
+        margin: 0 0 1rem 0;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #1F2937;
+    }
+
+    .statement-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+
+    .statement-table th {
+        background: #F9FAFB;
+        padding: 0.75rem 1rem;
+        text-align: left;
+        font-weight: 700;
+        color: #374151;
+        border-bottom: 2px solid #E5E7EB;
+    }
+
+    .statement-table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #F3F4F6;
+        color: #1F2937;
+    }
+
+    .statement-table tbody tr:hover {
+        background: #F9FAFB;
+    }
+
+    .opening-row,
+    .total-row {
+        background: #F3F4F6 !important;
+    }
+
+    .opening-row td,
+    .total-row td {
+        font-weight: 700 !important;
+        border-top: 2px solid #E5E7EB;
+        border-bottom: 2px solid #E5E7EB;
+    }
+
+    .payment-row {
+        background: #F0FDF4;
+    }
+
+    .text-right {
+        text-align: right;
+    }
+
+    .text-success {
+        color: #059669;
+    }
+
+    .text-muted {
+        color: #9CA3AF;
+    }
+
+    .statement-footer {
+        text-align: center;
+        padding-top: 2rem;
+        border-top: 1px solid #E5E7EB;
+        color: #6B7280;
+    }
+
+    .statement-footer p {
+        margin: 0.5rem 0;
+    }
+
+    .footer-small {
+        font-size: 0.75rem;
+        margin-top: 1rem !important;
+    }
+
+    @media (max-width: 768px) {
+        .statement-container {
+            padding: 1.5rem;
+        }
+        
+        .balance-summary {
+            grid-template-columns: 1fr 1fr;
+        }
+        
+        .customer-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<script>
+    function exportStatement() {
+        alert('PDF export functionality can be implemented using libraries like jsPDF or WeasyPrint');
+        // Implementation: Convert HTML to PDF
+    }
+</script>
+{% endblock %}

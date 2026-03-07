@@ -457,32 +457,51 @@ def cart_badge(request):
 @require_http_methods(["GET"])
 def checkout_modal(request):
     """
-    Load checkout modal
-
-    URL: GET /orders/checkout/
-    Returns: Checkout modal HTML
+    Display checkout modal with payment options
+    ✅ Calculates credit values for template
     """
-    order_id = request.session.get('current_order_id')
+    order_id = request.session.get("current_order_id")
 
     if not order_id:
-        return HttpResponse("")
+        messages.error(request, "No active order found")
+        return redirect("orders:pos")
 
-    try:
-        order = Order.objects.select_related("customer").prefetch_related("items", "order_payments").get(
-            pk=order_id,
-            status='DRAFT',
-            created_by=request.user
-        )
-    except Order.DoesNotExist:
-        return HttpResponse('<div class="alert-error">Order not found</div>')
+    order = get_object_or_404(
+        Order.objects.select_related('customer'),
+        pk=order_id,
+        status="DRAFT"
+    )
 
-    payments = order.order_payments.all().order_by('-created_at')
+    # Get balance
+    balance_due = order.balance_due
+
+    # ✅ Calculate credit availability
+    credit_info = {}
+    if order.customer:
+        credit_info = {
+            'has_customer': True,
+            'customer_name': order.customer.full_name,
+            'credit_limit': order.customer.credit_limit,
+            'outstanding': order.customer.total_credit_outstanding,
+            'available': order.customer.available_credit,
+            'order_total': order.total,
+            # ✅ Pre-calculated values
+            'shortage': max(0, order.total - order.customer.available_credit),
+            'remaining_after': order.customer.available_credit - order.total,
+            'is_sufficient': order.customer.available_credit >= order.total,
+            'has_limit': order.customer.credit_limit > 0,
+        }
+    else:
+        credit_info = {
+            'has_customer': False,
+        }
 
     context = {
         'order': order,
-        'payments': payments,
-        'balance_due': order.balance_due,
+        'items': order.items.all(),
+        'balance_due': balance_due,
         'payment_methods': OrderPayment.PAYMENT_METHODS,
+        'credit_info': credit_info,  # ✅ Pass to template
     }
 
     return render(request, 'orders/checkout_modal.html', context)
@@ -599,16 +618,20 @@ def add_payment(request):
         })
 
 
+# apps/orders/views.py
+# ✅ IMPROVED complete_sale WITH PROPER ERROR HANDLING
+
 @login_required
 @require_http_methods(["POST"])
 def complete_sale(request):
     """
-    Complete sale - handles Cash Sale (PAID) and Credit Sale (UNPAID)
+    Complete sale - handles both Cash and Credit sales
+    Returns error modal on failure, receipt modal on success
     """
     order_id = request.session.get("current_order_id")
 
     if not order_id:
-        messages.error(request, "No active order")
+        messages.error(request, "No active order found")
         return redirect("orders:pos")
 
     try:
@@ -623,30 +646,55 @@ def complete_sale(request):
             if not order.items.exists():
                 raise ValueError("Cannot complete empty order")
 
-            # ✅ GET SALE TYPE from form
             sale_type = request.POST.get("sale_type", "CASH")
 
             if sale_type == "CREDIT":
                 # ════════════════════════════════════════════
                 # CREDIT SALE FLOW
                 # ════════════════════════════════════════════
+                from apps.credit.services import CreditLedgerService
 
-                # Must have customer
+                # Validate customer
                 if not order.customer:
                     raise ValueError("Credit sales require a customer")
 
-                # Create CREDIT payment for full amount
-                OrderPayment.objects.create(
-                    order=order,
-                    amount=Decimal("0.00"),
-                    payment_method="CREDIT",
-                    reference_number=f"CREDIT-{order.order_number}",
-                    notes="Credit sale - Payment deferred",
-                    created_by=request.user
-                )
+                # Get credit terms
+                terms_days = request.POST.get('credit_terms_days', 30)
 
-                # Update payment status - will be UNPAID
-                order.update_payment_status()
+                # ✅ Try to create credit ledger (this checks credit limit)
+                try:
+                    # Confirm order first
+                    OrderService.confirm_order(order, reduce_stock=True)
+
+                    # Mark as completed
+                    order.status = 'COMPLETED'
+                    order.payment_status = 'UNPAID'
+                    order.completed_at = timezone.now()
+                    order.save()
+
+                    # Create credit ledger entry
+                    ledger = CreditLedgerService.create_credit_sale(
+                        order=order,
+                        terms_days=int(terms_days),
+                        created_by=request.user
+                    )
+
+                except ValueError as e:
+                    # ✅ Handle credit limit exceeded
+                    error_message = str(e)
+
+                    # Return error modal instead of redirecting
+                    html = render_to_string(
+                        "orders/partials/credit_error_modal.html",
+                        {
+                            "error": error_message,
+                            "order": order,
+                            "customer": order.customer,
+                        },
+                        request=request
+                    )
+
+                    return HttpResponse(html)
 
             else:
                 # ════════════════════════════════════════════
@@ -656,32 +704,30 @@ def complete_sale(request):
                 # Update payment status
                 order.update_payment_status()
 
-                # Must be fully paid
+                # Validate fully paid
                 if order.balance_due > 0:
                     raise ValueError(
-                        f"Order not fully paid. Balance: ₦{order.balance_due}"
+                        f"Order not fully paid. Balance: ₦{order.balance_due:,.2f}"
                     )
 
+                # Confirm order
+                OrderService.confirm_order(order, reduce_stock=True)
+
+                # Mark as completed
+                order.status = 'COMPLETED'
+                order.completed_at = timezone.now()
+                order.save()
+
             # ════════════════════════════════════════════
-            # COMMON COMPLETION LOGIC
+            # SUCCESS - Generate Receipt
             # ════════════════════════════════════════════
 
-            # Confirm order and reduce stock
-            OrderService.confirm_order(order, reduce_stock=True)
-
-            # Mark as completed
-            order.status = "COMPLETED"
-            order.completed_at = timezone.now()
-            order.save(update_fields=["status", "completed_at"])
-
-            # Generate receipt
-            from apps.receipts.services import ReceiptService
             receipt = ReceiptService.generate_receipt(order)
 
             # Clear session
             request.session.pop("current_order_id", None)
 
-            # Render receipt modal
+            # Return receipt modal
             html = render_to_string(
                 "receipts/receipt_modal.html",
                 {
@@ -691,14 +737,37 @@ def complete_sale(request):
                 request=request
             )
 
-            response = HttpResponse(html)
-            # Don't send HX-Trigger to avoid immediate redirect
-            return response
+            return HttpResponse(html)
+
+    except ValueError as e:
+        # ✅ Handle validation errors with modal
+        logger.warning(f"Sale validation error: {e}")
+
+        html = render_to_string(
+            "orders/partials/error_modal.html",
+            {
+                "error": str(e),
+                "order": order if 'order' in locals() else None,
+            },
+            request=request
+        )
+
+        return HttpResponse(html)
 
     except Exception as e:
-        logger.exception(f"Error completing sale: {e}")
-        messages.error(request, f"❌ Error: {str(e)}")
-        return redirect("orders:pos")
+        # ✅ Handle unexpected errors
+        logger.exception(f"Unexpected error completing sale: {e}")
+
+        html = render_to_string(
+            "orders/partials/error_modal.html",
+            {
+                "error": "An unexpected error occurred. Please try again or contact support.",
+                "technical_error": str(e) if request.user.is_staff else None,
+            },
+            request=request
+        )
+
+        return HttpResponse(html)
 
 
 @login_required

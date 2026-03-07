@@ -1,0 +1,341 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}AR Aging Report{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    
+    <!-- Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <div>
+                <h1>Accounts Receivable Aging</h1>
+                <p class="page-subtitle">As of {{ report_date|date:"M d, Y" }}</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button onclick="window.print()" class="btn btn-secondary">
+                <i class="fas fa-print"></i>
+                Print
+            </button>
+            <button onclick="exportReport()" class="btn btn-primary">
+                <i class="fas fa-download"></i>
+                Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Aging Summary Cards -->
+    <div class="aging-grid">
+        <div class="aging-card current">
+            <div class="aging-header">
+                <div class="aging-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div>
+                    <div class="aging-label">Current (0-30 days)</div>
+                    <div class="aging-amount">₦{{ aging.current|floatformat:2 }}</div>
+                </div>
+            </div>
+            <div class="aging-percentage">
+                {{ aging.current_percent|floatformat:1 }}%
+            </div>
+        </div>
+
+        <div class="aging-card days-31-60">
+            <div class="aging-header">
+                <div class="aging-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div>
+                    <div class="aging-label">31-60 Days</div>
+                    <div class="aging-amount">₦{{ aging.days_31_60|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="aging-card days-61-90">
+            <div class="aging-header">
+                <div class="aging-icon">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <div>
+                    <div class="aging-label">61-90 Days</div>
+                    <div class="aging-amount">₦{{ aging.days_61_90|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="aging-card over-90">
+            <div class="aging-header">
+                <div class="aging-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                    <div class="aging-label">Over 90 Days</div>
+                    <div class="aging-amount">₦{{ aging.over_90|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="aging-card total">
+            <div class="aging-header">
+                <div class="aging-icon">
+                    <i class="fas fa-calculator"></i>
+                </div>
+                <div>
+                    <div class="aging-label">Total Outstanding</div>
+                    <div class="aging-amount-lg">₦{{ aging.total|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overdue Customers -->
+    <div class="data-table-container">
+        <div class="table-header">
+            <h2>Customers with Overdue Balances</h2>
+            <div class="table-stats">
+                <span class="stat-badge">{{ overdue_customers.count }} customer{{ overdue_customers.count|pluralize }}</span>
+            </div>
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Customer</th>
+                    <th>Contact</th>
+                    <th class="text-right">Overdue Amount</th>
+                    <th>Oldest Debt Date</th>
+                    <th>Days Overdue</th>
+                    <th>Credit Limit</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in overdue_customers %}
+                <tr class="{% if customer.days_overdue > 60 %}row-danger{% elif customer.days_overdue > 30 %}row-warning{% endif %}">
+                    <td>
+                        <a href="{% url 'credit:customer_dashboard' customer.id %}" class="link-primary">
+                            <strong>{{ customer.full_name }}</strong>
+                        </a>
+                    </td>
+                    <td>{{ customer.phone }}</td>
+                    <td class="text-right">
+                        <strong class="text-danger">₦{{ customer.overdue_amount|floatformat:2 }}</strong>
+                    </td>
+                    <td>{{ customer.oldest_debt_date|date:"M d, Y" }}</td>
+                    <td>
+                        <span class="badge {% if customer.days_overdue > 60 %}badge-danger{% elif customer.days_overdue > 30 %}badge-warning{% else %}badge-info{% endif %}">
+                            {{ customer.days_overdue }} days
+                        </span>
+                    </td>
+                    <td>₦{{ customer.credit_limit|floatformat:2 }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{% url 'credit:customer_statement' customer.id %}" class="btn-sm btn-secondary" title="View Statement">
+                                <i class="fas fa-file-invoice"></i>
+                            </a>
+                            <button onclick="sendReminder({{ customer.id }})" class="btn-sm btn-warning" title="Send Reminder">
+                                <i class="fas fa-bell"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted">
+                        <div class="empty-state">
+                            <i class="fas fa-check-circle"></i>
+                            <p>No overdue customers - Great job!</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<style>
+    .header-actions {
+        margin: 1.5rem 0;
+    }
+    .aging-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .aging-card {
+        background: white;
+        border: 2px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition: all 0.2s;
+    }
+
+    .aging-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .aging-card.current {
+        border-color: #059669;
+        background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
+    }
+
+    .aging-card.days-31-60 {
+        border-color: #3B82F6;
+        background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    }
+
+    .aging-card.days-61-90 {
+        border-color: #F59E0B;
+        background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+    }
+
+    .aging-card.over-90 {
+        border-color: #DC2626;
+        background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+    }
+
+    .aging-card.total {
+        border-color: #0033A0;
+        background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+        grid-column: span 2;
+    }
+
+    .aging-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .aging-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .aging-card.current .aging-icon {
+        background: #059669;
+    }
+
+    .aging-card.days-31-60 .aging-icon {
+        background: #3B82F6;
+    }
+
+    .aging-card.days-61-90 .aging-icon {
+        background: #F59E0B;
+    }
+
+    .aging-card.over-90 .aging-icon {
+        background: #DC2626;
+    }
+
+    .aging-card.total .aging-icon {
+        background: #0033A0;
+    }
+
+    .aging-icon i {
+        color: white;
+        font-size: 1.5rem;
+    }
+
+    .aging-label {
+        font-size: 0.875rem;
+        color: #6B7280;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .aging-amount {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #1F2937;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .aging-amount-lg {
+        font-size: 2rem;
+        font-weight: 900;
+        color: #0033A0;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .row-warning {
+        background: #FFFBEB !important;
+    }
+
+    .row-danger {
+        background: #FEF2F2 !important;
+    }
+
+    .badge-warning {
+        background: #FEF3C7;
+        color: #92400E;
+    }
+
+    .badge-info {
+        background: #DBEAFE;
+        color: #1E40AF;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-warning {
+        background: #FBBF24;
+        color: #78350F;
+    }
+
+    .btn-warning:hover {
+        background: #F59E0B;
+    }
+
+    .empty-state {
+        padding: 3rem 1rem;
+        text-align: center;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        color: #059669;
+        margin-bottom: 1rem;
+    }
+
+    .empty-state p {
+        margin: 0;
+        color: #6B7280;
+        font-size: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .aging-card.total {
+            grid-column: span 1;
+        }
+    }
+</style>
+
+<script>
+    function sendReminder(customerId) {
+        alert('Send payment reminder to customer #' + customerId);
+        // Implementation: Send email/SMS reminder
+    }
+
+    function exportReport() {
+        alert('Export AR Aging Report');
+        // Implementation: Export to Excel/PDF
+    }
+</script>
+{% endblock %}

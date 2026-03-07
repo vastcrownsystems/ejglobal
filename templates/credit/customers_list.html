@@ -1,0 +1,649 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Credit Customers{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    
+    <!-- Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <div>
+                <h1>Credit Customers</h1>
+                <p class="page-subtitle">All customers with credit accounts</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'customers:customer_list' %}" class="btn btn-secondary">
+                <i class="fas fa-users"></i>
+                All Customers
+            </a>
+        </div>
+    </div>
+
+    <!-- Customers Grid/Table -->
+    <div class="customers-container">
+
+        <div class="view-toggle">
+            <button onclick="setView('grid')" id="btnGrid" class="view-btn active">
+                <i class="fas fa-th"></i>
+                Grid
+            </button>
+            <button onclick="setView('table')" id="btnTable" class="view-btn">
+                <i class="fas fa-list"></i>
+                Table
+            </button>
+        </div>
+
+        <!-- Grid View -->
+        <div id="gridView" class="customers-grid">
+            {% for customer in customers %}
+            <div class="customer-card">
+                <div class="customer-header">
+                    <div class="customer-avatar">
+                        {{ customer.full_name|first }}
+                    </div>
+                    <div class="customer-info">
+                        <h3>{{ customer.full_name }}</h3>
+                        <p>{{ customer.customer_number }}</p>
+                    </div>
+                    <div class="customer-status">
+                        {% if customer.total_outstanding > 0 %}
+                            <span class="status-badge overdue">Has Balance</span>
+                        {% else %}
+                            <span class="status-badge clear">Clear</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="customer-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Credit Limit</span>
+                        <strong>₦{{ customer.credit_limit|floatformat:2 }}</strong>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Outstanding</span>
+                        <strong class="{% if customer.total_outstanding > 0 %}text-danger{% else %}text-success{% endif %}">
+                            ₦{{ customer.total_outstanding|default:0|floatformat:2 }}
+                        </strong>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Credit Orders</span>
+                        <strong>{{ customer.credit_count|default:0 }}</strong>
+                    </div>
+                </div>
+
+                <div class="utilization-section">
+                    <div class="utilization-header">
+                        <span>Credit Utilization</span>
+                        {% with util=customer.utilization %}
+                            <strong class="{% if util > 80 %}text-danger{% elif util > 50 %}text-warning{% else %}text-success{% endif %}">
+                                {{ util|floatformat:0 }}%
+                            </strong>
+                        {% endwith %}
+                    </div>
+                    {% with util=customer.utilization %}
+                        <div class="utilization-bar">
+                            <div class="utilization-fill {% if util > 80 %}danger{% elif util > 50 %}warning{% endif %}"
+                                 style="width: {{ util }}%;"></div>
+                        </div>
+                    {% endwith %}
+                </div>
+
+                <div class="customer-actions">
+                    <a href="{% url 'credit:customer_dashboard' customer.id %}" class="btn-card btn-primary">
+                        <i class="fas fa-chart-line"></i>
+                        View Account
+                    </a>
+                    <a href="{% url 'credit:customer_statement' customer.id %}" class="btn-card btn-secondary">
+                        <i class="fas fa-file-invoice"></i>
+                        Statement
+                    </a>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-state-full">
+                <i class="fas fa-users-slash"></i>
+                <h3>No Credit Customers</h3>
+                <p>No customers have been set up with credit accounts yet.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Table View -->
+        <div id="tableView" class="customers-table" style="display: none;">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>Customer #</th>
+                            <th>Contact</th>
+                            <th class="text-right">Credit Limit</th>
+                            <th class="text-right">Outstanding</th>
+                            <th class="text-center">Utilization</th>
+                            <th class="text-center">Orders</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for customer in customers %}
+                        <tr>
+                            <td data-label="Customer">
+                                <strong>{{ customer.full_name }}</strong>
+                            </td>
+                            <td data-label="Customer #">{{ customer.customer_number }}</td>
+                            <td data-label="Contact">{{ customer.phone }}</td>
+                            <td class="text-right" data-label="Credit Limit">₦{{ customer.credit_limit|floatformat:2 }}</td>
+                            <td class="text-right" data-label="Outstanding">
+                                <strong class="{% if customer.total_outstanding > 0 %}text-danger{% else %}text-success{% endif %}">
+                                    ₦{{ customer.total_outstanding|default:0|floatformat:2 }}
+                                </strong>
+                            </td>
+                            <td class="text-center" data-label="Utilization">
+                                {% with util=customer.utilization %}
+                                    <span class="badge {% if util > 80 %}badge-danger{% elif util > 50 %}badge-warning{% else %}badge-success{% endif %}">
+                                        {{ util|floatformat:0 }}%
+                                    </span>
+                                {% endwith %}
+                            </td>
+                            <td class="text-center" data-label="Orders">{{ customer.credit_count|default:0 }}</td>
+                            <td data-label="Status">
+                                {% if customer.total_outstanding > 0 %}
+                                    <span class="badge badge-warning">Has Balance</span>
+                                {% else %}
+                                    <span class="badge badge-success">Clear</span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Actions">
+                                <div class="action-buttons">
+                                    <a href="{% url 'credit:customer_dashboard' customer.id %}" class="btn-sm btn-primary">
+                                        <i class="fas fa-chart-line"></i>
+                                    </a>
+                                    <a href="{% url 'credit:customer_statement' customer.id %}" class="btn-sm btn-secondary">
+                                        <i class="fas fa-file-invoice"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center">
+                                <div class="empty-state">
+                                    <i class="fas fa-users-slash"></i>
+                                    <p>No credit customers found</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+    .header-actions {
+        margin: 1.5rem 0;
+    }
+    .customers-container {
+        position: relative;
+    }
+
+    .view-toggle {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+        justify-content: flex-end;
+    }
+
+    .view-btn {
+        padding: 0.625rem 1.25rem;
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        color: #6B7280;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .view-btn:hover {
+        background: #F3F4F6;
+        border-color: #0033A0;
+        color: #0033A0;
+    }
+
+    .view-btn.active {
+        background: #0033A0;
+        border-color: #0033A0;
+        color: white;
+    }
+
+    .customers-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .customer-card {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition: all 0.2s;
+    }
+
+    .customer-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .customer-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .customer-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #0033A0 0%, #7FBA00 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .customer-info {
+        flex: 1;
+    }
+
+    .customer-info h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1F2937;
+    }
+
+    .customer-info p {
+        margin: 0.25rem 0 0 0;
+        font-size: 0.875rem;
+        color: #6B7280;
+    }
+
+    .customer-status {
+        flex-shrink: 0;
+    }
+
+    .status-badge {
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .status-badge.overdue {
+        background: #FEF3C7;
+        color: #92400E;
+    }
+
+    .status-badge.clear {
+        background: #D1FAE5;
+        color: #065F46;
+    }
+
+    .customer-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #E5E7EB;
+    }
+
+    .stat-item {
+        text-align: center;
+    }
+
+    .stat-label {
+        display: block;
+        font-size: 0.75rem;
+        color: #6B7280;
+        margin-bottom: 0.375rem;
+        font-weight: 600;
+    }
+
+    .stat-item strong {
+        font-size: 1rem;
+        color: #1F2937;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .utilization-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .utilization-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .utilization-header span {
+        color: #6B7280;
+        font-weight: 600;
+    }
+
+    .utilization-bar {
+        height: 8px;
+        background: #E5E7EB;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .utilization-fill {
+        height: 100%;
+        background: #059669;
+        transition: width 0.3s;
+    }
+
+    .utilization-fill.warning {
+        background: #F59E0B;
+    }
+
+    .utilization-fill.danger {
+        background: #DC2626;
+    }
+
+    .customer-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+    }
+
+    .btn-card {
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-card.btn-primary {
+        background: #0033A0;
+        color: white;
+    }
+
+    .btn-card.btn-primary:hover {
+        background: #002a85;
+    }
+
+    .btn-card.btn-secondary {
+        background: #F3F4F6;
+        color: #374151;
+    }
+
+    .btn-card.btn-secondary:hover {
+        background: #E5E7EB;
+    }
+
+    .empty-state-full {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #9CA3AF;
+    }
+
+    .empty-state-full i {
+        font-size: 4rem;
+        margin-bottom: 1.5rem;
+        opacity: 0.5;
+    }
+
+    .empty-state-full h3 {
+        margin: 0 0 0.5rem 0;
+        color: #6B7280;
+    }
+
+    .empty-state-full p {
+        margin: 0;
+    }
+
+    /* Table Styles */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .data-table thead {
+        background: #F9FAFB;
+    }
+
+    .data-table th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 700;
+        color: #6B7280;
+        font-size: 0.875rem;
+        border-bottom: 2px solid #E5E7EB;
+        white-space: nowrap;
+    }
+
+    .data-table tbody tr {
+        border-bottom: 1px solid #F3F4F6;
+        transition: background 0.2s;
+    }
+
+    .data-table tbody tr:hover {
+        background: #F9FAFB;
+    }
+
+    .data-table td {
+        padding: 1rem;
+        color: #374151;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+
+    .badge-success {
+        background: #D1FAE5;
+        color: #065F46;
+    }
+
+    .badge-warning {
+        background: #FEF3C7;
+        color: #92400E;
+    }
+
+    .badge-danger {
+        background: #FEE2E2;
+        color: #991B1B;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-sm {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .btn-sm.btn-primary {
+        background: #EEF2FF;
+        color: #0033A0;
+    }
+
+    .btn-sm.btn-primary:hover {
+        background: #0033A0;
+        color: white;
+    }
+
+    .btn-sm.btn-secondary {
+        background: #F3F4F6;
+        color: #6B7280;
+    }
+
+    .btn-sm.btn-secondary:hover {
+        background: #E5E7EB;
+        color: #374151;
+    }
+
+    .empty-state {
+        padding: 3rem 1rem;
+        text-align: center;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        color: #9CA3AF;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .empty-state p {
+        margin: 0;
+        color: #6B7280;
+    }
+
+    .text-right {
+        text-align: right;
+    }
+
+    .text-center {
+        text-align: center;
+    }
+
+    .text-danger {
+        color: #DC2626;
+    }
+
+    .text-success {
+        color: #059669;
+    }
+
+    /* Responsive - Mobile Table Cards */
+    @media (max-width: 768px) {
+        .customers-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .view-toggle {
+            justify-content: center;
+        }
+
+        /* Convert table to cards on mobile */
+        .data-table thead {
+            display: none;
+        }
+
+        .data-table,
+        .data-table tbody,
+        .data-table tr,
+        .data-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .data-table tr {
+            margin-bottom: 1.5rem;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .data-table td {
+            padding: 0.75rem 0;
+            border: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .data-table td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            color: #6B7280;
+            font-size: 0.875rem;
+        }
+
+        .data-table td:last-child {
+            border-top: 1px solid #E5E7EB;
+            padding-top: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .action-buttons {
+            margin-left: auto;
+        }
+
+        .data-table .text-right {
+            text-align: right;
+        }
+    }
+</style>
+
+<script>
+    function setView(view) {
+        const gridView = document.getElementById('gridView');
+        const tableView = document.getElementById('tableView');
+        const btnGrid = document.getElementById('btnGrid');
+        const btnTable = document.getElementById('btnTable');
+
+        if (view === 'grid') {
+            gridView.style.display = 'grid';
+            tableView.style.display = 'none';
+            btnGrid.classList.add('active');
+            btnTable.classList.remove('active');
+        } else {
+            gridView.style.display = 'none';
+            tableView.style.display = 'block';
+            btnGrid.classList.remove('active');
+            btnTable.classList.add('active');
+        }
+    }
+</script>
+{% endblock %}z

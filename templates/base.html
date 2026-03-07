@@ -102,6 +102,57 @@
                 </a>
             </div>
 
+            <div class="nav-section">
+                <div class="nav-section-title">
+                    <i class="fas fa-money-bill-transfer"></i> Credit
+                </div>
+                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
+                    <a href="{% url 'credit:customers_list' %}"
+                       class="nav-item
+                       {% if ns == 'credit' and 'customer' in name %}
+                           active
+                       {% endif %}"
+                       data-title="Credit Customers">
+                        <i class="fas fa-user-tag"></i>
+                        <span>Credit Customers</span>
+                    </a>
+                {% endwith %}
+                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
+                    <a href="{% url 'credit:ledger_list' %}"
+                       class="nav-item
+                       {% if ns == 'credit' and 'ledger' in name %}
+                           active
+                       {% endif %}"
+                       data-title="Credit Ledger">
+                        <i class="fas fa-book"></i>
+                        <span>Credit Ledger</span>
+                    </a>
+                {% endwith %}
+                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
+                    <a href="{% url 'credit:aging_report' %}"
+                       class="nav-item
+                       {% if ns == 'credit' and 'aging' in name %}
+                           active
+                       {% endif %}"
+                       data-title="AR Aging">
+                        <i class="fas fa-clock"></i>
+                        <span>AR Aging</span>
+                    </a>
+                {% endwith %}
+                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
+                    <a href="{% url 'credit:collection_report' %}"
+                       class="nav-item
+                       {% if ns == 'credit' and 'collection' in name %}
+                           active
+                       {% endif %}"
+                       data-title="Collections">
+                        <i class="fas fa-hand-holding-dollar"></i>
+                        <span>Collections</span>
+                    </a>
+                {% endwith %}
+            </div>
+
+
             <!-- Manager/Admin Only Sections -->
             {% if user.is_superuser or user.groups.all.0.name == 'Admin' or user.groups.all.0.name == 'Manager' %}
 

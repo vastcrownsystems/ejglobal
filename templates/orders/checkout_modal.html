@@ -95,26 +95,112 @@
 
             <!-- ✅ Credit Notice (shown when CREDIT selected) -->
             <div id="creditNoticeCard" class="credit-notice-card" style="display: none;">
-                {% if not order.customer %}
-                <div class="credit-warning">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <div class="credit-warning-content">
-                        <strong>Customer Required</strong>
-                        <p>Credit sales must be linked to a customer account. Please add a customer in the cart panel before proceeding.</p>
-                    </div>
-                </div>
-                {% else %}
-                <div class="credit-success">
-                    <i class="fas fa-check-circle"></i>
-                    <div class="credit-success-content">
-                        <strong>Credit Sale Ready</strong>
-                        <p>Customer: <span class="customer-name">{{ order.customer.full_name }}</span></p>
-                        <p>Amount to defer: <span class="amount-defer">₦{{ order.total|floatformat:2 }}</span></p>
-                        <p class="credit-info-note">Payment status will be set to UNPAID. Customer can pay this balance later.</p>
-                    </div>
-                </div>
-                {% endif %}
+
+    <!-- ✅ Hidden fields for JavaScript -->
+    <input type="hidden" id="orderTotal" value="{{ order.total }}">
+    <input type="hidden" id="customerCreditLimit" value="{{ credit_info.credit_limit|default:0 }}">
+    <input type="hidden" id="customerOutstanding" value="{{ credit_info.outstanding|default:0 }}">
+
+    {% if not credit_info.has_customer %}
+        <!-- No Customer -->
+        <div class="credit-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div class="credit-warning-content">
+                <strong>Customer Required</strong>
+                <p>Credit sales must be linked to a customer account. Please add a customer in the cart panel before proceeding.</p>
             </div>
+        </div>
+
+    {% elif not credit_info.has_limit %}
+        <!-- No Credit Limit Set -->
+        <div class="credit-error">
+            <i class="fas fa-ban"></i>
+            <div class="credit-error-content">
+                <strong>No Credit Limit Set</strong>
+                <p><span class="customer-name-highlight">{{ credit_info.customer_name }}</span> does not have a credit limit configured.</p>
+                <div class="credit-error-details">
+                    <div class="error-detail-row">
+                        <span>Credit Limit:</span>
+                        <strong class="error-amount">₦0.00</strong>
+                    </div>
+                    <div class="error-detail-row">
+                        <span>Order Total:</span>
+                        <strong>₦{{ credit_info.order_total|floatformat:2 }}</strong>
+                    </div>
+                </div>
+                <p class="error-solution">💡 Contact your manager to set up a credit limit for this customer.</p>
+            </div>
+        </div>
+
+    {% elif not credit_info.is_sufficient %}
+        <!-- Insufficient Credit -->
+        <div class="credit-error">
+            <i class="fas fa-exclamation-circle"></i>
+            <div class="credit-error-content">
+                <strong>Insufficient Credit Available</strong>
+                <p><span class="customer-name-highlight">{{ credit_info.customer_name }}</span> does not have enough available credit for this order.</p>
+                <div class="credit-error-details">
+                    <div class="error-detail-row">
+                        <span>Credit Limit:</span>
+                        <strong>₦{{ credit_info.credit_limit|floatformat:2 }}</strong>
+                    </div>
+                    <div class="error-detail-row">
+                        <span>Currently Owing:</span>
+                        <strong>₦{{ credit_info.outstanding|floatformat:2 }}</strong>
+                    </div>
+                    <div class="error-detail-row highlight">
+                        <span>Available Credit:</span>
+                        <strong class="available-amount">₦{{ credit_info.available|floatformat:2 }}</strong>
+                    </div>
+                    <div class="divider-line"></div>
+                    <div class="error-detail-row">
+                        <span>Order Total:</span>
+                        <strong class="error-amount">₦{{ credit_info.order_total|floatformat:2 }}</strong>
+                    </div>
+                    <div class="error-detail-row shortage">
+                        <span>Short by:</span>
+                        <strong class="shortage-amount">₦{{ credit_info.shortage|floatformat:2 }}</strong>
+                    </div>
+                </div>
+                <p class="error-solution">💡 Options: Accept partial payment, increase credit limit, or ask customer to pay outstanding balance.</p>
+            </div>
+        </div>
+
+    {% else %}
+        <!-- Credit OK -->
+        <div class="credit-success">
+            <i class="fas fa-check-circle"></i>
+            <div class="credit-success-content">
+                <strong>Credit Sale Ready</strong>
+                <p>Customer: <span class="customer-name">{{ credit_info.customer_name }}</span></p>
+                <div class="credit-success-details">
+                    <div class="success-detail-row">
+                        <span>Credit Limit:</span>
+                        <strong>₦{{ credit_info.credit_limit|floatformat:2 }}</strong>
+                    </div>
+                    <div class="success-detail-row">
+                        <span>Currently Owing:</span>
+                        <strong>₦{{ credit_info.outstanding|floatformat:2 }}</strong>
+                    </div>
+                    <div class="success-detail-row highlight">
+                        <span>Available Credit:</span>
+                        <strong class="available-credit">₦{{ credit_info.available|floatformat:2 }}</strong>
+                    </div>
+                    <div class="divider-line"></div>
+                    <div class="success-detail-row">
+                        <span>Order Total:</span>
+                        <strong class="order-total">₦{{ credit_info.order_total|floatformat:2 }}</strong>
+                    </div>
+                    <div class="success-detail-row remaining">
+                        <span>Remaining After Sale:</span>
+                        <strong class="remaining-credit">₦{{ credit_info.remaining_after|floatformat:2 }}</strong>
+                    </div>
+                </div>
+                <p class="credit-info-note">Payment status will be set to UNPAID. Customer has {{ order.customer.credit_terms_days|default:30 }} days to pay.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
 
             <!-- ✅ Payment Section (shown when CASH selected) -->
             <div id="paymentSection">
@@ -653,6 +739,161 @@
         .sale-type-options { grid-template-columns: 1fr; }
         .checkout-footer   { flex-direction: column; }
     }
+
+    /* ═══════════════════════════════════════════════════════════
+       ✅ CREDIT ERROR STYLES
+       ═══════════════════════════════════════════════════════════ */
+
+    .credit-error {
+        background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+        border: 2px solid #EF4444;
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        display: flex;
+        gap: 0.875rem;
+        align-items: flex-start;
+        animation: coSlide 0.3s ease;
+    }
+
+    .credit-error i {
+        font-size: 1.5rem;
+        color: #DC2626;
+        flex-shrink: 0;
+        margin-top: 0.125rem;
+    }
+
+    .credit-error-content {
+        flex: 1;
+    }
+
+    .credit-error-content strong {
+        display: block;
+        color: #991B1B;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .credit-error-content p {
+        margin: 0 0 0.75rem 0;
+        color: #7F1D1D;
+        font-size: 0.875rem;
+        line-height: 1.4;
+    }
+
+    .customer-name-highlight {
+        font-weight: 700;
+        color: #991B1B;
+    }
+
+    .credit-error-details,
+    .credit-success-details {
+        background: rgba(255, 255, 255, 0.6);
+        border-radius: 8px;
+        padding: 0.875rem 1rem;
+        margin: 0.75rem 0;
+    }
+
+    .error-detail-row,
+    .success-detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .error-detail-row:last-child,
+    .success-detail-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .error-detail-row span,
+    .success-detail-row span {
+        color: #6B7280;
+        font-weight: 600;
+    }
+
+    .error-detail-row strong,
+    .success-detail-row strong {
+        font-family: monospace;
+        font-weight: 800;
+    }
+
+    .error-detail-row.highlight,
+    .success-detail-row.highlight {
+        background: rgba(251, 191, 36, 0.15);
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        margin: 0.5rem -0.75rem;
+    }
+
+    .error-detail-row.shortage {
+        background: rgba(220, 38, 38, 0.1);
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        margin: 0.5rem -0.75rem;
+    }
+
+    .success-detail-row.remaining {
+        background: rgba(16, 185, 129, 0.1);
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        margin: 0.5rem -0.75rem;
+    }
+
+    .available-amount {
+        color: #059669;
+    }
+
+    .error-amount {
+        color: #DC2626;
+    }
+
+    .shortage-amount {
+        color: #DC2626;
+        font-size: 1rem;
+    }
+
+    .remaining-credit {
+        color: #059669;
+        font-size: 1rem;
+    }
+
+    .divider-line {
+        height: 1px;
+        background: #E5E7EB;
+        margin: 0.75rem 0;
+    }
+
+    .error-solution {
+        margin: 0.75rem 0 0 0;
+        padding: 0.625rem 0.875rem;
+        background: rgba(251, 191, 36, 0.15);
+        border-left: 3px solid #F59E0B;
+        border-radius: 4px;
+        color: #92400E;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        line-height: 1.4;
+    }
+
+    /* Credit Success - existing styles enhanced */
+    .credit-success-details .success-detail-row {
+        color: #374151;
+    }
+
+    .available-credit {
+        color: #059669;
+        font-size: 1rem;
+    }
+
+    .order-total {
+        color: #0033A0;
+        font-size: 1rem;
+    }
+</style>
+
+
 </style>
 
 <script>
@@ -666,32 +907,43 @@
         return document.getElementById('hasCustomerFlag')?.value === '1';
     }
 
-    // ✅ Toggle between Cash and Credit sale modes
     function toggleSaleType(saleType) {
         const paymentSection = document.getElementById('paymentSection');
         const creditNoticeCard = document.getElementById('creditNoticeCard');
         const saleTypeInput = document.getElementById('saleTypeInput');
         const completeBtn = document.getElementById('completeSaleBtn');
 
-        // Update hidden field
         saleTypeInput.value = saleType;
 
         if (saleType === 'CREDIT') {
-            // CREDIT SALE MODE
+            // CREDIT MODE
             paymentSection.style.display = 'none';
             creditNoticeCard.style.display = 'block';
             completeBtn.classList.add('credit-mode');
 
-            if (hasCustomer()) {
-                completeBtn.disabled = false;
-                completeBtn.innerHTML = '<i class="fas fa-handshake"></i> Complete Credit Sale';
-            } else {
+            // Check credit eligibility
+            const creditLimit = parseFloat(document.getElementById('customerCreditLimit')?.value || 0);
+            const outstanding = parseFloat(document.getElementById('customerOutstanding')?.value || 0);
+            const orderTotal = parseFloat(document.getElementById('orderTotal')?.value || 0);
+            const available = creditLimit - outstanding;
+            const hasCustomer = {{ credit_info.has_customer|yesno:"true,false" }}
+
+            if (!hasCustomer) {
                 completeBtn.disabled = true;
                 completeBtn.innerHTML = '<i class="fas fa-user"></i> Customer Required';
+            } else if (creditLimit === 0) {
+                completeBtn.disabled = true;
+                completeBtn.innerHTML = '<i class="fas fa-ban"></i> No Credit Limit Set';
+            } else if (available < orderTotal) {
+                completeBtn.disabled = true;
+                completeBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Insufficient Credit';
+            } else {
+                completeBtn.disabled = false;
+                completeBtn.innerHTML = '<i class="fas fa-handshake"></i> Complete Credit Sale';
             }
 
         } else {
-            // CASH SALE MODE
+            // CASH MODE
             paymentSection.style.display = 'block';
             creditNoticeCard.style.display = 'none';
             completeBtn.classList.remove('credit-mode');
