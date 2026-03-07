@@ -28,4 +28,8 @@ urlpatterns = [
     path('skip/', views.skip_customer, name='skip_customer'),
 
     path('<int:pk>/refresh-stats/', views.refresh_customer_stats, name='refresh_stats'),
+
+    # Credit Management (Admin/Manager Only)
+    path('<int:pk>/update-credit-status/', views.update_credit_status, name='update_credit_status'),
+    path('credit-report/', views.credit_customers_report, name='credit_customers_report'),
 ]

@@ -1,5 +1,5 @@
 <!-- apps/customers/templates/customers/customer_form.html -->
-<!-- Customer Create/Edit Form -->
+<!-- Customer Create/Edit Form with Credit Limit Management -->
 
 {% extends "base.html" %}
 {% load static %}
@@ -56,7 +56,7 @@
                 <!-- Customer Type -->
                 <div class="form-group required">
                     <label for="customer_type">Customer Type</label>
-                    <select name="customer_type" id="customer_type" class="form-select" required onchange="toggleBusinessFields()">
+                    <select name="customer_type" id="customer_type" class="form-select" required>
                         <option value="INDIVIDUAL" {% if edit_mode and customer.customer_type == 'INDIVIDUAL' %}selected{% endif %}>Individual</option>
                         <option value="BUSINESS" {% if edit_mode and customer.customer_type == 'BUSINESS' %}selected{% endif %}>Business / Corporate</option>
                     </select>
@@ -149,6 +149,112 @@
             </div>
         </div>
 
+        <!-- Credit Management Section (Admin/Manager Only) -->
+        {% if user.is_staff or user.groups.exists %}
+        <div class="form-section credit-section">
+            <h2 class="section-title">
+                <i class="fas fa-credit-card"></i>
+                Credit Management
+                <span class="admin-badge">
+                    <i class="fas fa-shield-alt"></i>
+                    Admin Only
+                </span>
+            </h2>
+
+            <div class="credit-info-banner">
+                <i class="fas fa-info-circle"></i>
+                <div>
+                    <strong>Credit Management Controls</strong>
+                    <p>Set credit limits and payment terms for this customer. These settings control how much credit can be extended and payment deadlines.</p>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <!-- Credit Limit -->
+                <div class="form-group">
+                    <label for="credit_limit">
+                        Credit Limit
+                        <span class="form-hint">(Maximum amount)</span>
+                    </label>
+                    <div class="input-with-prefix">
+                        <span class="prefix">₦</span>
+                        <input
+                            type="number"
+                            name="credit_limit"
+                            id="credit_limit"
+                            class="form-input with-prefix"
+                            value="{% if edit_mode %}{{ customer.credit_limit|floatformat:2 }}{% else %}0.00{% endif %}"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                        >
+                    </div>
+                    <small class="form-hint">Maximum credit that can be extended to this customer</small>
+                </div>
+
+                <!-- Payment Terms -->
+                <div class="form-group">
+                    <label for="credit_terms_days">
+                        Payment Terms
+                        <span class="form-hint">(Days)</span>
+                    </label>
+                    <input
+                        type="number"
+                        name="credit_terms_days"
+                        id="credit_terms_days"
+                        class="form-input"
+                        value="{% if edit_mode %}{{ customer.credit_terms_days }}{% else %}30{% endif %}"
+                        min="0"
+                        max="365"
+                        placeholder="30"
+                    >
+                    <small class="form-hint">Number of days allowed for payment (e.g., Net 30)</small>
+                </div>
+
+                <!-- Credit Status -->
+                <div class="form-group">
+                    <label for="credit_status">Credit Status</label>
+                    <select name="credit_status" id="credit_status" class="form-select">
+                        <option value="APPROVED" {% if not edit_mode or customer.credit_status == 'APPROVED' %}selected{% endif %}>
+                            ✓ Approved
+                        </option>
+                        <option value="SUSPENDED" {% if edit_mode and customer.credit_status == 'SUSPENDED' %}selected{% endif %}>
+                            ⏸ Suspended
+                        </option>
+                        <option value="BLOCKED" {% if edit_mode and customer.credit_status == 'BLOCKED' %}selected{% endif %}>
+                            🚫 Blocked
+                        </option>
+                    </select>
+                    <small class="form-hint">Control whether customer can receive credit</small>
+                </div>
+
+                <!-- Current Balance (Edit Mode Only) -->
+                {% if edit_mode %}
+                <div class="form-group">
+                    <label>Current Outstanding Balance</label>
+                    <div class="balance-display {% if customer.total_credit_outstanding > 0 %}has-balance{% endif %}">
+                        ₦{{ customer.total_credit_outstanding|floatformat:2|default:"0.00" }}
+                    </div>
+                    <small class="form-hint">
+                        Available credit: ₦{{ customer.available_credit|floatformat:2|default:"0.00" }}
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if edit_mode and customer.total_credit_outstanding > 0 %}
+            <div class="credit-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <div>
+                    <strong>Outstanding Balance Warning</strong>
+                    <p>This customer has an outstanding balance of ₦{{ customer.total_credit_outstanding|floatformat:2 }}.
+                    Reducing the credit limit below the current balance will prevent new credit sales.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
         <!-- Form Actions -->
         <div class="form-actions">
             <a href="{% if edit_mode %}{% url 'customers:customer_detail' customer.pk %}{% else %}{% url 'customers:customer_list' %}{% endif %}" class="btn-cancel">
@@ -208,6 +314,11 @@
         margin-bottom: 1.5rem;
     }
 
+    .credit-section {
+        background: linear-gradient(135deg, #FFF9F0 0%, #FFFBF5 100%);
+        border: 2px solid #FFB84D;
+    }
+
     .section-title {
         margin: 0 0 1.5rem 0;
         font-size: 1.125rem;
@@ -217,6 +328,79 @@
         gap: 0.5rem;
         padding-bottom: 1rem;
         border-bottom: 2px solid #F5F5F5;
+    }
+
+    .admin-badge {
+        margin-left: auto;
+        background: #FFB84D;
+        color: #1A1A1A;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    /* Credit Info Banner */
+    .credit-info-banner {
+        background: white;
+        border-left: 4px solid #FFB84D;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border-radius: 8px;
+        display: flex;
+        gap: 1rem;
+    }
+
+    .credit-info-banner i {
+        color: #FFB84D;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .credit-info-banner strong {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: #1A1A1A;
+    }
+
+    .credit-info-banner p {
+        margin: 0;
+        color: #666;
+        font-size: 0.875rem;
+        line-height: 1.5;
+    }
+
+    /* Credit Warning */
+    .credit-warning {
+        background: #FEF2F2;
+        border-left: 4px solid #EF4444;
+        padding: 1rem;
+        margin-top: 1.5rem;
+        border-radius: 8px;
+        display: flex;
+        gap: 1rem;
+    }
+
+    .credit-warning i {
+        color: #EF4444;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .credit-warning strong {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: #991B1B;
+    }
+
+    .credit-warning p {
+        margin: 0;
+        color: #7F1D1D;
+        font-size: 0.875rem;
+        line-height: 1.5;
     }
 
     /* Form Grid */
@@ -274,7 +458,42 @@
     .form-hint {
         font-size: 0.8125rem;
         color: #999;
-        font-style: italic;
+    }
+
+    /* Input with Prefix */
+    .input-with-prefix {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .input-with-prefix .prefix {
+        position: absolute;
+        left: 1rem;
+        color: #666;
+        font-weight: 600;
+        pointer-events: none;
+    }
+
+    .form-input.with-prefix {
+        padding-left: 2.5rem;
+    }
+
+    /* Balance Display */
+    .balance-display {
+        padding: 0.875rem 1rem;
+        background: #F5F5F5;
+        border: 1px solid #E8E8E8;
+        border-radius: 8px;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #10B981;
+    }
+
+    .balance-display.has-balance {
+        color: #EF4444;
+        background: #FEF2F2;
+        border-color: #FECACA;
     }
 
     /* Form Actions */
@@ -329,6 +548,11 @@
             grid-template-columns: 1fr;
         }
 
+        .admin-badge {
+            font-size: 0.65rem;
+            padding: 0.2rem 0.5rem;
+        }
+
         .form-actions {
             flex-direction: column-reverse;
         }
@@ -342,20 +566,31 @@
 </style>
 
 <script>
-    function toggleBusinessFields() {
-        const customerType = document.getElementById('customer_type').value;
-        const businessNameField = document.getElementById('businessNameField');
-
-        if (customerType === 'BUSINESS') {
-            businessNameField.style.display = 'block';
-        } else {
-            businessNameField.style.display = 'none';
-        }
-    }
-
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
-        toggleBusinessFields();
+        const creditLimitInput = document.getElementById('credit_limit');
+        const creditStatusSelect = document.getElementById('credit_status');
+
+        // Format credit limit as currency on blur
+        if (creditLimitInput) {
+            creditLimitInput.addEventListener('blur', function() {
+                const value = parseFloat(this.value) || 0;
+                this.value = value.toFixed(2);
+            });
+        }
+
+        // Warn if blocking customer with outstanding balance
+        if (creditStatusSelect) {
+            creditStatusSelect.addEventListener('change', function() {
+                const outstandingBalance = parseFloat('{{ customer.total_credit_outstanding|default:"0" }}');
+
+                if (this.value === 'BLOCKED' && outstandingBalance > 0) {
+                    if (!confirm('This customer has an outstanding balance of ₦' + outstandingBalance.toFixed(2) + '. Are you sure you want to block them?')) {
+                        this.value = '{{ customer.credit_status|default:"APPROVED" }}';
+                    }
+                }
+            });
+        }
     });
 </script>
 {% endblock %}

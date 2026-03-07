@@ -1,12 +1,14 @@
-# apps/reports/services.py - Reports Service
+# apps/reports/services.py - Comprehensive Reporting Service
 
 from django.db import transaction
-from django.db.models import Sum, Count, Avg, Q, F, Max
+from django.db.models import Sum, Count, Avg, Q, F, Max, Min, Case, When, Value, CharField
 from django.utils import timezone
 from datetime import datetime, timedelta, date
 from decimal import Decimal
 import calendar
 import logging
+from django.db.models.functions import TruncDate, ExtractHour
+from django.db.models import ExpressionWrapper, DecimalField
 
 from .models import (
     DailySalesReport,
@@ -15,7 +17,7 @@ from .models import (
     YearlySalesReport,
     ProductPerformanceReport
 )
-from apps.orders.models import Order, OrderPayment
+from apps.orders.models import Order, OrderItem, OrderPayment
 from apps.customers.models import Customer
 from apps.catalog.models import Product, ProductVariant
 
@@ -23,13 +25,349 @@ logger = logging.getLogger(__name__)
 
 
 class ReportService:
-    """Service for generating sales reports"""
+    """
+    Comprehensive reporting service with flexible date ranges and analytics
+
+    Features:
+    - Daily, Weekly, Monthly, Yearly, Custom period reports
+    - Product performance tracking (individual products and variants)
+    - Revenue analysis with breakdowns
+    - Payment method analysis
+    - Customer analytics
+    - Growth metrics and comparisons
+    """
+
+    # ============================================
+    # CORE ANALYTICS ENGINE
+    # ============================================
+
+    @staticmethod
+    def get_sales_analytics(start_date, end_date):
+        """
+        Core analytics engine - returns comprehensive sales data for any period
+
+        Args:
+            start_date: Period start date
+            end_date: Period end date
+
+        Returns:
+            dict: Complete sales analytics
+        """
+        # Get completed orders in period
+        orders = Order.objects.filter(
+            status='COMPLETED',
+            completed_at__date__gte=start_date,
+            completed_at__date__lte=end_date
+        )
+
+        # Basic metrics
+        total_orders = orders.count()
+
+        # Sales metrics
+        items = OrderItem.objects.filter(order__in=orders)
+
+        sales_data = orders.aggregate(
+            total_sales=Sum('total'),
+            gross_sales=Sum('subtotal'),
+            total_tax=Sum('tax_amount'),
+            total_discounts=Sum('discount_amount'),
+            average_order_value=Avg('total')
+        )
+
+        total_items = items.aggregate(
+            total=Sum('quantity')
+        )['total'] or 0
+
+
+
+        # Net sales calculation
+        net_sales = (
+                (sales_data['gross_sales'] or Decimal('0.00'))
+                - (sales_data['total_discounts'] or Decimal('0.00'))
+        )
+
+        # Payment method breakdown
+        payment_breakdown = OrderPayment.objects.filter(
+            order__in=orders
+        ).values('payment_method').annotate(
+            total=Sum('amount'),
+            count=Count('id')
+        )
+
+        cash_sales = sum(p['total'] for p in payment_breakdown if p['payment_method'] == 'CASH')
+        card_sales = sum(p['total'] for p in payment_breakdown if p['payment_method'] == 'CARD')
+        transfer_sales = sum(p['total'] for p in payment_breakdown if p['payment_method'] == 'TRANSFER')
+
+        # Customer metrics
+        customer_data = orders.exclude(customer__isnull=True) \
+            .values('customer') \
+            .distinct() \
+            .count()
+        walk_in_orders = orders.filter(customer__isnull=True).count()
+
+        # Get new vs returning customers in period
+        customer_ids = orders.filter(customer__isnull=False).values_list('customer', flat=True).distinct()
+        new_customers = Customer.objects.filter(
+            id__in=customer_ids,
+            created_at__date__gte=start_date,
+            created_at__date__lte=end_date
+        ).count()
+
+        returning_customers = len(customer_ids) - new_customers
+
+        # Order status breakdown
+        completed_count = orders.filter(status='COMPLETED').count()
+        cancelled_count = Order.objects.filter(
+            status='CANCELLED',
+            updated_at__date__gte=start_date,
+            updated_at__date__lte=end_date
+        ).count()
+        refunded_count = Order.objects.filter(
+            status='REFUNDED',
+            updated_at__date__gte=start_date,
+            updated_at__date__lte=end_date
+        ).count()
+
+        # Top-selling product
+        top_product = OrderItem.objects.filter(
+            order__in=orders
+        ).values(
+            'variant',
+            'product_name',
+            'variant_name'
+        ).annotate(
+            total_quantity=Sum('quantity')
+        ).order_by('-total_quantity').first()
+
+        return {
+            # Basic metrics
+            'total_orders': total_orders,
+            'total_items_sold': total_items,
+
+            # Revenue metrics
+            'total_sales': sales_data['total_sales'] or Decimal('0.00'),
+            'gross_sales': sales_data['gross_sales'] or Decimal('0.00'),
+            'net_sales': net_sales,
+            'total_tax': sales_data['total_tax'] or Decimal('0.00'),
+            'total_discounts': sales_data['total_discounts'] or Decimal('0.00'),
+            'average_order_value': sales_data['average_order_value'] or Decimal('0.00'),
+
+            # Payment methods
+            'cash_sales': cash_sales,
+            'card_sales': card_sales,
+            'transfer_sales': transfer_sales,
+            'payment_breakdown': list(payment_breakdown),
+
+            # Customer metrics
+            'total_customers': customer_data,
+            'new_customers': new_customers,
+            'returning_customers': returning_customers,
+            'walk_in_sales': walk_in_orders,
+
+            # Order status
+            'completed_orders': completed_count,
+            'cancelled_orders': cancelled_count,
+            'refunded_orders': refunded_count,
+
+            # Top performers
+            'top_product': top_product,
+
+            # Period info
+            'period_start': start_date,
+            'period_end': end_date,
+            'period_days': (end_date - start_date).days + 1,
+        }
+
+    @staticmethod
+    def get_product_performance(start_date, end_date, product_id=None, variant_id=None):
+        """
+        Get product/variant performance for a period
+
+        Args:
+            start_date: Period start
+            end_date: Period end
+            product_id: Optional specific product ID
+            variant_id: Optional specific variant ID
+
+        Returns:
+            QuerySet or dict of product performance data
+        """
+        orders = Order.objects.filter(
+            status='COMPLETED',
+            completed_at__date__gte=start_date,
+            completed_at__date__lte=end_date
+        )
+
+        items = OrderItem.objects.filter(order__in=orders)
+
+        revenue = ExpressionWrapper(
+            F('quantity') * F('unit_price'),
+            output_field=DecimalField(max_digits=12, decimal_places=2)
+        )
+
+        # Filter by product/variant if specified
+        if product_id:
+            items = items.filter(product_id=product_id)
+        if variant_id:
+            items = items.filter(variant_id=variant_id)
+
+
+        # Aggregate by product (and variant if exists)
+        if variant_id or not product_id:
+            # Group by both product and variant
+            performance = items.values(
+                'product_id',
+                'product__name',
+                'variant_id',
+                'variant__name',
+                'variant__sku'
+            ).annotate(
+                units_sold=Sum('quantity'),
+                total_revenue=Sum(revenue),
+                total_discount=Sum('discount_amount'),
+                average_price=Avg('unit_price'),
+                order_count=Count('order', distinct=True)
+            ).order_by('-total_revenue')
+        else:
+            # Group by product only
+            performance = items.filter(
+                product_id=product_id
+            ).aggregate(
+                units_sold=Sum('quantity'),
+                total_revenue=Sum(revenue),
+                total_discount=Sum('discount_amount'),
+                average_price=Avg('unit_price'),
+                order_count=Count('order', distinct=True)
+            )
+
+        return performance
+
+    @staticmethod
+    def get_daily_breakdown(start_date, end_date):
+        """
+        Get day-by-day breakdown for a period
+
+        Returns:
+            list: Daily sales data
+        """
+        orders = Order.objects.filter(
+            status='COMPLETED',
+            completed_at__date__gte=start_date,
+            completed_at__date__lte=end_date
+        )
+
+        daily_data = orders.annotate(
+            day=TruncDate('completed_at')
+        ).values('day').annotate(
+            total_sales=Sum('total'),
+            total_orders=Count('id'),
+            total_items=Sum('items__quantity'),
+            average_order=Avg('total')
+        ).order_by('day')
+
+        return list(daily_data)
+
+    @staticmethod
+    def get_hourly_breakdown(report_date):
+        """
+        Get hour-by-hour breakdown for a single day
+
+        Returns:
+            list: Hourly sales data
+        """
+        orders = Order.objects.filter(
+            status='COMPLETED',
+            completed_at__date=report_date
+        )
+
+        hourly_data = orders.extra(
+            orders.annotate(
+                hour=ExtractHour('completed_at')
+            )
+        ).values('hour').annotate(
+            total_sales=Sum('total'),
+            total_orders=Count('id'),
+            total_items=Sum('total_quantity')
+        ).order_by('hour')
+
+        return list(hourly_data)
+
+    @staticmethod
+    def get_category_performance(start_date, end_date):
+        """
+        Get sales performance by product category
+
+        Returns:
+            QuerySet: Category performance data
+        """
+        orders = Order.objects.filter(
+            status='COMPLETED',
+            completed_at__date__gte=start_date,
+            completed_at__date__lte=end_date
+        )
+
+        category_data = OrderItem.objects.filter(
+            order__in=orders
+        ).values(
+            'product__category__id',
+            'product__category__name'
+        ).annotate(
+            total_revenue=Sum(F('quantity') * F('unit_price')),
+            units_sold=Sum('quantity'),
+            product_count=Count('product', distinct=True)
+        ).order_by('-total_revenue')
+
+        return category_data
+
+    @staticmethod
+    def compare_periods(current_start, current_end, previous_start, previous_end):
+        """
+        Compare two periods and calculate growth metrics
+
+        Returns:
+            dict: Comparison metrics with growth percentages
+        """
+        current = ReportService.get_sales_analytics(current_start, current_end)
+        previous = ReportService.get_sales_analytics(previous_start, previous_end)
+
+        def calculate_growth(current_val, previous_val):
+            """Calculate percentage growth"""
+            if previous_val == 0:
+                return 100 if current_val > 0 else 0
+            return ((current_val - previous_val) / previous_val) * 100
+
+        return {
+            'current_period': current,
+            'previous_period': previous,
+            'growth': {
+                'sales_growth': calculate_growth(
+                    current['total_sales'],
+                    previous['total_sales']
+                ),
+                'orders_growth': calculate_growth(
+                    current['total_orders'],
+                    previous['total_orders']
+                ),
+                'customers_growth': calculate_growth(
+                    current['total_customers'],
+                    previous['total_customers']
+                ),
+                'aov_growth': calculate_growth(
+                    current['average_order_value'],
+                    previous['average_order_value']
+                ),
+            }
+        }
+
+    # ============================================
+    # DAILY REPORTS
+    # ============================================
 
     @staticmethod
     @transaction.atomic
     def generate_daily_report(report_date=None, user=None):
         """
-        Generate daily sales report
+        Generate comprehensive daily sales report
 
         Args:
             report_date: Date for report (default: yesterday)
@@ -49,259 +387,127 @@ class ReportService:
             defaults={'generated_by': user}
         )
 
-        # Get completed orders for the day
-        orders = Order.objects.filter(
-            status='COMPLETED',
-            completed_at__date=report_date
-        )
+        # Get analytics
+        analytics = ReportService.get_sales_analytics(report_date, report_date)
 
-        # Calculate metrics
-        aggregates = orders.aggregate(
-            total_sales=Sum('total'),
-            total_orders=Count('id'),
-            avg_order_value=Avg('total'),
-            gross_sales=Sum('subtotal'),
-            total_discounts=Sum('discount_amount'),
-            total_tax=Sum('tax_amount'),
-        )
+        # Get hourly breakdown
+        hourly = ReportService.get_hourly_breakdown(report_date)
 
-
-        # Calculate total items from OrderItem
-        from apps.orders.models import OrderItem
-        total_items = OrderItem.objects.filter(
-            order__in=orders
-        ).aggregate(total=Sum('quantity'))['total'] or 0
+        # Get category performance
+        categories = list(ReportService.get_category_performance(report_date, report_date))
 
         # Update report
-        report.total_sales = aggregates['total_sales'] or 0
-        report.total_orders = aggregates['total_orders'] or 0
-        report.total_items_sold = total_items
-        report.average_order_value = aggregates['avg_order_value'] or 0
-        report.gross_sales = aggregates['gross_sales'] or 0
-        report.total_discounts = aggregates['total_discounts'] or 0
-        report.total_tax = aggregates['total_tax'] or 0
-        report.net_sales = report.gross_sales - report.total_discounts
+        report.total_sales = analytics['total_sales']
+        report.total_orders = analytics['total_orders']
+        report.total_items_sold = analytics['total_items_sold']
+        report.average_order_value = analytics['average_order_value']
 
-        # Payment method breakdown
-        payments = OrderPayment.objects.filter(
-            order__in=orders
-        ).values('payment_method').annotate(
-            total=Sum('amount')
-        )
+        report.gross_sales = analytics['gross_sales']
+        report.total_discounts = analytics['total_discounts']
+        report.total_tax = analytics['total_tax']
+        report.net_sales = analytics['net_sales']
 
-        for payment in payments:
-            method = payment['payment_method']
-            amount = payment['total'] or 0
+        report.cash_sales = analytics['cash_sales']
+        report.card_sales = analytics['card_sales']
+        report.transfer_sales = analytics['transfer_sales']
 
-            if method == 'CASH':
-                report.cash_sales = amount
-            elif method == 'CARD':
-                report.card_sales = amount
-            elif method == 'TRANSFER':
-                report.transfer_sales = amount
-            elif method == 'MOBILE':
-                report.mobile_sales = amount
+        report.total_customers = analytics['total_customers']
+        report.new_customers = analytics['new_customers']
+        report.returning_customers = analytics['returning_customers']
+        report.walk_in_sales = analytics['walk_in_sales']
 
-        # Customer metrics
-        customer_orders = orders.exclude(customer__isnull=True)
-        report.total_customers = customer_orders.values('customer').distinct().count()
-        report.walk_in_sales = orders.filter(customer__isnull=True).count()
+        report.completed_orders = analytics['completed_orders']
+        report.cancelled_orders = analytics['cancelled_orders']
+        report.refunded_orders = analytics['refunded_orders']
 
-        # New vs returning customers
-        customer_ids = customer_orders.values_list('customer_id', flat=True)
-        new_customers = Customer.objects.filter(
-            id__in=customer_ids,
-            created_at__date=report_date
-        ).count()
-        report.new_customers = new_customers
-        report.returning_customers = report.total_customers - new_customers
+        if analytics['top_product']:
+            report.top_selling_product_id = analytics['top_product']['product_id']
+            report.top_selling_product_name = analytics['top_product']['product__name']
+            report.top_selling_product_quantity = analytics['top_product']['total_quantity']
 
-        # Order status
-        report.completed_orders = orders.count()
-        report.cancelled_orders = Order.objects.filter(
-            status='CANCELLED',
-            updated_at__date=report_date
-        ).count()
-
-        # Sessions
-        from apps.sales.models import CashierSession
-        sessions = CashierSession.objects.filter(
-            opened_at__date=report_date
-        )
-        report.sessions_count = sessions.count()
-        report.unique_cashiers = sessions.values('cashier').distinct().count()
-
-        # Top selling product
-        top_product = ReportService._get_top_selling_product(
-            report_date,
-            report_date
-        )
-
-        if top_product:
-            report.top_selling_product_id = top_product['variant__id']
-            report.top_selling_product_name = top_product['variant__product__name']
-            report.top_selling_product_quantity = top_product['total_quantity']
-
-        # Detailed breakdown (JSON)
+        # Store additional data
         report.report_data = {
-            'hourly_sales': ReportService._get_hourly_breakdown(report_date),
-            'payment_breakdown': {
-                'cash': float(report.cash_sales),
-                'card': float(report.card_sales),
-                'transfer': float(report.transfer_sales),
-                'mobile': float(report.mobile_sales),
-            },
-            'customer_type_breakdown': {
-                'registered': report.total_customers,
-                'walk_in': report.walk_in_sales,
-            }
+            'hourly_breakdown': hourly,
+            'category_performance': categories,
+            'payment_breakdown': analytics['payment_breakdown'],
         }
 
         report.save()
 
-        logger.info(f"Daily report generated: {report_date} - ₦{report.total_sales}")
+        logger.info(f"Daily report generated: ₦{analytics['total_sales']}")
 
         return report
 
     @staticmethod
-    @transaction.atomic
-    def generate_weekly_report(year, week_number, user=None):
+    def get_daily_report(report_date):
+        """Get or generate daily report"""
+        try:
+            return DailySalesReport.objects.get(report_date=report_date)
+        except DailySalesReport.DoesNotExist:
+            return ReportService.generate_daily_report(report_date)
+
+    # ============================================
+    # CUSTOM PERIOD REPORTS
+    # ============================================
+
+    @staticmethod
+    def generate_custom_report(start_date, end_date, include_comparisons=True):
         """
-        Generate weekly sales report
+        Generate custom period report with comprehensive analytics
 
         Args:
-            year: Year
-            week_number: Week number (1-52)
-            user: User generating report
+            start_date: Period start date
+            end_date: Period end date
+            include_comparisons: Include previous period comparison
 
         Returns:
-            WeeklySalesReport instance
+            dict: Complete report data
         """
-        # Calculate week start and end dates
-        first_day = date(year, 1, 1)
-        week_start = first_day + timedelta(weeks=week_number - 1)
-        week_start = week_start - timedelta(days=week_start.weekday())
-        week_end = week_start + timedelta(days=6)
+        logger.info(f"Generating custom report: {start_date} to {end_date}")
 
-        logger.info(f"Generating weekly report for Week {week_number}, {year}")
+        # Get main analytics
+        analytics = ReportService.get_sales_analytics(start_date, end_date)
 
-        # Get or create report
-        report, created = WeeklySalesReport.objects.get_or_create(
-            year=year,
-            week_number=week_number,
-            defaults={
-                'week_start_date': week_start,
-                'week_end_date': week_end,
-                'generated_by': user
-            }
-        )
+        # Get daily breakdown
+        daily = ReportService.get_daily_breakdown(start_date, end_date)
 
-        # Get orders for the week
-        orders = Order.objects.filter(
-            status='COMPLETED',
-            completed_at__date__gte=week_start,
-            completed_at__date__lte=week_end
-        )
+        # Get product performance
+        products = list(ReportService.get_product_performance(start_date, end_date))
 
-        # Calculate metrics
-        aggregates = orders.aggregate(
-            total_sales=Sum('total'),
-            total_orders=Count('id'),
-            avg_order_value=Avg('total'),
-            gross_sales=Sum('subtotal'),
-            total_discounts=Sum('discount_amount'),
-            total_tax=Sum('tax_amount'),
-        )
+        # Get category performance
+        categories = list(ReportService.get_category_performance(start_date, end_date))
 
+        # Calculate averages
+        period_days = analytics['period_days']
+        daily_average_sales = analytics['total_sales'] / period_days if period_days > 0 else 0
+        daily_average_orders = analytics['total_orders'] / period_days if period_days > 0 else 0
 
-        # Calculate total items from OrderItem
-        from apps.orders.models import OrderItem
-        total_items = OrderItem.objects.filter(
-            order__in=orders
-        ).aggregate(total=Sum('quantity'))['total'] or 0
-
-        report.total_sales = aggregates['total_sales'] or 0
-        report.total_orders = aggregates['total_orders'] or 0
-        report.total_items_sold = total_items
-        report.average_order_value = aggregates['avg_order_value'] or 0
-        report.gross_sales = aggregates['gross_sales'] or 0
-        report.total_discounts = aggregates['total_discounts'] or 0
-        report.total_tax = aggregates['total_tax'] or 0
-        report.net_sales = report.gross_sales - report.total_discounts
-        report.daily_average_sales = report.total_sales / 7
-
-        # Payment methods
-        payments = OrderPayment.objects.filter(
-            order__in=orders
-        ).values('payment_method').annotate(total=Sum('amount'))
-
-        for payment in payments:
-            method = payment['payment_method']
-            amount = payment['total'] or 0
-
-            if method == 'CASH':
-                report.cash_sales = amount
-            elif method == 'CARD':
-                report.card_sales = amount
-            elif method == 'TRANSFER':
-                report.transfer_sales = amount
-            elif method == 'MOBILE':
-                report.mobile_sales = amount
-
-        # Customer metrics
-        customer_orders = orders.exclude(customer__isnull=True)
-        report.total_customers = customer_orders.values('customer').distinct().count()
-
-        new_customers = Customer.objects.filter(
-            created_at__date__gte=week_start,
-            created_at__date__lte=week_end
-        ).count()
-        report.new_customers = new_customers
-
-        # Growth calculation (vs previous week)
-        prev_week_number = week_number - 1 if week_number > 1 else 52
-        prev_year = year if week_number > 1 else year - 1
-
-        try:
-            prev_report = WeeklySalesReport.objects.get(
-                year=prev_year,
-                week_number=prev_week_number
-            )
-
-            if prev_report.total_sales > 0:
-                report.sales_growth_percentage = (
-                        ((report.total_sales - prev_report.total_sales) / prev_report.total_sales) * 100
-                )
-
-            if prev_report.total_orders > 0:
-                report.order_growth_percentage = (
-                        ((report.total_orders - prev_report.total_orders) / prev_report.total_orders) * 100
-                )
-        except WeeklySalesReport.DoesNotExist:
-            pass
-
-        # Daily breakdown
-        daily_data = []
-        current_date = week_start
-        while current_date <= week_end:
-            day_orders = orders.filter(completed_at__date=current_date)
-            daily_data.append({
-                'date': current_date.isoformat(),
-                'day_name': current_date.strftime('%A'),
-                'sales': float(day_orders.aggregate(total=Sum('total'))['total'] or 0),
-                'orders': day_orders.count()
-            })
-            current_date += timedelta(days=1)
-
-        report.report_data = {
-            'daily_breakdown': daily_data,
+        report = {
+            **analytics,
+            'daily_average_sales': daily_average_sales,
+            'daily_average_orders': daily_average_orders,
+            'daily_breakdown': daily,
+            'product_performance': products[:20],  # Top 20
+            'category_performance': categories,
         }
 
-        report.save()
+        # Add period comparison if requested
+        if include_comparisons:
+            period_length = (end_date - start_date).days + 1
+            prev_end = start_date - timedelta(days=1)
+            prev_start = prev_end - timedelta(days=period_length - 1)
 
-        logger.info(f"Weekly report generated: Week {week_number}, {year} - ₦{report.total_sales}")
+            comparison = ReportService.compare_periods(
+                start_date, end_date,
+                prev_start, prev_end
+            )
+            report['comparison'] = comparison
 
         return report
+
+    # ============================================
+    # MONTHLY REPORTS
+    # ============================================
 
     @staticmethod
     @transaction.atomic
@@ -310,148 +516,105 @@ class ReportService:
         Generate monthly sales report
 
         Args:
-            year: Year
-            month: Month (1-12)
+            year: Report year
+            month: Report month (1-12)
             user: User generating report
 
         Returns:
             MonthlySalesReport instance
         """
-        month_name = calendar.month_name[month]
-
-        logger.info(f"Generating monthly report for {month_name} {year}")
+        logger.info(f"Generating monthly report for {month}/{year}")
 
         # Get or create report
         report, created = MonthlySalesReport.objects.get_or_create(
             year=year,
             month=month,
             defaults={
-                'month_name': month_name,
-                'generated_by': user
+                'generated_by': user,
+                'month_name': calendar.month_name[month]
             }
         )
 
-        # Date range
-        month_start = date(year, month, 1)
-        month_end = date(year, month, calendar.monthrange(year, month)[1])
+        # Calculate period
+        start_date = date(year, month, 1)
+        last_day = calendar.monthrange(year, month)[1]
+        end_date = date(year, month, last_day)
 
-        # Get orders for the month
-        orders = Order.objects.filter(
-            status='COMPLETED',
-            completed_at__date__gte=month_start,
-            completed_at__date__lte=month_end
+        # Get analytics
+        analytics = ReportService.get_sales_analytics(start_date, end_date)
+
+        # Get daily breakdown
+        daily = ReportService.get_daily_breakdown(start_date, end_date)
+
+        # Find best sales day
+        best_day = max(daily, key=lambda x: x['total_sales']) if daily else None
+
+        # Calculate growth vs previous month
+        if month == 1:
+            prev_year, prev_month = year - 1, 12
+        else:
+            prev_year, prev_month = year, month - 1
+
+        prev_start = date(prev_year, prev_month, 1)
+        prev_last_day = calendar.monthrange(prev_year, prev_month)[1]
+        prev_end = date(prev_year, prev_month, prev_last_day)
+
+        comparison = ReportService.compare_periods(
+            start_date, end_date,
+            prev_start, prev_end
         )
 
-        # Calculate metrics
-        aggregates = orders.aggregate(
-            total_sales=Sum('total'),
-            total_orders=Count('id'),
-            avg_order_value=Avg('total'),
-            gross_sales=Sum('subtotal'),
-            total_discounts=Sum('discount_amount'),
-            total_tax=Sum('tax_amount'),
-        )
+        # Update report
+        days_in_month = last_day
 
+        report.total_sales = analytics['total_sales']
+        report.total_orders = analytics['total_orders']
+        report.total_items_sold = analytics['total_items_sold']
+        report.average_order_value = analytics['average_order_value']
+        report.daily_average_sales = analytics['total_sales'] / days_in_month
 
-        # Calculate total items from OrderItem
-        from apps.orders.models import OrderItem
-        total_items = OrderItem.objects.filter(
-            order__in=orders
-        ).aggregate(total=Sum('quantity'))['total'] or 0
+        report.gross_sales = analytics['gross_sales']
+        report.total_discounts = analytics['total_discounts']
+        report.total_tax = analytics['total_tax']
+        report.net_sales = analytics['net_sales']
 
-        report.total_sales = aggregates['total_sales'] or 0
-        report.total_orders = aggregates['total_orders'] or 0
-        report.total_items_sold = total_items
-        report.average_order_value = aggregates['avg_order_value'] or 0
-        report.gross_sales = aggregates['gross_sales'] or 0
-        report.total_discounts = aggregates['total_discounts'] or 0
-        report.total_tax = aggregates['total_tax'] or 0
-        report.net_sales = report.gross_sales - report.total_discounts
+        report.cash_sales = analytics['cash_sales']
+        report.card_sales = analytics['card_sales']
+        report.transfer_sales = analytics['transfer_sales']
 
-        days_in_month = (month_end - month_start).days + 1
-        report.daily_average_sales = report.total_sales / days_in_month if days_in_month > 0 else 0
+        report.total_customers = analytics['total_customers']
+        report.new_customers = analytics['new_customers']
 
-        # Payment methods
-        payments = OrderPayment.objects.filter(
-            order__in=orders
-        ).values('payment_method').annotate(total=Sum('amount'))
-
-        for payment in payments:
-            method = payment['payment_method']
-            amount = payment['total'] or 0
-
-            if method == 'CASH':
-                report.cash_sales = amount
-            elif method == 'CARD':
-                report.card_sales = amount
-            elif method == 'TRANSFER':
-                report.transfer_sales = amount
-            elif method == 'MOBILE':
-                report.mobile_sales = amount
-
-        # Customer metrics
-        customer_orders = orders.exclude(customer__isnull=True)
-        report.total_customers = customer_orders.values('customer').distinct().count()
-
-        new_customers = Customer.objects.filter(
-            created_at__date__gte=month_start,
-            created_at__date__lte=month_end
-        ).count()
-        report.new_customers = new_customers
-
-        # Growth (vs previous month)
-        prev_month = month - 1 if month > 1 else 12
-        prev_year = year if month > 1 else year - 1
-
-        try:
-            prev_report = MonthlySalesReport.objects.get(
-                year=prev_year,
-                month=prev_month
-            )
-
-            if prev_report.total_sales > 0:
-                report.sales_growth_percentage = (
-                        ((report.total_sales - prev_report.total_sales) / prev_report.total_sales) * 100
-                )
-
-            if prev_report.total_orders > 0:
-                report.order_growth_percentage = (
-                        ((report.total_orders - prev_report.total_orders) / prev_report.total_orders) * 100
-                )
-        except MonthlySalesReport.DoesNotExist:
-            pass
-
-        # Best sales day
-        best_day = orders.values('completed_at__date').annotate(
-            total=Sum('total')
-        ).order_by('-total').first()
+        report.sales_growth_percentage = comparison['growth']['sales_growth']
+        report.order_growth_percentage = comparison['growth']['orders_growth']
 
         if best_day:
-            report.best_sales_day = best_day['completed_at__date']
-            report.best_sales_amount = best_day['total']
+            report.best_sales_day = best_day['day']
+            report.best_sales_amount = best_day['total_sales']
 
-        # Daily breakdown
-        daily_data = []
-        current_date = month_start
-        while current_date <= month_end:
-            day_orders = orders.filter(completed_at__date=current_date)
-            daily_data.append({
-                'date': current_date.isoformat(),
-                'day': current_date.day,
-                'sales': float(day_orders.aggregate(total=Sum('total'))['total'] or 0),
-                'orders': day_orders.count()
-            })
-            current_date += timedelta(days=1)
-
+        # Store additional data
         report.report_data = {
-            'daily_breakdown': daily_data,
+            'daily_breakdown': daily,
+            'comparison_data': comparison,
         }
 
         report.save()
 
-        logger.info(f"Monthly report generated: {month_name} {year} - ₦{report.total_sales}")
+        logger.info(f"Monthly report generated: ₦{analytics['total_sales']}")
 
         return report
+
+    @staticmethod
+    def get_monthly_report(year, month):
+        """Get or generate monthly report"""
+        try:
+            return MonthlySalesReport.objects.get(year=year, month=month)
+        except MonthlySalesReport.DoesNotExist:
+            return ReportService.generate_monthly_report(year, month)
+
+    # ============================================
+    # YEARLY REPORTS
+    # ============================================
 
     @staticmethod
     @transaction.atomic
@@ -460,7 +623,7 @@ class ReportService:
         Generate yearly sales report
 
         Args:
-            year: Year
+            year: Report year
             user: User generating report
 
         Returns:
@@ -474,146 +637,115 @@ class ReportService:
             defaults={'generated_by': user}
         )
 
-        # Get orders for the year
-        orders = Order.objects.filter(
-            status='COMPLETED',
-            completed_at__year=year
-        )
+        # Calculate period
+        start_date = date(year, 1, 1)
+        end_date = date(year, 12, 31)
 
-        # Calculate metrics
-        aggregates = orders.aggregate(
-            total_sales=Sum('total'),
-            total_orders=Count('id'),
-            avg_order_value=Avg('total'),
-            gross_sales=Sum('subtotal'),
-            total_discounts=Sum('discount_amount'),
-            total_tax=Sum('tax_amount'),
-        )
+        # Get analytics
+        analytics = ReportService.get_sales_analytics(start_date, end_date)
 
-
-        # Calculate total items from OrderItem
-        from apps.orders.models import OrderItem
-        total_items = OrderItem.objects.filter(
-            order__in=orders
-        ).aggregate(total=Sum('quantity'))['total'] or 0
-
-        report.total_sales = aggregates['total_sales'] or 0
-        report.total_orders = aggregates['total_orders'] or 0
-        report.total_items_sold = total_items
-        report.average_order_value = aggregates['avg_order_value'] or 0
-        report.gross_sales = aggregates['gross_sales'] or 0
-        report.total_discounts = aggregates['total_discounts'] or 0
-        report.total_tax = aggregates['total_tax'] or 0
-        report.net_sales = report.gross_sales - report.total_discounts
-        report.monthly_average_sales = report.total_sales / 12
-
-        # Payment methods
-        payments = OrderPayment.objects.filter(
-            order__in=orders
-        ).values('payment_method').annotate(total=Sum('amount'))
-
-        for payment in payments:
-            method = payment['payment_method']
-            amount = payment['total'] or 0
-
-            if method == 'CASH':
-                report.cash_sales = amount
-            elif method == 'CARD':
-                report.card_sales = amount
-            elif method == 'TRANSFER':
-                report.transfer_sales = amount
-            elif method == 'MOBILE':
-                report.mobile_sales = amount
-
-        # Customer metrics
-        customer_orders = orders.exclude(customer__isnull=True)
-        report.total_customers = customer_orders.values('customer').distinct().count()
-
-        new_customers = Customer.objects.filter(
-            created_at__year=year
-        ).count()
-        report.new_customers = new_customers
-
-        # Growth (vs previous year)
-        try:
-            prev_report = YearlySalesReport.objects.get(year=year - 1)
-
-            if prev_report.total_sales > 0:
-                report.sales_growth_percentage = (
-                        ((report.total_sales - prev_report.total_sales) / prev_report.total_sales) * 100
-                )
-
-            if prev_report.total_orders > 0:
-                report.order_growth_percentage = (
-                        ((report.total_orders - prev_report.total_orders) / prev_report.total_orders) * 100
-                )
-        except YearlySalesReport.DoesNotExist:
-            pass
-
-        # Best month
-        best_month = orders.values('completed_at__month').annotate(
-            total=Sum('total')
-        ).order_by('-total').first()
-
-        if best_month:
-            report.best_month = best_month['completed_at__month']
-            report.best_month_sales = best_month['total']
-
-        # Monthly breakdown
+        # Get monthly breakdown
         monthly_data = []
+        best_month = None
+        best_month_sales = Decimal('0.00')
+
         for month in range(1, 13):
-            month_orders = orders.filter(completed_at__month=month)
+            month_start = date(year, month, 1)
+            month_end = date(year, month, calendar.monthrange(year, month)[1])
+            month_analytics = ReportService.get_sales_analytics(month_start, month_end)
+
             monthly_data.append({
                 'month': month,
                 'month_name': calendar.month_name[month],
-                'sales': float(month_orders.aggregate(total=Sum('total'))['total'] or 0),
-                'orders': month_orders.count()
+                'sales': month_analytics['total_sales'],
+                'orders': month_analytics['total_orders'],
             })
 
+            if month_analytics['total_sales'] > best_month_sales:
+                best_month = month
+                best_month_sales = month_analytics['total_sales']
+
+        # Calculate growth vs previous year
+        prev_start = date(year - 1, 1, 1)
+        prev_end = date(year - 1, 12, 31)
+
+        comparison = ReportService.compare_periods(
+            start_date, end_date,
+            prev_start, prev_end
+        )
+
+        # Update report
+        report.total_sales = analytics['total_sales']
+        report.total_orders = analytics['total_orders']
+        report.total_items_sold = analytics['total_items_sold']
+        report.average_order_value = analytics['average_order_value']
+        report.monthly_average_sales = analytics['total_sales'] / 12
+
+        report.gross_sales = analytics['gross_sales']
+        report.total_discounts = analytics['total_discounts']
+        report.total_tax = analytics['total_tax']
+        report.net_sales = analytics['net_sales']
+
+        report.cash_sales = analytics['cash_sales']
+        report.card_sales = analytics['card_sales']
+        report.transfer_sales = analytics['transfer_sales']
+
+        report.total_customers = analytics['total_customers']
+        report.new_customers = analytics['new_customers']
+
+        report.sales_growth_percentage = comparison['growth']['sales_growth']
+        report.order_growth_percentage = comparison['growth']['orders_growth']
+
+        report.best_month = best_month
+        report.best_month_sales = best_month_sales
+
+        # Store additional data
         report.report_data = {
             'monthly_breakdown': monthly_data,
+            'comparison_data': comparison,
         }
 
         report.save()
 
-        logger.info(f"Yearly report generated: {year} - ₦{report.total_sales}")
+        logger.info(f"Yearly report generated: ₦{analytics['total_sales']}")
 
         return report
 
     @staticmethod
-    def _get_hourly_breakdown(report_date):
-        """Get hourly sales breakdown for a date"""
-        orders = Order.objects.filter(
-            status='COMPLETED',
-            completed_at__date=report_date
-        )
+    def get_yearly_report(year):
+        """Get or generate yearly report"""
+        try:
+            return YearlySalesReport.objects.get(year=year)
+        except YearlySalesReport.DoesNotExist:
+            return ReportService.generate_yearly_report(year)
 
-        hourly_data = []
-        for hour in range(24):
-            hour_orders = orders.filter(completed_at__hour=hour)
-            hourly_data.append({
-                'hour': hour,
-                'time': f"{hour:02d}:00",
-                'sales': float(hour_orders.aggregate(total=Sum('total'))['total'] or 0),
-                'orders': hour_orders.count()
-            })
 
-        return hourly_data
+# ============================================
+# QUICK ACCESS FUNCTIONS
+# ============================================
 
-    @staticmethod
-    def _get_top_selling_product(start_date, end_date):
-        """Get top selling product in period"""
-        from apps.orders.models import OrderItem
+def get_today_sales():
+    """Get today's sales summary"""
+    today = timezone.now().date()
+    return ReportService.get_sales_analytics(today, today)
 
-        top_product = OrderItem.objects.filter(
-            order__status='COMPLETED',
-            order__completed_at__date__gte=start_date,
-            order__completed_at__date__lte=end_date
-        ).values(
-            'variant__id',
-            'variant__product__name'
-        ).annotate(
-            total_quantity=Sum('quantity')
-        ).order_by('-total_quantity').first()
 
-        return top_product
+def get_week_sales():
+    """Get this week's sales"""
+    today = timezone.now().date()
+    week_start = today - timedelta(days=today.weekday())
+    return ReportService.get_sales_analytics(week_start, today)
+
+
+def get_month_sales():
+    """Get this month's sales"""
+    today = timezone.now().date()
+    month_start = today.replace(day=1)
+    return ReportService.get_sales_analytics(month_start, today)
+
+
+def get_year_sales():
+    """Get this year's sales"""
+    today = timezone.now().date()
+    year_start = today.replace(month=1, day=1)
+    return ReportService.get_sales_analytics(year_start, today)
