@@ -477,30 +477,39 @@
         <div class="form-card">
             <div class="form-section">
                 <h2 class="section-title">Variant Details</h2>
-
-                <div class="form-grid-2">
-                    <div class="form-group">
-                        <label class="form-label" for="id_name">
-                            Variant Name
-                        </label>
-                        {{ form.name }}
-                        <div class="form-help-text">Leave blank to auto-generate from attributes</div>
-                        {% if form.name.errors %}
-                            {{ form.name.errors }}
-                        {% endif %}
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="id_sku">
-                            SKU
-                        </label>
-                        {{ form.sku }}
-                        <div class="form-help-text">Leave blank to auto-generate</div>
-                        {% if form.sku.errors %}
-                            {{ form.sku.errors }}
-                        {% endif %}
-                    </div>
+                 <div class="form-group">
+                    <label class="form-label" for="id_name">
+                        Variant Name
+                    </label>
+                    {{ form.name }}
+<!--                    <div class="form-help-text">Leave blank to auto-generate from attributes</div>-->
+                    {% if form.name.errors %}
+                        {{ form.name.errors }}
+                    {% endif %}
                 </div>
+<!--                <div class="form-grid-2">-->
+<!--                    <div class="form-group">-->
+<!--                        <label class="form-label" for="id_name">-->
+<!--                            Variant Name-->
+<!--                        </label>-->
+<!--                        {{ form.name }}-->
+<!--                        <div class="form-help-text">Leave blank to auto-generate from attributes</div>-->
+<!--                        {% if form.name.errors %}-->
+<!--                            {{ form.name.errors }}-->
+<!--                        {% endif %}-->
+<!--                    </div>-->
+<!---->
+<!--                    <div class="form-group">-->
+<!--                        <label class="form-label" for="id_sku">-->
+<!--                            SKU-->
+<!--                        </label>-->
+<!--                        {{ form.sku }}-->
+<!--                        <div class="form-help-text">Leave blank to auto-generate</div>-->
+<!--                        {% if form.sku.errors %}-->
+<!--                            {{ form.sku.errors }}-->
+<!--                        {% endif %}-->
+<!--                    </div>-->
+<!--                </div>-->
 
                 <!-- Attribute Values -->
                 <div class="form-group">

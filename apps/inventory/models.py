@@ -42,11 +42,11 @@ class PendingStockAdjustment(models.Model):
     reason = models.CharField(
         max_length=20,
         choices=[
-            ('damaged', 'Damaged'),
-            ('expired', 'Expired'),
-            ('lost', 'Lost/Theft'),
-            ('recount', 'Stock Recount'),
+            ('restock', 'New Stock'),
             ('correction', 'Correction'),
+            ('expired', 'Expired'),
+            ('damaged', 'Damaged'),
+            ('lost', 'Lost/Theft'),
             ('other', 'Other'),
         ]
     )
@@ -120,16 +120,17 @@ class StockMovement(models.Model):
         ('ADJ', 'Adjustment'),
         ('SALE', 'Sale'),
         ('RESTOCK', 'Restock'),
+        ('CORRECTION', 'Correction'),
         ('DAMAGE', 'Damage/Loss'),
         ('RETURN', 'Return'),
     ]
 
     ADJUSTMENT_REASONS = [
-        ('damaged', 'Damaged'),
-        ('expired', 'Expired'),
-        ('lost', 'Lost/Theft'),
-        ('recount', 'Stock Recount'),
+        ('restock', 'New Stock'),
         ('correction', 'Correction'),
+        ('expired', 'Expired'),
+        ('damaged', 'Damaged'),
+        ('lost', 'Lost/Theft'),
         ('other', 'Other'),
     ]
 

@@ -193,7 +193,8 @@ class ProductVariant(TimeStampedModel):
     name = models.CharField(
         max_length=200,
         blank=True,
-        help_text="Leave blank to auto-generate from attributes"
+        help_text="e.g 800g for weight, Big for size or Black for color",
+        null=False
     )
 
     # Pricing

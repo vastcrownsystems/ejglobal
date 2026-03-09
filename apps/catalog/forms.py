@@ -190,7 +190,7 @@ class ProductVariantForm(forms.ModelForm):
             'product',
             'name',
             'attribute_values',
-            'sku',
+            # 'sku',
             'barcode',
             'price',
             # 'cost_price',
@@ -207,14 +207,14 @@ class ProductVariantForm(forms.ModelForm):
             }),
             'name': forms.TextInput(attrs={
                 'class': 'form-input',
-                'placeholder': 'e.g., Small, Red, 500ml (leave blank to auto-generate)',
+                'placeholder': 'e.g., Small, Red, 500ml',
             }),
             'attribute_values': forms.CheckboxSelectMultiple(),  # ✅ Added this
-            'sku': forms.TextInput(attrs={
-                'class': 'form-input',
-                'placeholder': 'Leave blank to auto-generate',
-                'required': False
-            }),
+            # 'sku': forms.TextInput(attrs={
+            #     'class': 'form-input',
+            #     'placeholder': 'Leave blank to auto-generate',
+            #     'required': False
+            # }),
             'barcode': forms.TextInput(attrs={
                 'class': 'form-input',
                 'placeholder': 'Enter barcode (optional)',
@@ -255,7 +255,7 @@ class ProductVariantForm(forms.ModelForm):
             }),
         }
         labels = {
-            'sku': 'SKU',
+            # 'sku': 'SKU',
             'barcode': 'Barcode / UPC',
             # 'cost_price': 'Cost Price',
             'is_active': 'Active',
@@ -263,9 +263,9 @@ class ProductVariantForm(forms.ModelForm):
             'attribute_values': 'Variant Attributes',
         }
         help_texts = {
-            'name': 'Variant name (e.g., "Small", "Red", "500ml"). Leave blank to auto-generate from attributes.',
+            'name': 'Variant name (e.g., "Small", "Red", "500ml").',
             'attribute_values': 'Select the attributes that define this variant (e.g., Size: Small, Color: Red)',
-            'sku': 'Unique identifier - leave blank to auto-generate',
+            # 'sku': 'Unique identifier - leave blank to auto-generate',
             'barcode': 'For barcode scanning at checkout. Optional - leave blank if not using barcodes.',
             'price': 'Selling price for this variant',
             # 'cost_price': 'Your cost to purchase/produce this variant',
