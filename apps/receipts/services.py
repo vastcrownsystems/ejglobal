@@ -192,6 +192,21 @@ class ReceiptService:
             'item_count':      order.item_count,
         }
 
+        # ── Credit Information ─────────────────────────────
+
+        from apps.credit.models import CreditLedger
+
+        credit = CreditLedger.objects.filter(order=order).first()
+
+        credit_data = None
+
+        if credit:
+            credit_data = {
+                "credit_id": credit.ledger_id,
+                "due_date": credit.due_date.isoformat() if credit.due_date else None,
+                "balance": float(credit.balance_outstanding),
+            }
+
         # ── Full snapshot ─────────────────────────────────────────────────
         snapshot = {
             'order': {
@@ -209,6 +224,7 @@ class ReceiptService:
             'items':     items,
             'payments':  payments,
             'totals':    totals,
+            'credit': credit_data,
             'metadata': {
                 'generated_at': timezone.now().isoformat(),
                 'system':       'EJ Global POS',

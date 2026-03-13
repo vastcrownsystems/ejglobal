@@ -1,0 +1,460 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Report History{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+
+    <!-- Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <a href="{% url 'reports:dashboard' %}" class="back-link">
+                <i class="fas fa-arrow-left"></i>
+                Back to Reports
+            </a>
+            <div>
+                <h1>Report History</h1>
+                <p class="page-subtitle">View and download previously generated reports</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reports Table -->
+    <div class="table-card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Report Number</th>
+                    <th>Report Type</th>
+                    <th>Period</th>
+                    <th>Format</th>
+                    <th>Generated</th>
+                    <th>Size</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for report in reports %}
+                <tr>
+                    <td>
+                        <span class="report-number">{{ report.report_number }}</span>
+                    </td>
+                    <td>
+                        <strong>{{ report.report_template.name }}</strong>
+                    </td>
+                    <td>
+                        <div class="date-range">
+                            <span class="date">{{ report.date_from|date:"M d, Y" }}</span>
+                            {% if report.date_from != report.date_to %}
+                                <span class="separator">to</span>
+                                <span class="date">{{ report.date_to|date:"M d, Y" }}</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if report.file_format == 'EXCEL' %}
+                            <span class="format-badge excel">
+                                <i class="fas fa-file-excel"></i> Excel
+                            </span>
+                        {% else %}
+                            <span class="format-badge pdf">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="timestamp">
+                            <span class="time-ago">{{ report.generated_at|timesince }} ago</span>
+                            <span class="exact-time">{{ report.generated_at|date:"M d, Y H:i" }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if report.file_size %}
+                            {{ report.file_size|filesizeformat }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if report.status == 'COMPLETED' %}
+                            <span class="status-badge status-success">
+                                <i class="fas fa-check-circle"></i> Completed
+                            </span>
+                        {% elif report.status == 'FAILED' %}
+                            <span class="status-badge status-error">
+                                <i class="fas fa-times-circle"></i> Failed
+                            </span>
+                        {% elif report.status == 'PROCESSING' %}
+                            <span class="status-badge status-pending">
+                                <i class="fas fa-spinner fa-spin"></i> Processing
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            {% if report.status == 'COMPLETED' %}
+                                <a href="{% url 'reports:download_report' report.pk %}" class="btn-action download" title="Download">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                            {% endif %}
+                            {% if report.status == 'FAILED' %}
+                                <span class="error-icon" title="{{ report.error_message }}">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                </span>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8">
+                        <div class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <h3>No Reports Generated Yet</h3>
+                            <p>Start by generating your first report from the dashboard</p>
+                            <a href="{% url 'reports:dashboard' %}" class="btn-primary-small">
+                                <i class="fas fa-plus"></i>
+                                Generate Report
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+            <a href="?page=1" class="page-link">
+                <i class="fas fa-angle-double-left"></i>
+            </a>
+            <a href="?page={{ page_obj.previous_page_number }}" class="page-link">
+                <i class="fas fa-angle-left"></i>
+            </a>
+        {% endif %}
+
+        <span class="page-info">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}" class="page-link">
+                <i class="fas fa-angle-right"></i>
+            </a>
+            <a href="?page={{ page_obj.paginator.num_pages }}" class="page-link">
+                <i class="fas fa-angle-double-right"></i>
+            </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+
+<style>
+    .content-wrapper {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .page-header {
+        margin-bottom: 2rem;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #6B7280;
+        text-decoration: none;
+        margin-bottom: 1rem;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        transition: color 0.2s;
+    }
+
+    .back-link:hover {
+        color: #0033A0;
+    }
+
+    .header-left h1 {
+        margin: 0 0 0.5rem 0;
+        font-size: 2rem;
+        font-weight: 800;
+        color: #1F2937;
+    }
+
+    .page-subtitle {
+        margin: 0;
+        color: #6B7280;
+        font-size: 1rem;
+    }
+
+    /* Table Card */
+    .table-card {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table thead {
+        background: #F9FAFB;
+    }
+
+    .data-table th {
+        padding: 1rem 1.25rem;
+        text-align: left;
+        font-weight: 700;
+        color: #6B7280;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        border-bottom: 2px solid #E5E7EB;
+    }
+
+    .data-table td {
+        padding: 1.25rem;
+        border-bottom: 1px solid #F3F4F6;
+        font-size: 0.9375rem;
+    }
+
+    .data-table tr:hover {
+        background: #F9FAFB;
+    }
+
+    .report-number {
+        font-family: monospace;
+        font-weight: 700;
+        color: #0033A0;
+        font-size: 0.9375rem;
+    }
+
+    .date-range {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .date {
+        color: #374151;
+        font-weight: 600;
+    }
+
+    .separator {
+        color: #9CA3AF;
+        font-size: 0.875rem;
+    }
+
+    .format-badge {
+        padding: 0.375rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .format-badge.excel {
+        background: #D1FAE5;
+        color: #065F46;
+    }
+
+    .format-badge.pdf {
+        background: #FEE2E2;
+        color: #991B1B;
+    }
+
+    .timestamp {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .time-ago {
+        color: #374151;
+        font-weight: 600;
+    }
+
+    .exact-time {
+        color: #9CA3AF;
+        font-size: 0.8125rem;
+    }
+
+    .status-badge {
+        padding: 0.375rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        white-space: nowrap;
+    }
+
+    .status-success {
+        background: #D1FAE5;
+        color: #065F46;
+    }
+
+    .status-error {
+        background: #FEE2E2;
+        color: #991B1B;
+    }
+
+    .status-pending {
+        background: #FEF3C7;
+        color: #92400E;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-action {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-action.download {
+        background: #DBEAFE;
+        color: #0033A0;
+    }
+
+    .btn-action.download:hover {
+        background: #0033A0;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .error-icon {
+        color: #EF4444;
+        font-size: 1.25rem;
+        cursor: help;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        color: #D1D5DB;
+        margin-bottom: 1rem;
+    }
+
+    .empty-state h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.25rem;
+        color: #6B7280;
+    }
+
+    .empty-state p {
+        margin: 0 0 1.5rem 0;
+        color: #9CA3AF;
+    }
+
+    .btn-primary-small {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: linear-gradient(135deg, #0033A0 0%, #002a85 100%);
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.9375rem;
+        transition: all 0.2s;
+    }
+
+    .btn-primary-small:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 51, 160, 0.3);
+    }
+
+    /* Pagination */
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .page-link {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border: 1px solid #E5E7EB;
+        color: #6B7280;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .page-link:hover {
+        background: #0033A0;
+        color: white;
+        border-color: #0033A0;
+    }
+
+    .page-info {
+        padding: 0.5rem 1rem;
+        color: #6B7280;
+        font-weight: 600;
+        font-size: 0.9375rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+        .data-table {
+            font-size: 0.875rem;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 1rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .content-wrapper {
+            padding: 1rem;
+        }
+
+        .table-card {
+            overflow-x: auto;
+        }
+
+        .data-table {
+            min-width: 900px;
+        }
+    }
+</style>
+{% endblock %}

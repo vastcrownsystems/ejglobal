@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Reports Dashboard{% endblock %}
+{% block title %}Reports & Analytics{% endblock %}
 
 {% block content %}
 <div class="content-wrapper">
@@ -11,286 +11,599 @@
         <div class="header-left">
             <div>
                 <h1>Reports & Analytics</h1>
-                <p class="page-subtitle">Sales performance and business insights</p>
+                <p class="page-subtitle">Comprehensive business intelligence and performance tracking</p>
             </div>
         </div>
         <div class="header-actions">
-            <a href="{% url 'reports:custom_report' %}" class="btn-primary">
-                <i class="fas fa-calendar-alt"></i>
-                Custom Report
+            <a href="{% url 'reports:history' %}" class="btn-secondary">
+                <i class="fas fa-history"></i>
+                Report History
             </a>
         </div>
     </div>
 
     <!-- Quick Stats Cards -->
     <div class="stats-grid">
-        <!-- Today -->
+        <!-- Total Reports -->
         <div class="stat-card">
             <div class="stat-icon" style="background: linear-gradient(135deg, #0033A0 0%, #002a85 100%);">
-                <i class="fas fa-calendar-day"></i>
+                <i class="fas fa-chart-bar"></i>
             </div>
             <div class="stat-content">
-                <div class="stat-label">Today's Sales</div>
-                <div class="stat-value">₦{{ today_sales.total_sales|floatformat:2|default:"0.00" }}</div>
-                <div class="stat-meta">{{ today_sales.total_orders|default:0 }} orders • {{ today_sales.total_items_sold|default:0 }} items</div>
+                <div class="stat-label">Available Reports</div>
+                <div class="stat-value">{{ report_templates.count }}</div>
+                <div class="stat-meta">{{ recent_reports.count }} generated today</div>
             </div>
         </div>
 
-        <!-- This Week -->
+        <!-- Last Generated -->
         <div class="stat-card">
             <div class="stat-icon" style="background: linear-gradient(135deg, #059669 0%, #047857 100%);">
-                <i class="fas fa-calendar-week"></i>
+                <i class="fas fa-clock"></i>
             </div>
             <div class="stat-content">
-                <div class="stat-label">This Week</div>
-                <div class="stat-value">₦{{ week_sales.total_sales|floatformat:2|default:"0.00" }}</div>
-                <div class="stat-meta">{{ week_sales.total_orders|default:0 }} orders • Avg: ₦{{ week_sales.average_order_value|floatformat:2|default:"0.00" }}</div>
+                <div class="stat-label">Last Generated</div>
+                <div class="stat-value" style="font-size: 1.25rem;">
+                    {% if recent_reports.first %}
+                        {{ recent_reports.first.generated_at|timesince }} ago
+                    {% else %}
+                        Never
+                    {% endif %}
+                </div>
+                <div class="stat-meta">
+                    {% if recent_reports.first %}
+                        {{ recent_reports.first.report_template.name }}
+                    {% else %}
+                        No reports generated yet
+                    {% endif %}
+                </div>
             </div>
         </div>
 
-        <!-- This Month -->
+        <!-- Export Formats -->
         <div class="stat-card">
             <div class="stat-icon" style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);">
-                <i class="fas fa-calendar-alt"></i>
+                <i class="fas fa-file-export"></i>
             </div>
             <div class="stat-content">
-                <div class="stat-label">This Month</div>
-                <div class="stat-value">₦{{ month_sales.total_sales|floatformat:2|default:"0.00" }}</div>
-                <div class="stat-meta">{{ month_sales.total_customers|default:0 }} customers • {{ month_sales.new_customers|default:0 }} new</div>
+                <div class="stat-label">Export Formats</div>
+                <div class="stat-value" style="font-size: 1.5rem;">Excel & PDF</div>
+                <div class="stat-meta">Professional formatting included</div>
             </div>
         </div>
 
-        <!-- Payment Methods -->
+        <!-- Scheduled Reports -->
         <div class="stat-card">
             <div class="stat-icon" style="background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);">
-                <i class="fas fa-credit-card"></i>
+                <i class="fas fa-calendar-check"></i>
             </div>
             <div class="stat-content">
-                <div class="stat-label">Payment Mix (Today)</div>
-                <div class="stat-value" style="font-size: 1.25rem;">
-                    Cash: ₦{{ today_sales.cash_sales|floatformat:0|default:"0" }}
+                <div class="stat-label">Scheduled Reports</div>
+                <div class="stat-value">
+                    {% if is_admin %}
+                        {{ scheduled_reports.count|default:0 }}
+                    {% else %}
+                        Admin Only
+                    {% endif %}
                 </div>
-                <div class="stat-meta">Card: ₦{{ today_sales.card_sales|floatformat:0|default:"0" }} • Transfer: ₦{{ today_sales.transfer_sales|floatformat:0|default:"0" }}</div>
+                <div class="stat-meta">
+                    {% if is_admin %}
+                        Active automated reports
+                    {% else %}
+                        Contact admin to schedule
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Main Content Grid -->
-    <div class="dashboard-grid">
+    <!-- 📊 SALES ANALYTICS DASHBOARD -->
+    {% if today_sales or week_sales or month_sales %}
+    <div class="analytics-section">
+        <h2 class="section-title">
+            <i class="fas fa-chart-line"></i>
+            Sales Analytics Overview
+        </h2>
 
-        <!-- Quick Reports Section -->
-        <div class="dashboard-section">
-            <h2 class="section-title">
-                <i class="fas fa-chart-bar"></i>
-                Quick Reports
-            </h2>
+        <div class="analytics-grid">
+            <!-- Today's Sales -->
+            <div class="analytics-card">
+                <div class="analytics-header">
+                    <h3>Today's Sales</h3>
+                    <span class="analytics-period">{{ today_sales.period_start|date:"M d, Y" }}</span>
+                </div>
+                <div class="analytics-content">
+                    <div class="analytics-main-stat">
+                        <div class="stat-amount">₦{{ today_sales.total_sales|floatformat:2|default:"0.00" }}</div>
+                        <div class="stat-label">Total Revenue</div>
+                    </div>
+                    <div class="analytics-mini-stats">
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">{{ today_sales.total_orders|default:0 }}</div>
+                            <div class="mini-stat-label">Orders</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">{{ today_sales.total_items_sold|default:0 }}</div>
+                            <div class="mini-stat-label">Items Sold</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">₦{{ today_sales.average_order_value|floatformat:0|default:"0" }}</div>
+                            <div class="mini-stat-label">Avg Order</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            <div class="quick-reports-grid">
-                <!-- Daily Report -->
-                <a href="{% url 'reports:daily_report' %}" class="report-card">
-                    <div class="report-icon" style="background: #DBEAFE;">
-                        <i class="fas fa-calendar-day" style="color: #0033A0;"></i>
+            <!-- This Week -->
+            <div class="analytics-card">
+                <div class="analytics-header">
+                    <h3>This Week</h3>
+                    <span class="analytics-period">Last 7 days</span>
+                </div>
+                <div class="analytics-content">
+                    <div class="analytics-main-stat">
+                        <div class="stat-amount">₦{{ week_sales.total_sales|floatformat:2|default:"0.00" }}</div>
+                        <div class="stat-label">Total Revenue</div>
                     </div>
-                    <div class="report-content">
-                        <h3>Daily Report</h3>
-                        <p>Sales breakdown by day with hourly analysis</p>
+                    <div class="analytics-mini-stats">
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">{{ week_sales.total_orders|default:0 }}</div>
+                            <div class="mini-stat-label">Orders</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">{{ week_sales.total_customers|default:0 }}</div>
+                            <div class="mini-stat-label">Customers</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">₦{{ week_sales.average_order_value|floatformat:0|default:"0" }}</div>
+                            <div class="mini-stat-label">Avg Order</div>
+                        </div>
                     </div>
-                    <div class="report-arrow">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                </a>
+                </div>
+            </div>
 
-                <!-- Weekly Report -->
-                <a href="{% url 'reports:weekly_report' %}" class="report-card">
-                    <div class="report-icon" style="background: #D1FAE5;">
-                        <i class="fas fa-calendar-week" style="color: #059669;"></i>
+            <!-- This Month -->
+            <div class="analytics-card">
+                <div class="analytics-header">
+                    <h3>This Month</h3>
+                    <span class="analytics-period">MTD</span>
+                </div>
+                <div class="analytics-content">
+                    <div class="analytics-main-stat">
+                        <div class="stat-amount">₦{{ month_sales.total_sales|floatformat:2|default:"0.00" }}</div>
+                        <div class="stat-label">Total Revenue</div>
                     </div>
-                    <div class="report-content">
-                        <h3>Weekly Report</h3>
-                        <p>7-day trends and comparisons</p>
+                    <div class="analytics-mini-stats">
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">{{ month_sales.total_orders|default:0 }}</div>
+                            <div class="mini-stat-label">Orders</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">{{ month_sales.new_customers|default:0 }}</div>
+                            <div class="mini-stat-label">New Customers</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">₦{{ month_sales.total_discounts|floatformat:0|default:"0" }}</div>
+                            <div class="mini-stat-label">Discounts</div>
+                        </div>
                     </div>
-                    <div class="report-arrow">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                </a>
+                </div>
+            </div>
 
-                <!-- Monthly Report -->
-                <a href="{% url 'reports:monthly_report' %}" class="report-card">
-                    <div class="report-icon" style="background: #FEF3C7;">
-                        <i class="fas fa-calendar-alt" style="color: #F59E0B;"></i>
+            <!-- Payment Mix -->
+            <div class="analytics-card">
+                <div class="analytics-header">
+                    <h3>Payment Mix</h3>
+                    <span class="analytics-period">Today</span>
+                </div>
+                <div class="analytics-content">
+                    <div class="payment-breakdown">
+                        <div class="payment-item">
+                            <span class="payment-label">
+                                <i class="fas fa-money-bill-wave" style="color: #10B981;"></i> Cash
+                            </span>
+                            <span class="payment-amount">₦{{ today_sales.cash_sales|floatformat:0|default:"0" }}</span>
+                        </div>
+                        <div class="payment-item">
+                            <span class="payment-label">
+                                <i class="fas fa-credit-card" style="color: #0033A0;"></i> Card
+                            </span>
+                            <span class="payment-amount">₦{{ today_sales.card_sales|floatformat:0|default:"0" }}</span>
+                        </div>
+                        <div class="payment-item">
+                            <span class="payment-label">
+                                <i class="fas fa-exchange-alt" style="color: #F59E0B;"></i> Transfer
+                            </span>
+                            <span class="payment-amount">₦{{ today_sales.transfer_sales|floatformat:0|default:"0" }}</span>
+                        </div>
+                        <!-- CREDIT SALES -->
+                        <div class="payment-item">
+                            <span class="payment-label">
+                                <i class="fas fa-handshake" style="color: #EF4444;"></i> Credit
+                            </span>
+                            <span class="payment-amount">₦{{ today_sales.credit_sales|floatformat:0|default:"0" }}</span>
+                        </div>
                     </div>
-                    <div class="report-content">
-                        <h3>Monthly Report</h3>
-                        <p>Month overview with growth metrics</p>
-                    </div>
-                    <div class="report-arrow">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                </a>
-
-                <!-- Yearly Report -->
-                <a href="{% url 'reports:yearly_report' %}" class="report-card">
-                    <div class="report-icon" style="background: #FCE7F3;">
-                        <i class="fas fa-calendar" style="color: #EC4899;"></i>
-                    </div>
-                    <div class="report-content">
-                        <h3>Yearly Report</h3>
-                        <p>Annual performance and trends</p>
-                    </div>
-                    <div class="report-arrow">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                </a>
-
-                <!-- Custom Report -->
-                <a href="{% url 'reports:custom_report' %}" class="report-card featured">
-                    <div class="report-icon" style="background: #E0E7FF;">
-                        <i class="fas fa-sliders-h" style="color: #7C3AED;"></i>
-                    </div>
-                    <div class="report-content">
-                        <h3>Custom Period</h3>
-                        <p>Analyze any date range</p>
-                    </div>
-                    <div class="report-arrow">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                </a>
-
-                <!-- Product Performance -->
-                <a href="{% url 'reports:top_products' %}" class="report-card">
-                    <div class="report-icon" style="background: #FED7AA;">
-                        <i class="fas fa-box" style="color: #EA580C;"></i>
-                    </div>
-                    <div class="report-content">
-                        <h3>Product Performance</h3>
-                        <p>Top selling products and trends</p>
-                    </div>
-                    <div class="report-arrow">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                </a>
+                </div>
             </div>
         </div>
+    </div>
+    {% endif %}
 
-        <!-- Recent Daily Reports -->
-        <div class="dashboard-section">
-            <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-history"></i>
-                    Recent Daily Reports
-                </h2>
-                <a href="{% url 'reports:daily_report' %}" class="section-link">View All</a>
+    <!-- 📦 INVENTORY ALERTS -->
+    {% if inventory_summary %}
+    <div class="alerts-section">
+        <h2 class="section-title">
+            <i class="fas fa-exclamation-triangle"></i>
+            Inventory Alerts
+        </h2>
+
+        <div class="alerts-grid">
+            <!-- Out of Stock -->
+            <div class="alert-card alert-critical">
+                <div class="alert-icon">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <div class="alert-content">
+                    <div class="alert-number">{{ inventory_summary.items_out_of_stock|default:0 }}</div>
+                    <div class="alert-label">Out of Stock</div>
+                </div>
             </div>
 
-            <div class="table-responsive">
-                <table class="data-table compact">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th class="text-right">Sales</th>
-                            <th class="text-right">Orders</th>
-                            <th class="text-right">Items</th>
-                            <th class="text-right">Avg Order</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for report in recent_daily %}
-                        <tr>
-                            <td data-label="Date">
-                                <strong>{{ report.report_date|date:"M d, Y" }}</strong>
-                                <small class="text-muted">{{ report.report_date|date:"D" }}</small>
-                            </td>
-                            <td class="text-right" data-label="Sales">
-                                <strong>₦{{ report.total_sales|floatformat:2 }}</strong>
-                            </td>
-                            <td class="text-right" data-label="Orders">{{ report.total_orders }}</td>
-                            <td class="text-right" data-label="Items">{{ report.total_items_sold }}</td>
-                            <td class="text-right" data-label="Avg Order">₦{{ report.average_order_value|floatformat:2 }}</td>
-                            <td data-label="Actions">
-                                <a href="{% url 'reports:daily_report' %}?date={{ report.report_date|date:'Y-m-d' }}" class="btn-sm btn-primary">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center text-muted">No daily reports yet</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <!-- Low Stock -->
+            <div class="alert-card alert-warning">
+                <div class="alert-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="alert-content">
+                    <div class="alert-number">{{ inventory_summary.items_low_stock|default:0 }}</div>
+                    <div class="alert-label">Low Stock</div>
+                </div>
             </div>
-        </div>
 
-        <!-- Recent Monthly Reports -->
-        <div class="dashboard-section">
-            <div class="section-header">
-                <h2 class="section-title">
+            <!-- Variance Detected -->
+            <div class="alert-card alert-info">
+                <div class="alert-icon">
                     <i class="fas fa-chart-line"></i>
-                    Recent Monthly Reports
-                </h2>
-                <a href="{% url 'reports:monthly_report' %}" class="section-link">View All</a>
+                </div>
+                <div class="alert-content">
+                    <div class="alert-number">{{ inventory_summary.items_with_variance|default:0 }}</div>
+                    <div class="alert-label">Variance Detected</div>
+                </div>
             </div>
 
-            <div class="monthly-reports-grid">
-                {% for report in recent_monthly %}
-                <div class="monthly-card">
-                    <div class="monthly-header">
-                        <h3>{{ report.month_name }} {{ report.year }}</h3>
-                        {% if report.sales_growth_percentage > 0 %}
-                            <span class="growth-badge positive">
-                                <i class="fas fa-arrow-up"></i>
-                                {{ report.sales_growth_percentage|floatformat:1 }}%
-                            </span>
-                        {% elif report.sales_growth_percentage < 0 %}
-                            <span class="growth-badge negative">
-                                <i class="fas fa-arrow-down"></i>
-                                {{ report.sales_growth_percentage|floatformat:1 }}%
-                            </span>
-                        {% else %}
-                            <span class="growth-badge neutral">
-                                <i class="fas fa-minus"></i>
-                                0%
-                            </span>
+            <!-- Total Stock Value -->
+            <div class="alert-card alert-success">
+                <div class="alert-icon">
+                    <i class="fas fa-boxes"></i>
+                </div>
+                <div class="alert-content">
+                    <div class="alert-number" style="font-size: 1.5rem;">{{ inventory_summary.total_actual_closing|default:0 }}</div>
+                    <div class="alert-label">Total Stock Units</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Best Sellers -->
+        {% if best_sellers %}
+        <div class="best-sellers-section">
+            <h3 style="margin: 2rem 0 1rem 0; font-size: 1.125rem; font-weight: 700; color: #1F2937;">
+                <i class="fas fa-fire" style="color: #F59E0B;"></i>
+                Today's Best Sellers
+            </h3>
+            <div class="best-sellers-grid">
+                {% for item in best_sellers %}
+                <div class="best-seller-card">
+                    <div class="best-seller-rank">#{{ forloop.counter }}</div>
+                    <div class="best-seller-info">
+                        <div class="best-seller-name">{{ item.product_name }}</div>
+                        {% if item.variant_name != 'N/A' %}
+                        <div class="best-seller-variant">{{ item.variant_name }}</div>
                         {% endif %}
                     </div>
-                    <div class="monthly-stats">
-                        <div class="monthly-stat">
-                            <span class="monthly-label">Total Sales</span>
-                            <strong class="monthly-value">₦{{ report.total_sales|floatformat:2 }}</strong>
-                        </div>
-                        <div class="monthly-stat">
-                            <span class="monthly-label">Orders</span>
-                            <strong class="monthly-value">{{ report.total_orders }}</strong>
-                        </div>
-                        <div class="monthly-stat">
-                            <span class="monthly-label">Avg/Day</span>
-                            <strong class="monthly-value">₦{{ report.daily_average_sales|floatformat:0 }}</strong>
-                        </div>
+                    <div class="best-seller-stats">
+                        <div class="best-seller-qty">{{ item.quantity_sold }} sold</div>
+                        <div class="best-seller-revenue">₦{{ item.revenue|floatformat:0 }}</div>
                     </div>
-                    <a href="{% url 'reports:monthly_report' %}?year={{ report.year }}&month={{ report.month }}" class="monthly-link">
-                        View Details <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-                {% empty %}
-                <div class="empty-state-small">
-                    <p>No monthly reports yet</p>
                 </div>
                 {% endfor %}
             </div>
         </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Main Content Grid -->
+    <div class="dashboard-grid">
+
+        <!-- ✅ INVENTORY REPORTS -->
+        <div class="dashboard-section">
+            <h2 class="section-title">
+                <i class="fas fa-boxes"></i>
+                Inventory Reports
+            </h2>
+
+            <div class="quick-reports-grid">
+                <!-- Daily Inventory Report -->
+                <a href="{% url 'reports:generate_report' 'DAILY_INVENTORY' %}" class="report-card featured">
+                    <div class="report-icon" style="background: #FEE2E2;">
+                        <i class="fas fa-boxes" style="color: #DC2626;"></i>
+                    </div>
+                    <div class="report-content">
+                        <h3>Daily Inventory Report</h3>
+                        <p>Opening stock, sales, closing stock & variances</p>
+                    </div>
+                    <div class="report-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </a>
+
+                <!-- Low Stock Alert -->
+                <a href="{% url 'reports:generate_report' 'LOW_STOCK_ALERT' %}" class="report-card">
+                    <div class="report-icon" style="background: #FEF3C7;">
+                        <i class="fas fa-exclamation-triangle" style="color: #F59E0B;"></i>
+                    </div>
+                    <div class="report-content">
+                        <h3>Low Stock Alert</h3>
+                        <p>Products below reorder threshold</p>
+                    </div>
+                    <div class="report-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </a>
+
+                <!-- Inventory Movement -->
+                <a href="{% url 'reports:generate_report' 'INVENTORY_MOVEMENT' %}" class="report-card">
+                    <div class="report-icon" style="background: #E0E7FF;">
+                        <i class="fas fa-exchange-alt" style="color: #7C3AED;"></i>
+                    </div>
+                    <div class="report-content">
+                        <h3>Inventory Movement</h3>
+                        <p>Stock additions, adjustments & transfers</p>
+                    </div>
+                    <div class="report-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- ✅ SALES REPORTS -->
+        <div class="dashboard-section">
+            <h2 class="section-title">
+                <i class="fas fa-chart-line"></i>
+                Sales Reports
+            </h2>
+
+            <div class="quick-reports-grid">
+                <!-- Sales Summary -->
+                <a href="{% url 'reports:generate_report' 'SALES_SUMMARY' %}" class="report-card">
+                    <div class="report-icon" style="background: #DBEAFE;">
+                        <i class="fas fa-chart-bar" style="color: #0033A0;"></i>
+                    </div>
+                    <div class="report-content">
+                        <h3>Sales Summary</h3>
+                        <p>Revenue, top products & trends analysis</p>
+                    </div>
+                    <div class="report-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </a>
+
+                <!-- Cashier Performance -->
+                <a href="{% url 'reports:generate_report' 'CASHIER_PERFORMANCE' %}" class="report-card">
+                    <div class="report-icon" style="background: #FCE7F3;">
+                        <i class="fas fa-user-check" style="color: #EC4899;"></i>
+                    </div>
+                    <div class="report-content">
+                        <h3>Cashier Performance</h3>
+                        <p>Sales per cashier & session analysis</p>
+                    </div>
+                    <div class="report-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- ✅ CUSTOMER & CREDIT REPORTS -->
+        <div class="dashboard-section">
+            <h2 class="section-title">
+                <i class="fas fa-users"></i>
+                Customer & Credit Reports
+            </h2>
+
+            <div class="quick-reports-grid">
+                <!-- Customer Analysis -->
+                <a href="{% url 'reports:generate_report' 'CUSTOMER_ANALYSIS' %}" class="report-card">
+                    <div class="report-icon" style="background: #E0F2FE;">
+                        <i class="fas fa-users" style="color: #0284C7;"></i>
+                    </div>
+                    <div class="report-content">
+                        <h3>Customer Analysis</h3>
+                        <p>Purchase patterns & lifetime value</p>
+                    </div>
+                    <div class="report-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </a>
+
+                <!-- Credit Aging Report -->
+                <a href="{% url 'reports:generate_report' 'CREDIT_AGING' %}" class="report-card">
+                    <div class="report-icon" style="background: #FEE2E2;">
+                        <i class="fas fa-credit-card" style="color: #EF4444;"></i>
+                    </div>
+                    <div class="report-content">
+                        <h3>Credit Aging Report</h3>
+                        <p>Outstanding balances by aging buckets</p>
+                    </div>
+                    <div class="report-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </a>
+
+                <!-- Overdue Credit -->
+                <a href="{% url 'reports:generate_report' 'OVERDUE_CREDIT' %}" class="report-card">
+                    <div class="report-icon" style="background: #FFEDD5;">
+                        <i class="fas fa-hourglass-end" style="color: #EA580C;"></i>
+                    </div>
+                    <div class="report-content">
+                        <h3>Overdue Credit</h3>
+                        <p>Past due accounts requiring follow-up</p>
+                    </div>
+                    <div class="report-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+        </div>
 
     </div>
+
+    <!-- Recent Reports -->
+    {% if recent_reports %}
+    <div class="dashboard-section">
+        <div class="section-header-with-link">
+            <h2 class="section-title">
+                <i class="fas fa-history"></i>
+                Recent Reports
+            </h2>
+            <a href="{% url 'reports:history' %}" class="section-link">
+                View All <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+
+        <div class="data-table-container">
+            <table class="data-table compact">
+                <thead>
+                    <tr>
+                        <th>Report Number</th>
+                        <th>Report Type</th>
+                        <th>Period</th>
+                        <th>Generated</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in recent_reports|slice:":5" %}
+                    <tr>
+                        <td>
+                            <span class="report-number">{{ report.report_number }}</span>
+                        </td>
+                        <td>{{ report.report_template.name }}</td>
+                        <td>{{ report.date_from|date:"M d" }} - {{ report.date_to|date:"M d, Y" }}</td>
+                        <td>{{ report.generated_at|timesince }} ago</td>
+                        <td>
+                            {% if report.status == 'COMPLETED' %}
+                                <span class="status-badge status-success">
+                                    <i class="fas fa-check-circle"></i> Completed
+                                </span>
+                            {% elif report.status == 'FAILED' %}
+                                <span class="status-badge status-error">
+                                    <i class="fas fa-times-circle"></i> Failed
+                                </span>
+                            {% else %}
+                                <span class="status-badge status-pending">
+                                    <i class="fas fa-spinner fa-spin"></i> Processing
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if report.status == 'COMPLETED' %}
+                                <a href="{% url 'reports:download_report' report.pk %}" class="btn-icon-small" title="Download">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
 
 </div>
 
 <style>
+    /* Content Wrapper */
+    .content-wrapper {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    /* Page Header */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .header-left h1 {
+        margin: 0 0 0.5rem 0;
+        font-size: 2rem;
+        font-weight: 800;
+        color: #1F2937;
+    }
+
+    .page-subtitle {
+        margin: 0;
+        color: #6B7280;
+        font-size: 1rem;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.9375rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #0033A0 0%, #002a85 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 51, 160, 0.3);
+    }
+
+    .btn-secondary {
+        background: white;
+        color: #0033A0;
+        border: 2px solid #0033A0;
+    }
+
+    .btn-secondary:hover {
+        background: #0033A0;
+        color: white;
+    }
+
+    /* Stats Grid */
     .stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 1.5rem;
-        margin-bottom: 2.5rem;
+        margin-bottom: 2rem;
     }
 
     .stat-card {
@@ -300,13 +613,7 @@
         padding: 1.5rem;
         display: flex;
         align-items: center;
-        gap: 1.25rem;
-        transition: all 0.2s;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        gap: 1rem;
     }
 
     .stat-icon {
@@ -316,27 +623,30 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        color: white;
+        font-size: 1.75rem;
         flex-shrink: 0;
     }
 
-    .stat-icon i {
-        font-size: 1.75rem;
-        color: white;
+    .stat-content {
+        flex: 1;
     }
 
     .stat-label {
         font-size: 0.875rem;
         color: #6B7280;
-        margin-bottom: 0.5rem;
         font-weight: 600;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
 
     .stat-value {
-        font-size: 1.875rem;
+        font-size: 2rem;
         font-weight: 800;
         color: #1F2937;
-        font-family: 'JetBrains Mono', monospace;
         margin-bottom: 0.25rem;
+        line-height: 1;
     }
 
     .stat-meta {
@@ -344,10 +654,11 @@
         color: #9CA3AF;
     }
 
+    /* Dashboard Grid */
     .dashboard-grid {
         display: flex;
         flex-direction: column;
-        gap: 2.5rem;
+        gap: 2rem;
     }
 
     .dashboard-section {
@@ -355,6 +666,7 @@
         border: 1px solid #E5E7EB;
         border-radius: 12px;
         padding: 2rem;
+        margin-top: 2rem;
     }
 
     .section-title {
@@ -367,11 +679,20 @@
         gap: 0.75rem;
     }
 
-    .section-title i {
-        color: #0033A0;
+    .admin-badge-small {
+        margin-left: auto;
+        background: #FFB84D;
+        color: #1A1A1A;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
     }
 
-    .section-header {
+    .section-header-with-link {
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -384,6 +705,9 @@
         font-weight: 600;
         font-size: 0.9375rem;
         transition: color 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 
     .section-link:hover {
@@ -393,7 +717,7 @@
     /* Quick Reports Grid */
     .quick-reports-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
         gap: 1.5rem;
     }
 
@@ -417,13 +741,13 @@
     }
 
     .report-card.featured {
-        border-color: #7C3AED;
-        background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%);
+        border-color: #DC2626;
+        background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
     }
 
     .report-card.featured:hover {
-        border-color: #6D28D9;
-        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+        border-color: #B91C1C;
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
     }
 
     .report-icon {
@@ -468,129 +792,389 @@
         color: #0033A0;
     }
 
-    /* Monthly Cards */
-    .monthly-reports-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .monthly-card {
+    /* Analytics Section */
+    .analytics-section {
+        background: white;
         border: 1px solid #E5E7EB;
-        border-radius: 10px;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .analytics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+
+    .analytics-card {
+        background: linear-gradient(135deg, #F9FAFB 0%, #FFFFFF 100%);
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
         padding: 1.5rem;
-        transition: all 0.2s;
     }
 
-    .monthly-card:hover {
-        border-color: #0033A0;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .monthly-header {
+    .analytics-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid #E5E7EB;
+        margin-bottom: 1.5rem;
     }
 
-    .monthly-header h3 {
+    .analytics-header h3 {
         margin: 0;
-        font-size: 1.125rem;
+        font-size: 1rem;
         font-weight: 700;
         color: #1F2937;
     }
 
-    .growth-badge {
-        padding: 0.25rem 0.75rem;
-        border-radius: 6px;
-        font-size: 0.875rem;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-    }
-
-    .growth-badge.positive {
-        background: #D1FAE5;
-        color: #065F46;
-    }
-
-    .growth-badge.negative {
-        background: #FEE2E2;
-        color: #991B1B;
-    }
-
-    .growth-badge.neutral {
-        background: #F3F4F6;
-        color: #6B7280;
-    }
-
-    .monthly-stats {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-        margin-bottom: 1rem;
-    }
-
-    .monthly-stat {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .monthly-label {
+    .analytics-period {
         font-size: 0.875rem;
         color: #6B7280;
         font-weight: 600;
     }
 
-    .monthly-value {
-        font-size: 1rem;
-        color: #1F2937;
-        font-family: 'JetBrains Mono', monospace;
-        font-weight: 700;
+    .analytics-main-stat {
+        margin-bottom: 1.5rem;
     }
 
-    .monthly-link {
+    .stat-amount {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0033A0;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6B7280;
+        font-weight: 600;
+    }
+
+    .analytics-mini-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #E5E7EB;
+    }
+
+    .mini-stat {
+        text-align: center;
+    }
+
+    .mini-stat-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1F2937;
+        margin-bottom: 0.25rem;
+    }
+
+    .mini-stat-label {
+        font-size: 0.75rem;
+        color: #9CA3AF;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .payment-breakdown {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .payment-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #F3F4F6;
+    }
+
+    .payment-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .payment-amount {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1F2937;
+    }
+
+    /* Alerts Section */
+    .alerts-section {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .alerts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+
+    .alert-card {
+        background: white;
+        border: 2px solid;
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .alert-critical {
+        border-color: #FCA5A5;
+        background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+    }
+
+    .alert-warning {
+        border-color: #FCD34D;
+        background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+    }
+
+    .alert-info {
+        border-color: #93C5FD;
+        background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    }
+
+    .alert-success {
+        border-color: #86EFAC;
+        background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
+    }
+
+    .alert-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.5rem;
-        padding: 0.625rem;
-        background: #F3F4F6;
-        border-radius: 6px;
-        color: #0033A0;
-        text-decoration: none;
-        font-weight: 600;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .alert-critical .alert-icon {
+        background: #FEE2E2;
+        color: #DC2626;
+    }
+
+    .alert-warning .alert-icon {
+        background: #FEF3C7;
+        color: #F59E0B;
+    }
+
+    .alert-info .alert-icon {
+        background: #DBEAFE;
+        color: #3B82F6;
+    }
+
+    .alert-success .alert-icon {
+        background: #D1FAE5;
+        color: #10B981;
+    }
+
+    .alert-number {
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: 0.25rem;
+    }
+
+    .alert-critical .alert-number {
+        color: #DC2626;
+    }
+
+    .alert-warning .alert-number {
+        color: #F59E0B;
+    }
+
+    .alert-info .alert-number {
+        color: #3B82F6;
+    }
+
+    .alert-success .alert-number {
+        color: #10B981;
+    }
+
+    .alert-label {
         font-size: 0.875rem;
+        color: #6B7280;
+        font-weight: 600;
+    }
+
+    /* Best Sellers */
+    .best-sellers-section {
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 2px solid #F3F4F6;
+    }
+
+    .best-sellers-grid {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .best-seller-card {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
         transition: all 0.2s;
     }
 
-    .monthly-link:hover {
-        background: #0033A0;
-        color: white;
+    .best-seller-card:hover {
+        border-color: #F59E0B;
+        box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
     }
 
-    /* Compact Table */
-    .data-table.compact {
+    .best-seller-rank {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .best-seller-info {
+        flex: 1;
+    }
+
+    .best-seller-name {
+        font-weight: 700;
+        color: #1F2937;
+        margin-bottom: 0.25rem;
+    }
+
+    .best-seller-variant {
         font-size: 0.875rem;
+        color: #6B7280;
+    }
+
+    .best-seller-stats {
+        text-align: right;
+    }
+
+    .best-seller-qty {
+        font-size: 0.875rem;
+        color: #6B7280;
+        margin-bottom: 0.25rem;
+    }
+
+    .best-seller-revenue {
+        font-weight: 700;
+        color: #059669;
+        font-size: 1.125rem;
+    }
+
+    /* Data Table */
+    .data-table-container {
+        overflow-x: auto;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
     }
 
     .data-table.compact th,
     .data-table.compact td {
-        padding: 0.75rem 1rem;
+        padding: 0.875rem 1rem;
+        font-size: 0.875rem;
     }
 
-    .empty-state-small {
-        text-align: center;
-        padding: 2rem;
-        color: #9CA3AF;
+    .data-table th {
+        background: #F9FAFB;
+        text-align: left;
+        font-weight: 700;
+        color: #6B7280;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid #E5E7EB;
     }
 
+    .data-table td {
+        border-bottom: 1px solid #F3F4F6;
+    }
+
+    .report-number {
+        font-family: monospace;
+        font-weight: 600;
+        color: #0033A0;
+    }
+
+    .status-badge {
+        padding: 0.375rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .status-success {
+        background: #D1FAE5;
+        color: #065F46;
+    }
+
+    .status-error {
+        background: #FEE2E2;
+        color: #991B1B;
+    }
+
+    .status-pending {
+        background: #FEF3C7;
+        color: #92400E;
+    }
+
+    .btn-icon-small {
+        width: 32px;
+        height: 32px;
+        background: #F3F4F6;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #6B7280;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .btn-icon-small:hover {
+        background: #0033A0;
+        color: white;
+    }
+
+    /* Responsive */
     @media (max-width: 768px) {
+        .content-wrapper {
+            padding: 1rem;
+        }
+
         .stats-grid {
             grid-template-columns: 1fr;
         }
@@ -599,8 +1183,13 @@
             grid-template-columns: 1fr;
         }
 
-        .monthly-reports-grid {
-            grid-template-columns: 1fr;
+        .page-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .header-actions {
+            flex-direction: column;
         }
     }
 </style>

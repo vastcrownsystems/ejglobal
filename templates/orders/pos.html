@@ -70,7 +70,7 @@
 
                     <div class="product-variants">
                         {% for variant in product.variants.all %}
-                            {% if product.track_inventory and variant.stock_quantity <= 0 %}
+                            {% if product.track_inventory and variant.available_stock|default:variant.stock_quantity <= 0 %}
                                 {# OUT OF STOCK - Disabled button #}
                                 <div class="variant-btn-wrapper">
                                     <button type="button" class="variant-btn variant-btn-disabled" disabled>
@@ -86,7 +86,7 @@
                                         </span>
                                     </button>
                                 </div>
-                            {% elif product.track_inventory and variant.stock_quantity <= variant.low_stock_threshold %}
+                            {% elif product.track_inventory and variant.available_stock|default:variant.stock_quantity <= variant.low_stock_threshold %}
                                 {# LOW STOCK - Warning but still clickable #}
                                 <form
                                     hx-post="{% url 'orders:cart_add' variant.id %}"
@@ -102,9 +102,9 @@
                                         <span class="variant-price">
                                             ₦{{ variant.price }}
                                         </span>
-                                        <span class="low-stock-badge">
+                                        <span class="low-stock-badge" data-variant-low="{{ variant.id }}">
                                             <i class="fas fa-exclamation-triangle"></i>
-                                            Only {{ variant.stock_quantity }} left
+                                            Only {{ variant.available_stock|default:variant.stock_quantity }} left
                                         </span>
                                     </button>
                                 </form>
@@ -125,8 +125,9 @@
                                             ₦{{ variant.price }}
                                         </span>
                                         {% if product.track_inventory %}
-                                        <span class="stock-count">
-                                            {{ variant.stock_quantity }} in stock
+                                       <span class="stock-count"
+                                              data-variant-stock="{{ variant.id }}">
+                                            {{ variant.available_stock|default:variant.stock_quantity }} in stock
                                         </span>
                                         {% endif %}
                                     </button>
@@ -290,6 +291,29 @@
         console.log("Sale completed - receipt modal open");
         // Don't redirect - let user close receipt manually
         // They can refresh page by closing receipt and clicking "New Sale"
+    });
+
+    document.body.addEventListener("cart-updated", function () {
+        fetch("{% url 'orders:pos_stock_fragment' %}")
+            .then(res => res.json())
+            .then(stock => {
+                Object.entries(stock).forEach(([variantId, qty]) => {
+                    const el = document.querySelector(
+                        `[data-variant-stock="${variantId}"]`
+                    );
+                    if (el) {
+                        el.textContent = qty + " in stock";
+                    }
+                    const low = document.querySelector(
+                        `[data-variant-low="${variantId}"]`
+                    );
+                    if (low) {
+                        low.textContent = "Only " + qty + " left";
+                    }
+                });
+
+            });
+
     });
 
 </script>

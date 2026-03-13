@@ -950,7 +950,7 @@
                 <div class="movement-item">
                     <div class="movement-header">
                         <div>
-                            <div class="movement-product">{{ movement.variant.product.name }}</div>
+                            <div class="movement-product">{{ movement.variant.product.name }} - {{ movement.variant.name }}</div>
                             <div class="product-sku">{{ movement.variant.sku }}</div>
                         </div>
                         <div class="movement-qty {% if movement.quantity >= 0 %}increase{% else %}decrease{% endif %}">

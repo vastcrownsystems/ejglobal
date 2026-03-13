@@ -72,6 +72,8 @@ urlpatterns = [
     # Cancel order
     path('<int:pk>/cancel/', views.order_cancel, name='order_cancel'),
 
+    path("pos/stock/", views.pos_stock_fragment, name="pos_stock_fragment"),
+
 
     # Customer-in-cart endpoints
     path('cart/customer/search/', views.cart_customer_search, name='cart_customer_search'),

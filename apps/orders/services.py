@@ -6,6 +6,9 @@ from decimal import Decimal
 from .models import Order, OrderItem, OrderPayment
 from apps.catalog.models import ProductVariant
 import logging
+from django.db.models import Sum
+from django.db.models.functions import Coalesce
+
 logger = logging.getLogger(__name__)
 
 
@@ -70,11 +73,26 @@ class OrderService:
 
         # Check stock if tracking inventory
         if variant.product.track_inventory:
-            print(f"  - Checking stock: {variant.stock_quantity} available")
-            if variant.stock_quantity < quantity:
+
+            # Quantity already in this cart
+            existing_qty = (
+                    OrderItem.objects
+                    .filter(order=order, variant=variant)
+                    .aggregate(total=Sum("quantity"))
+                    .get("total") or 0
+            )
+
+            print(f"  - Stock available: {variant.stock_quantity}")
+            print(f"  - Already in cart: {existing_qty}")
+
+            new_total = existing_qty + quantity
+
+            if new_total > variant.stock_quantity:
+                available = max(variant.stock_quantity - existing_qty, 0)
+
                 raise ValidationError(
-                    f"Insufficient stock. Available: {variant.stock_quantity}, "
-                    f"Requested: {quantity}"
+                    f"Only {available} unit(s) of {variant.product.name} "
+                    f"({variant.name}) available."
                 )
 
         # Use variant price if not provided

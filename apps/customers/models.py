@@ -62,7 +62,7 @@ class Customer(TimeStampedModel):
         null=True,
         db_index=True
     )
-    email = models.EmailField(blank=True, null=True)
+    email = models.EmailField(blank=True, null=True, default="")
     address = models.TextField(blank=True)
     is_walk_in = models.BooleanField(default=False)
 

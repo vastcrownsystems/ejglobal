@@ -73,11 +73,16 @@ def _manager_dashboard(request):
     else:
         revenue_change = 100 if today_revenue > 0 else 0
 
-    # ── 2. Total Sales (Orders Today) ────────────────────────────────────
+    # ── 2. Total Sales and (today_items_sold) ────────────────────────────────────
     today_sales = Order.objects.filter(
         status__in=['CONFIRMED', 'COMPLETED'],
         created_at__gte=today_start,
     ).count()
+
+    today_items_sold = OrderItem.objects.filter(
+        order__status__in=['CONFIRMED', 'COMPLETED'],
+        order__created_at__gte=today_start,
+    ).aggregate(total=Sum('quantity'))['total'] or 0
 
     yesterday_sales = Order.objects.filter(
         status__in=['CONFIRMED', 'COMPLETED'],
@@ -213,7 +218,7 @@ def _manager_dashboard(request):
         'revenue_change_positive': revenue_change >= 0,
 
         'today_sales': today_sales,
-        'today_orders': today_sales,  # ✅ ADDED: Number of orders today (same as sales count)
+        'today_orders': today_items_sold,  # ✅ ADDED: Number of orders today (same as sales count)
         'sales_change': abs(sales_change),
         'sales_change_positive': sales_change >= 0,
 

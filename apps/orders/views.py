@@ -122,13 +122,18 @@ def pos_screen(request):
 
     cart = fetch_cart(cart.pk)
 
-
+    # ─────────────────────────────────────────────
+    # PRODUCTS
+    # ─────────────────────────────────────────────
     products = (
         Product.objects
         .prefetch_related("variants")
         .filter(is_active=True)
     )
 
+    # ─────────────────────────────────────────────
+    # VARIANTS
+    # ─────────────────────────────────────────────
     variants = (
         ProductVariant.objects
         .select_related("product")
@@ -136,17 +141,91 @@ def pos_screen(request):
         .order_by("product__name", "name")
     )
 
+    # ─────────────────────────────────────────────
+    # RESERVED STOCK IN CURRENT CART
+    # ─────────────────────────────────────────────
+    from django.db.models import Sum
+    from django.db.models.functions import Coalesce
+
+    reserved_quantities = (
+        cart.items
+        .values("variant_id")
+        .annotate(total=Coalesce(Sum("quantity"), 0))
+    )
+
+    reserved_map = {r["variant_id"]: r["total"] for r in reserved_quantities}
+
+    # Adjust stock for POS display
+    for variant in variants:
+        reserved = reserved_map.get(variant.id, 0)
+        variant.available_stock = max(0, variant.stock_quantity - reserved)
+
+    # ─────────────────────────────────────────────
+    # HELD ORDERS COUNT
+    # ─────────────────────────────────────────────
     held_count = get_held_orders_count(request.user)
 
+    # ─────────────────────────────────────────────
+    # CONTEXT
+    # ─────────────────────────────────────────────
     context = {
         "session": session,
         "products": products,
         "variants": variants,
-        'held_count': held_count,
-        **cart_context(cart),  # This should now show the items
+        "held_count": held_count,
+        **cart_context(cart),
     }
 
     return render(request, "orders/pos.html", context)
+
+
+@login_required
+def pos_stock_fragment(request):
+    try:
+        session = require_open_session(request.user)
+    except ValidationError:
+        return HttpResponse("")
+
+    order_id = request.session.get("current_order_id")
+    cart = None
+
+    if order_id:
+        cart = Order.objects.filter(
+            pk=order_id,
+            status="DRAFT",
+            cashier_session=session,
+            created_by=request.user
+        ).first()
+
+    if not cart:
+        return HttpResponse("")
+
+    cart = fetch_cart(cart.pk)
+
+    from django.db.models import Sum
+    from django.db.models.functions import Coalesce
+
+    reserved_quantities = (
+        cart.items
+        .values("variant_id")
+        .annotate(total=Coalesce(Sum("quantity"), 0))
+    )
+
+    reserved_map = {r["variant_id"]: r["total"] for r in reserved_quantities}
+
+    variants = ProductVariant.objects.filter(
+        is_active=True,
+        product__is_active=True
+    )
+
+    data = {}
+
+    for v in variants:
+        reserved = reserved_map.get(v.id, 0)
+        available = max(0, v.stock_quantity - reserved)
+        data[v.id] = available
+
+    return JsonResponse(data)
 
 
 @require_http_methods(["POST"])
@@ -171,8 +250,14 @@ def cart_add(request, variant_id):
     cart = fetch_cart(cart.pk)               # ✅ re-fetch truth
     items = cart.items.all()                 # ✅ correct related_name
 
-    return render(request, "orders/partials/cart_panel.html", {"order": cart, "items": items})
+    response = render(
+        request,
+        "orders/partials/cart_panel.html",
+        {"order": cart, "items": items}
+    )
 
+    response["HX-Trigger"] = "cartUpdated"
+    return response
 
 
 # -----------------------------
@@ -199,14 +284,31 @@ def cart_update_qty(request, item_id):
     except ValueError:
         return HttpResponseBadRequest("Invalid quantity.")
 
+    # ─────────────────────────────────────────────
+    # STOCK VALIDATION
+    # ─────────────────────────────────────────────
+    variant = item.variant
+
+    if variant.product.track_inventory:
+        available_stock = variant.stock_quantity
+
+        if qty > available_stock:
+            return HttpResponseBadRequest(
+                f"Only {available_stock} units available in stock."
+            )
+
+    # ─────────────────────────────────────────────
+    # UPDATE ITEM
+    # ─────────────────────────────────────────────
     item.quantity = qty
     item.save()
 
     # Recalculate totals
     OrderService._recalculate_totals(cart)
 
-    return render(request, "orders/partials/cart_panel.html", cart_context(cart))
-
+    response = render(request, "orders/partials/cart_panel.html", cart_context(cart))
+    response["HX-Trigger"] = "cartUpdated"
+    return response
 
 # -----------------------------
 # Remove line (HTMX)
@@ -228,7 +330,9 @@ def cart_remove_line(request, item_id):
 
     OrderService._recalculate_totals(cart)
 
-    return render(request, "orders/partials/cart_panel.html", cart_context(cart))
+    response = render(request, "orders/partials/cart_panel.html", cart_context(cart))
+    response["HX-Trigger"] = "cartUpdated"
+    return response
 
 
 # -----------------------------
@@ -257,7 +361,9 @@ def cart_clear(request):
     cart.items.all().delete()
     OrderService._recalculate_totals(cart)
 
-    return render(request, "orders/partials/cart_panel.html", cart_context(cart))
+    response = render(request, "orders/partials/cart_panel.html", cart_context(cart))
+    response["HX-Trigger"] = "cartUpdated"
+    return response
 
 
 # -----------------------------
@@ -1598,7 +1704,4 @@ def cart_quick_add_customer(request):
     except Exception as e:
         logger.exception(f"Error quick-adding customer: {e}")
         return _render_cart(request, f'Could not create customer: {str(e)}', 'error')
-
-
-
 
