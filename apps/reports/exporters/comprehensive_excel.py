@@ -178,7 +178,6 @@ class ComprehensiveExcelExporter:
             ("Adjustments Decrease",    inv.get("total_adjustments_decrease", 0)),
             ("Total Quantity Sold",     inv.get("total_quantity_sold", 0)),
             ("Expected Closing",        inv.get("total_expected_closing", 0)),
-            ("Actual Closing",          inv.get("total_actual_closing", 0)),
             ("Total Variance",          inv.get("total_variance", 0)),
             ("Total Stock Value",       inv.get("total_stock_value", Decimal("0.00"))),
         ]
@@ -196,7 +195,7 @@ class ComprehensiveExcelExporter:
         inv_hdr_row = 14
         inv_hdrs = ["Product Name", "Variant", "SKU", "Category",
                     "Opening Stock", "Adj (+)", "Adj (-)", "Sales",
-                    "Expected Closing", "Actual Closing", "Stock Value (₦)"]
+                    "Expected Closing", "Unit Price (₦)", "Stock Value (₦)"]
         # use cols A-K for inventory table (expand to 11 cols)
         _hdr_row(ws, inv_hdr_row, inv_hdrs, start_col=1)
 
@@ -214,7 +213,7 @@ class ComprehensiveExcelExporter:
                 p.get("adjustments_decrease", 0),
                 p.get("sales", 0),
                 p.get("expected_closing", 0),
-                p.get("actual_closing", 0),
+                p.get("unit_price", Decimal("0.00")),
                 p.get("stock_value", Decimal("0.00")),
             ]
             _data_row(ws, r, row_data, start_col=1, alt=alt)
@@ -227,7 +226,7 @@ class ComprehensiveExcelExporter:
                 ["", "", "", "",
                  "total_opening_stock", None, None,
                  "total_quantity_sold", "total_expected_closing",
-                 "total_actual_closing", "total_stock_value"],
+                 None, "total_stock_value"],
                 start=1
             ):
                 if key and key in inv:

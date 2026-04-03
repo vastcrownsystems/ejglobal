@@ -84,7 +84,7 @@ class ComprehensiveReportService:
             qty=Coalesce(Sum("quantity"), 0),
         )
 
-        # Payment breakdown from OrderPayment
+        # Payment breakdown from OrderPayment records (cash/card/transfer collected)
         payments = OrderPayment.objects.filter(
             order__status="COMPLETED",
             order__completed_at__date__range=(date_from, date_to),
@@ -92,9 +92,28 @@ class ComprehensiveReportService:
 
         pay_map = {p["payment_method"]: p["total"] for p in payments}
 
+        # Credit sales: total value of orders marked as CREDIT sale type
         credit_total = orders.filter(sale_type="CREDIT").aggregate(
             t=Coalesce(Sum("total"), Decimal("0.00"))
         )["t"]
+
+        # For card/transfer: also check orders whose *only* payment method is card/transfer
+        # (in case OrderPayment records exist but weren't captured above)
+        for method in ("CARD", "TRANSFER"):
+            if pay_map.get(method, Decimal("0.00")) == Decimal("0.00"):
+                # Fall back: sum totals of non-credit orders where all payments use this method
+                method_total = (
+                    Order.objects.filter(
+                        status="COMPLETED",
+                        completed_at__date__range=(date_from, date_to),
+                        sale_type="CASH",
+                        order_payments__payment_method=method,
+                    )
+                    .distinct()
+                    .aggregate(t=Coalesce(Sum("total"), Decimal("0.00")))["t"]
+                )
+                if method_total > Decimal("0.00"):
+                    pay_map[method] = method_total
 
         net_sales = agg["gross_sales"] - agg["total_discounts"]
 
@@ -279,6 +298,14 @@ class ComprehensiveReportService:
             variance         = actual_closing - expected_closing
             stock_value      = Decimal(str(actual_closing)) * variant.cost_price
 
+            # Standard unit price — try common field names in order
+            unit_price = (
+                getattr(variant, "price", None)
+                or getattr(variant, "selling_price", None)
+                or getattr(variant, "unit_price", None)
+                or Decimal("0.00")
+            )
+
             products.append({
                 "product_name":          variant.product.name,
                 "variant_name":          variant.name or "Standard",
@@ -289,7 +316,7 @@ class ComprehensiveReportService:
                 "adjustments_decrease":  adj_dec,
                 "sales":                 sales,
                 "expected_closing":      expected_closing,
-                "actual_closing":        actual_closing,
+                "unit_price":            _dec(unit_price),
                 "variance":              variance,
                 "stock_value":           stock_value,
             })
@@ -302,7 +329,6 @@ class ComprehensiveReportService:
             "total_adjustments_decrease":  sum(p["adjustments_decrease"] for p in products),
             "total_quantity_sold":         sum(p["sales"] for p in products),
             "total_expected_closing":      sum(p["expected_closing"] for p in products),
-            "total_actual_closing":        sum(p["actual_closing"] for p in products),
             "total_variance":              sum(p["variance"] for p in products),
             "total_stock_value":           sum((p["stock_value"] for p in products), Decimal("0.00")),
             "products":                    products,
