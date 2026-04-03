@@ -1,0 +1,383 @@
+<!-- apps/customers/templates/customers/salesperson_detail.html -->
+
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ sales_person.full_name }} - Sales Person{% endblock %}
+
+{% block content %}
+<div class="sp-detail-page">
+
+    <!-- Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <a href="{% url 'customers:salesperson_list' %}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Sales Persons
+            </a>
+            <div class="sp-hero">
+                <div class="sp-hero-avatar">{{ sales_person.full_name|slice:":2"|upper }}</div>
+                <div>
+                    <h1>{{ sales_person.full_name }}</h1>
+                    <div class="sp-meta">
+                        <span class="emp-id-badge">{{ sales_person.employee_id|default:"No ID" }}</span>
+                        {% if sales_person.is_active %}
+                            <span class="status-badge active"><i class="fas fa-circle"></i> Active</span>
+                        {% else %}
+                            <span class="status-badge inactive"><i class="fas fa-circle"></i> Inactive</span>
+                        {% endif %}
+                        {% if sales_person.user %}
+                            <span class="user-badge"><i class="fas fa-link"></i> {{ sales_person.user.username }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'customers:salesperson_edit' sales_person.pk %}" class="btn-secondary">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+            {% if sales_person.is_active %}
+            <button class="btn-danger"
+                    onclick="confirmDeactivate({{ sales_person.pk }}, '{{ sales_person.full_name|escapejs }}', {{ stats.total_customers|default:0 }})">
+                <i class="fas fa-user-slash"></i> Deactivate
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.total_customers|default:0 }}</div>
+                <div class="stat-label">Customers</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="fas fa-money-bill-wave"></i></div>
+            <div class="stat-content">
+                <div class="stat-value">₦{{ stats.total_revenue|default:0|floatformat:2 }}</div>
+                <div class="stat-label">Portfolio Revenue</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon purple"><i class="fas fa-shopping-bag"></i></div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.total_orders|default:0 }}</div>
+                <div class="stat-label">Total Orders</div>
+            </div>
+        </div>
+        <div class="stat-card {% if total_outstanding > 0 %}stat-card-warn{% endif %}">
+            <div class="stat-icon orange"><i class="fas fa-receipt"></i></div>
+            <div class="stat-content">
+                <div class="stat-value {% if total_outstanding > 0 %}val-warn{% endif %}">
+                    ₦{{ total_outstanding|default:0|floatformat:2 }}
+                </div>
+                <div class="stat-label">Outstanding Credit</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Two-column layout -->
+    <div class="detail-grid">
+
+        <!-- Contact & Info Card -->
+        <div class="info-card">
+            <h3><i class="fas fa-address-card"></i> Contact Information</h3>
+            <div class="info-rows">
+                {% if sales_person.phone %}
+                <div class="info-row">
+                    <div class="info-label">Phone</div>
+                    <div class="info-value">
+                        <i class="fas fa-phone"></i>
+                        <a href="tel:{{ sales_person.phone }}">{{ sales_person.phone }}</a>
+                    </div>
+                </div>
+                {% endif %}
+                {% if sales_person.email %}
+                <div class="info-row">
+                    <div class="info-label">Email</div>
+                    <div class="info-value">
+                        <i class="fas fa-envelope"></i>
+                        <a href="mailto:{{ sales_person.email }}">{{ sales_person.email }}</a>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="info-row">
+                    <div class="info-label">Employee ID</div>
+                    <div class="info-value">
+                        <i class="fas fa-id-badge"></i>
+                        <span class="mono">{{ sales_person.employee_id|default:"—" }}</span>
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">System User</div>
+                    <div class="info-value">
+                        <i class="fas fa-user-circle"></i>
+                        {% if sales_person.user %}
+                            {{ sales_person.user.username }}
+                            {% if sales_person.user.get_full_name %}({{ sales_person.user.get_full_name }}){% endif %}
+                        {% else %}
+                            <span class="text-muted">Not linked</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Member Since</div>
+                    <div class="info-value">
+                        <i class="fas fa-calendar"></i>
+                        {{ sales_person.created_at|date:"F j, Y" }}
+                        <small class="text-muted">({{ sales_person.created_at|timesince }} ago)</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reassign card -->
+        <div class="info-card">
+            <h3><i class="fas fa-exchange-alt"></i> Reassign Customers</h3>
+            <p class="card-desc">Move all customers from this sales person to another active sales person.</p>
+            <div class="reassign-form">
+                <select id="reassign-target" class="form-select">
+                    <option value="">— Select target sales person —</option>
+                    <!-- Populated by JS -->
+                </select>
+                <button class="btn-primary" onclick="doReassign()">
+                    <i class="fas fa-exchange-alt"></i> Reassign All ({{ stats.total_customers|default:0 }})
+                </button>
+            </div>
+            <p id="reassign-msg" class="reassign-msg"></p>
+        </div>
+
+    </div>
+
+    <!-- Customers Table -->
+    <div class="customers-section">
+        <div class="section-header">
+            <h2><i class="fas fa-users"></i> Assigned Customers ({{ stats.total_customers|default:0 }})</h2>
+            <a href="{% url 'customers:customer_list' %}?sales_person={{ sales_person.pk }}" class="view-all">
+                Open in Customer List <i class="fas fa-external-link-alt"></i>
+            </a>
+        </div>
+
+        <div class="table-wrapper">
+            {% if customers %}
+            <table class="cust-table">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Contact</th>
+                        <th class="text-center">Type</th>
+                        <th class="text-center">Orders</th>
+                        <th class="text-right">Total Spent</th>
+                        {% if can_manage_credit %}<th class="text-right">Outstanding</th>{% endif %}
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for customer in customers %}
+                    <tr>
+                        <td>
+                            <div class="cust-info">
+                                <div class="cust-avatar">{{ customer.full_name|slice:":2"|upper }}</div>
+                                <div>
+                                    <a href="{% url 'customers:customer_detail' customer.pk %}" class="cust-name">
+                                        {{ customer.full_name }}
+                                    </a>
+                                    <div class="cust-number">{{ customer.customer_number }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="contact-col">
+                                {% if customer.phone %}<div class="contact-item"><i class="fas fa-phone"></i> {{ customer.phone }}</div>{% endif %}
+                                {% if customer.email %}<div class="contact-item"><i class="fas fa-envelope"></i> {{ customer.email }}</div>{% endif %}
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge badge-{{ customer.customer_type|lower }}">{{ customer.get_customer_type_display }}</span>
+                        </td>
+                        <td class="text-center"><strong>{{ customer.total_orders }}</strong></td>
+                        <td class="text-right"><strong class="amount">₦{{ customer.total_spent|floatformat:2 }}</strong></td>
+                        {% if can_manage_credit %}
+                        <td class="text-right {% if customer.total_credit_outstanding > 0 %}val-warn{% endif %}">
+                            {% if customer.total_credit_outstanding > 0 %}₦{{ customer.total_credit_outstanding|floatformat:2 }}{% else %}—{% endif %}
+                        </td>
+                        {% endif %}
+                        <td class="text-center">
+                            <div class="action-buttons">
+                                <a href="{% url 'customers:customer_detail' customer.pk %}" class="btn-icon" title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'customers:customer_edit' customer.pk %}" class="btn-icon" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fas fa-users"></i></div>
+                <h3>No customers assigned</h3>
+                <p>Customers can be assigned to this sales person through the customer create/edit form.</p>
+                <a href="{% url 'customers:customer_list' %}" class="btn-secondary">Browse Customers</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Hidden deactivate form -->
+<form id="deactivate-form" method="post" action="{% url 'customers:salesperson_delete' sales_person.pk %}" style="display:none">{% csrf_token %}</form>
+
+<style>
+    .sp-detail-page { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; gap: 1rem; }
+    .back-link { display: inline-flex; align-items: center; gap: 0.5rem; color: #666; text-decoration: none; margin-bottom: 1rem; font-size: 0.875rem; }
+    .back-link:hover { color: #0033A0; }
+    .sp-hero { display: flex; align-items: center; gap: 1.25rem; }
+    .sp-hero-avatar { width: 68px; height: 68px; background: linear-gradient(135deg, #10B981, #059669); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.5rem; flex-shrink: 0; }
+    .sp-hero h1 { margin: 0 0 0.5rem; font-size: 1.75rem; color: #1A1A1A; }
+    .sp-meta { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .emp-id-badge { font-family: monospace; font-size: 0.8125rem; background: #EFF6FF; color: #0033A0; padding: 3px 10px; border-radius: 6px; }
+    .status-badge { font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 0.35rem; }
+    .status-badge i { font-size: 0.5rem; }
+    .status-badge.active { background: #D1FAE5; color: #065F46; }
+    .status-badge.inactive { background: #F3F4F6; color: #6B7280; }
+    .user-badge { font-size: 0.75rem; background: #FEF3C7; color: #92400E; padding: 3px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 0.35rem; }
+    .header-actions { display: flex; gap: 0.75rem; flex-shrink: 0; }
+    .btn-secondary { padding: 0.75rem 1.25rem; background: #F5F5F5; color: #666; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s; border: none; cursor: pointer; }
+    .btn-secondary:hover { background: #E8E8E8; color: #1A1A1A; }
+    .btn-primary { padding: 0.75rem 1.25rem; background: #0033A0; color: white; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s; border: none; cursor: pointer; }
+    .btn-primary:hover { background: #0047D1; }
+    .btn-danger { padding: 0.75rem 1.25rem; background: #FEE2E2; color: #991B1B; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s; }
+    .btn-danger:hover { background: #EF4444; color: white; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
+    .stat-card { background: white; border: 1px solid #E8E8E8; border-radius: 12px; padding: 1.5rem; display: flex; gap: 1rem; }
+    .stat-card-warn { border-color: #FCD34D; }
+    .stat-icon { width: 56px; height: 56px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; flex-shrink: 0; }
+    .stat-icon.blue { background: linear-gradient(135deg, #0033A0, #0047D1); }
+    .stat-icon.green { background: linear-gradient(135deg, #10B981, #059669); }
+    .stat-icon.purple { background: linear-gradient(135deg, #8B5CF6, #7C3AED); }
+    .stat-icon.orange { background: linear-gradient(135deg, #F59E0B, #D97706); }
+    .stat-value { font-size: 1.5rem; font-weight: 800; color: #1A1A1A; margin-bottom: 0.25rem; }
+    .stat-label { font-size: 0.875rem; color: #666; }
+    .val-warn { color: #D97706; }
+
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+    .info-card { background: white; border: 1px solid #E8E8E8; border-radius: 12px; padding: 1.5rem; }
+    .info-card h3 { margin: 0 0 1.25rem; font-size: 1.0625rem; display: flex; align-items: center; gap: 0.5rem; padding-bottom: 1rem; border-bottom: 2px solid #F5F5F5; }
+    .info-rows { display: flex; flex-direction: column; gap: 0; }
+    .info-row { display: flex; align-items: center; padding: 0.875rem 0; border-bottom: 1px solid #F5F5F5; gap: 1rem; }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { font-size: 0.8125rem; color: #999; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; min-width: 110px; }
+    .info-value { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9375rem; color: #1A1A1A; flex: 1; }
+    .info-value i { color: #999; width: 14px; font-size: 0.875rem; }
+    .info-value a { color: #0033A0; text-decoration: none; }
+    .info-value a:hover { text-decoration: underline; }
+    .mono { font-family: monospace; }
+    .text-muted { color: #999; }
+    .card-desc { font-size: 0.875rem; color: #666; margin-bottom: 1.25rem; }
+    .reassign-form { display: flex; flex-direction: column; gap: 0.75rem; }
+    .form-select { padding: 0.875rem 1rem; border: 1px solid #E8E8E8; border-radius: 8px; font-size: 0.9375rem; font-family: inherit; width: 100%; }
+    .form-select:focus { outline: none; border-color: #0033A0; }
+    .reassign-msg { font-size: 0.875rem; margin-top: 0.5rem; min-height: 1.25rem; }
+    .reassign-msg.success { color: #059669; }
+    .reassign-msg.error { color: #EF4444; }
+
+    .customers-section { background: white; border: 1px solid #E8E8E8; border-radius: 12px; overflow: hidden; }
+    .section-header { padding: 1.25rem 1.5rem; border-bottom: 2px solid #F5F5F5; display: flex; justify-content: space-between; align-items: center; }
+    .section-header h2 { margin: 0; font-size: 1.125rem; display: flex; align-items: center; gap: 0.5rem; }
+    .view-all { color: #0033A0; text-decoration: none; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; gap: 0.35rem; }
+    .view-all:hover { text-decoration: underline; }
+    .table-wrapper { overflow-x: auto; }
+    .cust-table { width: 100%; border-collapse: collapse; }
+    .cust-table th { background: #FAFAFA; padding: 1rem 1.25rem; text-align: left; font-weight: 700; font-size: 0.8125rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid #E8E8E8; white-space: nowrap; }
+    .cust-table td { padding: 1.25rem; border-bottom: 1px solid #F5F5F5; vertical-align: middle; }
+    .cust-table tr:hover { background: #FAFAFA; }
+    .cust-info { display: flex; align-items: center; gap: 0.875rem; }
+    .cust-avatar { width: 40px; height: 40px; background: linear-gradient(135deg, #0033A0, #0047D1); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; flex-shrink: 0; }
+    .cust-name { font-weight: 700; color: #1A1A1A; text-decoration: none; display: block; margin-bottom: 0.2rem; }
+    .cust-name:hover { color: #0033A0; }
+    .cust-number { font-size: 0.75rem; color: #999; font-family: monospace; }
+    .contact-col { display: flex; flex-direction: column; gap: 0.2rem; }
+    .contact-item { font-size: 0.8125rem; color: #666; display: flex; align-items: center; gap: 0.4rem; }
+    .contact-item i { color: #999; width: 12px; font-size: 0.75rem; }
+    .badge { padding: 0.3rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; display: inline-block; }
+    .badge-individual { background: #E0E7FF; color: #4F46E5; }
+    .badge-retailer { background: #FEF3C7; color: #D97706; }
+    .badge-distributor { background: #EDE9FE; color: #6D28D9; }
+    .amount { color: #10B981; font-family: monospace; }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .action-buttons { display: flex; gap: 0.5rem; justify-content: center; }
+    .btn-icon { width: 34px; height: 34px; background: #F5F5F5; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #666; text-decoration: none; border: none; cursor: pointer; transition: all 0.2s; }
+    .btn-icon:hover { background: #0033A0; color: white; }
+    .empty-state { text-align: center; padding: 3rem 2rem; }
+    .empty-icon { width: 80px; height: 80px; background: #F5F5F5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; }
+    .empty-icon i { font-size: 2.5rem; color: #D0D0D0; }
+    .empty-state h3 { margin: 0 0 0.5rem; }
+    .empty-state p { margin: 0 0 1.5rem; color: #666; font-size: 0.9375rem; }
+
+    @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 768px) {
+        .sp-detail-page { padding: 1rem; }
+        .stats-grid { grid-template-columns: 1fr 1fr; }
+        .detail-grid { grid-template-columns: 1fr; }
+        .page-header { flex-direction: column; }
+        .sp-hero { flex-direction: row; }
+        .cust-table { min-width: 800px; }
+    }
+</style>
+
+<script>
+// Load active sales persons for reassign dropdown (exclude self)
+fetch('{% url "customers:salesperson_search_api" %}')
+    .then(r => r.json())
+    .then(data => {
+        const sel = document.getElementById('reassign-target');
+        data.results
+            .filter(sp => sp.id !== {{ sales_person.pk }})
+            .forEach(sp => {
+                const opt = document.createElement('option');
+                opt.value = sp.id;
+                opt.textContent = sp.full_name + (sp.employee_id ? ' (' + sp.employee_id + ')' : '');
+                sel.appendChild(opt);
+            });
+    }).catch(() => {});
+
+function doReassign() {
+    const toId = document.getElementById('reassign-target').value;
+    const msg = document.getElementById('reassign-msg');
+    if (!toId) { msg.textContent = 'Please select a target sales person.'; msg.className = 'reassign-msg error'; return; }
+    if (!confirm('Reassign all {{ stats.total_customers|default:0 }} customer(s) to the selected sales person?')) return;
+    fetch('{% url "customers:salesperson_reassign" sales_person.pk %}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({ to_id: parseInt(toId) })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            msg.textContent = data.message;
+            msg.className = 'reassign-msg success';
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            msg.textContent = data.error;
+            msg.className = 'reassign-msg error';
+        }
+    }).catch(() => { msg.textContent = 'An error occurred.'; msg.className = 'reassign-msg error'; });
+}
+
+function confirmDeactivate(pk, name, customerCount) {
+    let m = `Deactivate "${name}"?`;
+    if (customerCount > 0) m += `\n\n${customerCount} customer(s) will be unassigned. Their records are NOT deleted.`;
+    if (confirm(m)) document.getElementById('deactivate-form').submit();
+}
+</script>
+{% endblock %}

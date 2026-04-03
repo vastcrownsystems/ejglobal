@@ -71,8 +71,8 @@
                         <label for="name">Customer Name *</label>
                         <input
                             type="text"
-                            name="name"
-                            id="name"
+                            name="full_name"
+                            id="full_name"
                             class="form-input"
                             required
                             placeholder="Full Name"
@@ -101,12 +101,21 @@
                         >
                     </div>
 
-                    <div class="form-group full-width">
+                    <div class="form-group">
                         <label for="customer_type">Customer Type</label>
                         <select name="customer_type" id="customer_type" class="form-select">
                             <option value="INDIVIDUAL">Individual</option>
-                            <option value="BUSINESS">Business/Corporate</option>
+                            <option value="RETAILER">Retailer</option>
+                            <option value="DISTRIBUTOR">Distributor</option>
                         </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modal_sales_person_id">Sales Person</label>
+                        <select name="sales_person_id" id="modal_sales_person_id" class="form-select">
+                            <option value="">— None —</option>
+                        </select>
+                        <small class="form-hint" style="font-size:0.75rem;color:#999">Loaded from server</small>
                     </div>
 
                     <div class="form-group full-width">
@@ -537,4 +546,21 @@
     function closeCustomerModal() {
         document.getElementById('customerModal').remove();
     }
+
+    // Load active sales persons into the modal dropdown
+    (function loadSalesPersons() {
+        fetch('{% url "customers:salesperson_search_api" %}')
+            .then(r => r.json())
+            .then(data => {
+                const sel = document.getElementById('modal_sales_person_id');
+                if (!sel) return;
+                data.results.forEach(sp => {
+                    const opt = document.createElement('option');
+                    opt.value = sp.id;
+                    opt.textContent = sp.full_name + (sp.employee_id ? ' (' + sp.employee_id + ')' : '');
+                    sel.appendChild(opt);
+                });
+            })
+            .catch(() => {});
+    })();
 </script>

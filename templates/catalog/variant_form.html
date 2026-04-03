@@ -228,6 +228,40 @@
         color: var(--text-primary);
     }
 
+    /* ── Pricing section ── */
+    .price-info-box {
+        background: rgba(0, 51, 160, 0.06);
+        border-left: 4px solid var(--primary, #0033A0);
+        border-radius: 8px;
+        padding: 0.875rem 1.25rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-start;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+    .price-info-box i { color: var(--primary, #0033A0); font-size: 1.1rem; margin-top: 0.1rem; flex-shrink: 0; }
+    .price-info-box strong { display: block; color: var(--text-primary); margin-bottom: 0.2rem; }
+    .price-info-box p { margin: 0; line-height: 1.5; }
+
+    .price-role-badge {
+        display: inline-block;
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 20px;
+        margin-left: 0.5rem;
+        vertical-align: middle;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .price-role-individual  { background: #E0E7FF; color: #3730A3; }
+    .price-role-retailer    { background: #FEF3C7; color: #92400E; }
+    .price-role-distributor { background: #EDE9FE; color: #5B21B6; }
+
+    .fallback-note { font-size: 0.82rem; color: #999; font-style: italic; }
+
     /* Profit Calculator */
     .profit-calculator {
         background: linear-gradient(135deg, rgba(127, 186, 0, 0.1) 0%, rgba(107, 165, 0, 0.1) 100%);
@@ -517,7 +551,7 @@
                     <div class="form-help-text" style="margin-bottom: 1rem;">
                         Select the attributes that define this variant (e.g., Size: Small, Color: Red)
                     </div>
-                    
+
                     <div class="attribute-groups">
                         {% for attribute, values in form.attribute_groups.items %}
                         <div class="attribute-group">
@@ -527,9 +561,9 @@
                             <div class="attribute-values">
                                 {% for value in values %}
                                 <div class="attribute-value-item">
-                                    <input type="checkbox" 
-                                           name="attribute_values" 
-                                           value="{{ value.id }}" 
+                                    <input type="checkbox"
+                                           name="attribute_values"
+                                           value="{{ value.id }}"
                                            id="attr_{{ value.id }}"
                                            {% if variant and value in variant.attribute_values.all %}checked{% endif %}>
                                     <label for="attr_{{ value.id }}" class="attribute-value-label">
@@ -553,46 +587,51 @@
             <div class="form-section">
                 <h2 class="section-title">Pricing</h2>
 
-<!--                <div class="form-grid-2">-->
+                <div class="price-info-box">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Price fallback rule</strong>
+                        <p>If Retailer or Distributor price is left at zero, the variant's standard price is used. There is no product-level fallback.</p>
+                    </div>
+                </div>
+
+                <!-- Standard price: full width -->
+                <div class="form-group">
+                    <label class="form-label" for="id_price">
+                        Standard Price (₦) <span class="required">*</span>
+                        <span class="price-role-badge price-role-individual">Individual</span>
+                    </label>
+                    {{ form.price }}
+                    <div class="form-help-text">Price for Individual customers</div>
+                    {% if form.price.errors %}{{ form.price.errors }}{% endif %}
+                </div>
+
+                <!-- Retailer + Distributor side by side -->
+                <div class="form-grid-2">
                     <div class="form-group">
-                        <label class="form-label" for="id_price">
-                            Selling Price (₦) <span class="required">*</span>
+                        <label class="form-label" for="id_retailer_price">
+                            Retailer Price (₦)
+                            <span class="price-role-badge price-role-retailer">Retailer</span>
                         </label>
-                        {{ form.price }}
-                        <div class="form-help-text">Price customers will pay</div>
-                        {% if form.price.errors %}
-                            {{ form.price.errors }}
-                        {% endif %}
+                        {{ form.retailer_price }}
+                        <div class="form-help-text">
+                            <span class="fallback-note" id="v-retailer-note">Leave 0 to use standard price</span>
+                        </div>
+                        {% if form.retailer_price.errors %}{{ form.retailer_price.errors }}{% endif %}
                     </div>
 
-<!--                    <div class="form-group">-->
-<!--                        <label class="form-label" for="id_cost_price">-->
-<!--                            Cost Price (₦)-->
-<!--                        </label>-->
-<!--                        {{ form.cost_price }}-->
-<!--                        <div class="form-help-text">Your cost to produce/purchase</div>-->
-<!--                        {% if form.cost_price.errors %}-->
-<!--                            {{ form.cost_price.errors }}-->
-<!--                        {% endif %}-->
-<!--                    </div>-->
-<!--                </div>-->
-
-<!--                &lt;!&ndash; Profit Calculator &ndash;&gt;-->
-<!--                <div class="profit-calculator">-->
-<!--                    <div class="profit-calc-title">-->
-<!--                        <i class="fas fa-calculator"></i> Profit Calculation-->
-<!--                    </div>-->
-<!--                    <div class="profit-stats">-->
-<!--                        <div class="profit-stat">-->
-<!--                            <div class="profit-stat-label">Profit Amount</div>-->
-<!--                            <div class="profit-stat-value" id="profitAmount">₦0.00</div>-->
-<!--                        </div>-->
-<!--                        <div class="profit-stat">-->
-<!--                            <div class="profit-stat-label">Profit Margin</div>-->
-<!--                            <div class="profit-stat-value" id="profitMargin">0%</div>-->
-<!--                        </div>-->
-<!--                    </div>-->
-<!--                </div>-->
+                    <div class="form-group">
+                        <label class="form-label" for="id_distributor_price">
+                            Distributor Price (₦)
+                            <span class="price-role-badge price-role-distributor">Distributor</span>
+                        </label>
+                        {{ form.distributor_price }}
+                        <div class="form-help-text">
+                            <span class="fallback-note" id="v-distributor-note">Leave 0 to use standard price</span>
+                        </div>
+                        {% if form.distributor_price.errors %}{{ form.distributor_price.errors }}{% endif %}
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -699,36 +738,23 @@
 
 {% block extra_js %}
 <script>
-    // Profit Calculator
-    const priceInput = document.getElementById('id_price');
-    const costInput = document.getElementById('id_cost_price');
-    const profitAmount = document.getElementById('profitAmount');
-    const profitMargin = document.getElementById('profitMargin');
+    // Update fallback hint notes as user types
+    const vPrice  = document.getElementById('id_price');
+    const vRetail = document.getElementById('id_retailer_price');
+    const vDist   = document.getElementById('id_distributor_price');
 
-    function calculateProfit() {
-        const price = parseFloat(priceInput.value) || 0;
-        const cost = parseFloat(costInput.value) || 0;
-        
-        const profit = price - cost;
-        const margin = cost > 0 ? ((profit / cost) * 100) : 0;
-        
-        profitAmount.textContent = `₦${profit.toFixed(2)}`;
-        profitMargin.textContent = `${margin.toFixed(1)}%`;
-        
-        // Color code the margin
-        if (margin > 50) {
-            profitMargin.style.color = 'var(--accent-green)';
-        } else if (margin > 20) {
-            profitMargin.style.color = 'var(--accent-orange)';
-        } else {
-            profitMargin.style.color = 'var(--danger)';
-        }
+    function updateNotes() {
+        const price  = parseFloat(vPrice?.value)  || 0;
+        const retail = parseFloat(vRetail?.value) || 0;
+        const dist   = parseFloat(vDist?.value)   || 0;
+
+        const rNote = document.getElementById('v-retailer-note');
+        const dNote = document.getElementById('v-distributor-note');
+        if (rNote) rNote.textContent = retail > 0 ? '' : 'Using standard price (₦' + price.toFixed(2) + ')';
+        if (dNote) dNote.textContent = dist   > 0 ? '' : 'Using standard price (₦' + price.toFixed(2) + ')';
     }
 
-    priceInput.addEventListener('input', calculateProfit);
-    costInput.addEventListener('input', calculateProfit);
-    
-    // Calculate on page load
-    calculateProfit();
+    [vPrice, vRetail, vDist].forEach(el => el && el.addEventListener('input', updateNotes));
+    updateNotes();
 </script>
 {% endblock %}

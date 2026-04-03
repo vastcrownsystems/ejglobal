@@ -315,6 +315,72 @@
         border-color: var(--text-secondary);
     }
 
+    /* ── Pricing section ── */
+    .price-info-box {
+        background: rgba(0, 51, 160, 0.06);
+        border-left: 4px solid var(--primary, #0033A0);
+        border-radius: 8px;
+        padding: 0.875rem 1.25rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-start;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+    .price-info-box i { color: var(--primary, #0033A0); font-size: 1.1rem; margin-top: 0.1rem; flex-shrink: 0; }
+    .price-info-box strong { display: block; color: var(--text-primary); margin-bottom: 0.2rem; }
+    .price-info-box p { margin: 0; line-height: 1.5; }
+
+    .price-role-badge {
+        display: inline-block;
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 20px;
+        margin-left: 0.5rem;
+        vertical-align: middle;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .price-role-individual { background: #E0E7FF; color: #3730A3; }
+    .price-role-retailer   { background: #FEF3C7; color: #92400E; }
+    .price-role-distributor { background: #EDE9FE; color: #5B21B6; }
+
+    .fallback-note { font-size: 0.82rem; color: #999; font-style: italic; }
+
+    .price-summary {
+        background: var(--bg-main, #F8F9FA);
+        border: 1px solid var(--border, #E8E8E8);
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        margin-top: 1rem;
+    }
+    .price-summary-title {
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .price-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+    }
+    .price-summary-item {
+        text-align: center;
+        background: white;
+        border: 1px solid var(--border, #E8E8E8);
+        border-radius: 8px;
+        padding: 0.75rem;
+    }
+    .ps-label { display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem; }
+    .ps-value { display: block; font-size: 1.25rem; font-weight: 700; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; }
+    .ps-source { display: block; font-size: 0.7rem; color: #999; font-style: italic; margin-top: 0.2rem; }
+
     /* Info Box */
     .info-box {
         background: rgba(0, 191, 179, 0.1);
@@ -471,15 +537,73 @@
             <div class="form-section">
                 <h2 class="section-title">Pricing</h2>
 
+                <div class="price-info-box">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Price fallback rules</strong>
+                        <p>Retailer and Distributor prices fall back to Base Price if left empty or zero. Variant-level prices override product-level prices.</p>
+                    </div>
+                </div>
+
+                <!-- Base Price: full width, prominent -->
                 <div class="form-group">
                     <label class="form-label" for="id_base_price">
                         Base Price (₦) <span class="required">*</span>
+                        <span class="price-role-badge price-role-individual">Individual / Default</span>
                     </label>
                     {{ form.base_price }}
-                    <div class="form-help-text">Default price if no variants or variant has no specific price</div>
-                    {% if form.base_price.errors %}
-                        {{ form.base_price.errors }}
-                    {% endif %}
+                    <div class="form-help-text">Standard price for individual customers. Used as fallback when retailer or distributor prices are not set.</div>
+                    {% if form.base_price.errors %}{{ form.base_price.errors }}{% endif %}
+                </div>
+
+                <!-- Retailer & Distributor side by side -->
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="id_retailer_price">
+                            Retailer Price (₦)
+                            <span class="price-role-badge price-role-retailer">Retailer</span>
+                        </label>
+                        {{ form.retailer_price }}
+                        <div class="form-help-text">
+                            Price for <strong>Retailer</strong> customers.
+                            <span class="fallback-note" id="retailer-fallback-note"></span>
+                        </div>
+                        {% if form.retailer_price.errors %}{{ form.retailer_price.errors }}{% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="id_distributor_price">
+                            Distributor Price (₦)
+                            <span class="price-role-badge price-role-distributor">Distributor</span>
+                        </label>
+                        {{ form.distributor_price }}
+                        <div class="form-help-text">
+                            Price for <strong>Distributor</strong> customers.
+                            <span class="fallback-note" id="distributor-fallback-note"></span>
+                        </div>
+                        {% if form.distributor_price.errors %}{{ form.distributor_price.errors }}{% endif %}
+                    </div>
+                </div>
+
+                <!-- Live price summary -->
+                <div class="price-summary" id="price-summary">
+                    <div class="price-summary-title"><i class="fas fa-tags"></i> Effective prices</div>
+                    <div class="price-summary-grid">
+                        <div class="price-summary-item">
+                            <span class="ps-label">Individual</span>
+                            <span class="ps-value" id="ps-individual">₦0.00</span>
+                        </div>
+                        <div class="price-summary-item">
+                            <span class="ps-label">Retailer</span>
+                            <span class="ps-value" id="ps-retailer">₦0.00</span>
+                            <span class="ps-source" id="ps-retailer-src"></span>
+                        </div>
+                        <div class="price-summary-item">
+                            <span class="ps-label">Distributor</span>
+                            <span class="ps-value" id="ps-distributor">₦0.00</span>
+                            <span class="ps-source" id="ps-distributor-src"></span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -563,6 +687,43 @@
 
 {% block extra_js %}
 <script>
+    // ── Product-level pricing: fallback preview ──
+    const baseInput   = document.getElementById('id_base_price');
+    const retailInput = document.getElementById('id_retailer_price');
+    const distInput   = document.getElementById('id_distributor_price');
+
+    function fmt(val) {
+        return '₦' + parseFloat(val || 0).toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    function updatePriceSummary() {
+        const base   = parseFloat(baseInput.value)   || 0;
+        const retail = parseFloat(retailInput.value) || 0;
+        const dist   = parseFloat(distInput.value)   || 0;
+
+        const effectiveRetail = retail > 0 ? retail : base;
+        const effectiveDist   = dist   > 0 ? dist   : base;
+
+        document.getElementById('ps-individual').textContent  = fmt(base);
+        document.getElementById('ps-retailer').textContent    = fmt(effectiveRetail);
+        document.getElementById('ps-distributor').textContent = fmt(effectiveDist);
+
+        const retailSrc = document.getElementById('ps-retailer-src');
+        const distSrc   = document.getElementById('ps-distributor-src');
+        retailSrc.textContent = retail > 0 ? '' : '(using base price)';
+        distSrc.textContent   = dist   > 0 ? '' : '(using base price)';
+
+        const retailNote = document.getElementById('retailer-fallback-note');
+        const distNote   = document.getElementById('distributor-fallback-note');
+        if (retailNote) retailNote.textContent = retail > 0 ? '' : 'Leave 0 to use base price (₦' + base.toFixed(2) + ')';
+        if (distNote)   distNote.textContent   = dist   > 0 ? '' : 'Leave 0 to use base price (₦' + base.toFixed(2) + ')';
+    }
+
+    if (baseInput)   { baseInput.addEventListener('input', updatePriceSummary); }
+    if (retailInput) { retailInput.addEventListener('input', updatePriceSummary); }
+    if (distInput)   { distInput.addEventListener('input', updatePriceSummary); }
+    updatePriceSummary();
+
     // Image preview
     const imageInput = document.getElementById('id_image');
     if (imageInput) {

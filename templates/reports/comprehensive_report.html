@@ -1,0 +1,222 @@
+<!-- apps/reports/templates/reports/comprehensive_report.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Comprehensive Report{% endblock %}
+{% block page_title %}Comprehensive Report{% endblock %}
+
+{% block content %}
+<div class="cr-page">
+
+    <!-- Header -->
+    <div class="cr-header">
+        <div>
+            <h1><i class="fas fa-file-excel"></i> Comprehensive Business Report</h1>
+            <p>Full breakdown — Sales, Inventory, Customers, Cashiers, Credit. Downloads as Excel.</p>
+        </div>
+        <a href="{% url 'reports:dashboard' %}" class="cr-btn-back">
+            <i class="fas fa-arrow-left"></i> Reports Dashboard
+        </a>
+    </div>
+
+    <!-- Preview Stats (current month) -->
+    {% if preview %}
+    <div class="cr-preview-grid">
+        <div class="cr-stat">
+            <div class="cr-stat-val">{{ preview.total_orders }}</div>
+            <div class="cr-stat-lbl">Orders (this month)</div>
+        </div>
+        <div class="cr-stat cr-stat-green">
+            <div class="cr-stat-val">₦{{ preview.total_revenue|floatformat:0 }}</div>
+            <div class="cr-stat-lbl">Revenue (this month)</div>
+        </div>
+        <div class="cr-stat">
+            <div class="cr-stat-val">{{ preview.total_customers }}</div>
+            <div class="cr-stat-lbl">Customers Served</div>
+        </div>
+        <div class="cr-stat">
+            <div class="cr-stat-val">{{ preview.items_sold }}</div>
+            <div class="cr-stat-lbl">Items Sold</div>
+        </div>
+        <div class="cr-stat cr-stat-orange">
+            <div class="cr-stat-val">₦{{ preview.credit_sales|floatformat:0 }}</div>
+            <div class="cr-stat-lbl">Credit Sales</div>
+        </div>
+        <div class="cr-stat">
+            <div class="cr-stat-val">{{ preview.products_tracked }}</div>
+            <div class="cr-stat-lbl">Products Tracked</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Download Form -->
+    <div class="cr-form-card">
+        <h2><i class="fas fa-calendar-alt"></i> Select Date Range</h2>
+        <p class="cr-form-desc">The report will include all completed orders within the selected period.</p>
+
+        <form method="post" class="cr-form">
+            {% csrf_token %}
+            <div class="cr-form-row">
+                <div class="cr-form-group">
+                    <label for="date_from">From Date</label>
+                    <input type="date" id="date_from" name="date_from"
+                           value="{{ first_of_month|date:'Y-m-d' }}"
+                           max="{{ today|date:'Y-m-d' }}"
+                           class="cr-input" required>
+                </div>
+                <div class="cr-form-group">
+                    <label for="date_to">To Date</label>
+                    <input type="date" id="date_to" name="date_to"
+                           value="{{ today|date:'Y-m-d' }}"
+                           max="{{ today|date:'Y-m-d' }}"
+                           class="cr-input" required>
+                </div>
+                <div class="cr-form-group cr-form-group-btn">
+                    <button type="submit" class="cr-btn-download">
+                        <i class="fas fa-file-excel"></i>
+                        Download Excel Report
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <!-- Quick presets -->
+        <div class="cr-presets">
+            <span class="cr-preset-lbl">Quick select:</span>
+            <button class="cr-preset" onclick="setRange('today')">Today</button>
+            <button class="cr-preset" onclick="setRange('yesterday')">Yesterday</button>
+            <button class="cr-preset" onclick="setRange('week')">This Week</button>
+            <button class="cr-preset" onclick="setRange('month')">This Month</button>
+            <button class="cr-preset" onclick="setRange('last_month')">Last Month</button>
+        </div>
+    </div>
+
+    <!-- What's inside -->
+    <div class="cr-sheets-grid">
+        <div class="cr-sheet-card">
+            <div class="cr-sheet-icon cr-icon-blue"><i class="fas fa-boxes"></i></div>
+            <h3>Inventory & Sales Detail</h3>
+            <p>Full product stock reconciliation (opening, adjustments, sales, closing) alongside every order line-item with cashier, customer, customer type, sales person, and payment method.</p>
+        </div>
+        <div class="cr-sheet-card">
+            <div class="cr-sheet-icon cr-icon-green"><i class="fas fa-chart-bar"></i></div>
+            <h3>Sales Summary</h3>
+            <p>Total revenue, gross/net sales, discounts, payment breakdown (Cash / Card / Transfer / Credit), customer counts, top products, and daily trend.</p>
+        </div>
+        <div class="cr-sheet-card">
+            <div class="cr-sheet-icon cr-icon-purple"><i class="fas fa-user-clock"></i></div>
+            <h3>Cashier Performance</h3>
+            <p>Per-cashier breakdown of orders, items sold, revenue, and average order value. Plus session-level detail by register and store.</p>
+        </div>
+        <div class="cr-sheet-card">
+            <div class="cr-sheet-icon cr-icon-orange"><i class="fas fa-users"></i></div>
+            <h3>Customer Analysis</h3>
+            <p>Every customer served — their type (Individual / Retailer / Distributor), assigned sales person, order count, items, revenue, and first/last purchase.</p>
+        </div>
+        <div class="cr-sheet-card">
+            <div class="cr-sheet-icon cr-icon-red"><i class="fas fa-credit-card"></i></div>
+            <h3>Credit & Overdue</h3>
+            <p>Credit aging by customer (Current / 1-30 / 31-60 / 61-90 / 90+ days) plus overdue accounts with priority status.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .cr-page { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+    .cr-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2rem;
+        gap: 1rem;
+    }
+    .cr-header h1 { margin: 0 0 0.4rem; font-size: 1.75rem; color: #1A1A1A; display: flex; align-items: center; gap: 0.6rem; }
+    .cr-header h1 i { color: #1D6F42; }
+    .cr-header p { margin: 0; color: #666; font-size: 0.9375rem; }
+    .cr-btn-back { padding: 0.75rem 1.25rem; background: #F5F5F5; color: #555; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
+    .cr-btn-back:hover { background: #E8E8E8; color: #0033A0; }
+
+    /* Preview stats */
+    .cr-preview-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem; margin-bottom: 2rem; }
+    .cr-stat { background: white; border: 1px solid #E8E8E8; border-radius: 10px; padding: 1rem 0.875rem; text-align: center; }
+    .cr-stat-green { border-top: 3px solid #1D6F42; }
+    .cr-stat-orange { border-top: 3px solid #D97706; }
+    .cr-stat-val { font-size: 1.4rem; font-weight: 800; color: #1A1A1A; margin-bottom: 0.25rem; }
+    .cr-stat-lbl { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    /* Form card */
+    .cr-form-card { background: white; border: 1px solid #E8E8E8; border-radius: 14px; padding: 2rem; margin-bottom: 2rem; }
+    .cr-form-card h2 { margin: 0 0 0.5rem; font-size: 1.125rem; color: #1A1A1A; display: flex; align-items: center; gap: 0.5rem; }
+    .cr-form-desc { margin: 0 0 1.5rem; color: #666; font-size: 0.9rem; }
+
+    .cr-form-row { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
+    .cr-form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .cr-form-group label { font-size: 0.8125rem; font-weight: 600; color: #374151; }
+    .cr-input { padding: 0.75rem 1rem; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 0.9375rem; font-family: inherit; transition: border-color 0.2s; min-width: 160px; }
+    .cr-input:focus { outline: none; border-color: #1D6F42; box-shadow: 0 0 0 3px rgba(29,111,66,0.1); }
+    .cr-form-group-btn { margin-left: 0.5rem; }
+    .cr-btn-download { padding: 0.75rem 1.75rem; background: linear-gradient(135deg, #1D6F42, #156035); color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9375rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; white-space: nowrap; }
+    .cr-btn-download:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(29,111,66,0.3); }
+    .cr-btn-download i { font-size: 1rem; }
+
+    .cr-presets { margin-top: 1.25rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .cr-preset-lbl { font-size: 0.8125rem; color: #888; font-weight: 500; }
+    .cr-preset { padding: 0.375rem 0.875rem; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 20px; font-size: 0.8125rem; font-weight: 600; color: #374151; cursor: pointer; transition: all 0.18s; }
+    .cr-preset:hover { background: #0033A0; color: white; border-color: #0033A0; }
+
+    /* Sheet cards */
+    .cr-sheets-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.25rem; }
+    .cr-sheet-card { background: white; border: 1px solid #E8E8E8; border-radius: 12px; padding: 1.5rem 1.25rem; }
+    .cr-sheet-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; margin-bottom: 0.875rem; }
+    .cr-icon-blue   { background: #DBEAFE; color: #1D4ED8; }
+    .cr-icon-green  { background: #D1FAE5; color: #065F46; }
+    .cr-icon-purple { background: #EDE9FE; color: #5B21B6; }
+    .cr-icon-orange { background: #FEF3C7; color: #92400E; }
+    .cr-icon-red    { background: #FEE2E2; color: #991B1B; }
+    .cr-sheet-card h3 { margin: 0 0 0.5rem; font-size: 0.9375rem; color: #1A1A1A; }
+    .cr-sheet-card p { margin: 0; font-size: 0.8125rem; color: #6B7280; line-height: 1.5; }
+
+    @media (max-width: 1024px) { .cr-preview-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 768px) {
+        .cr-page { padding: 1rem; }
+        .cr-preview-grid { grid-template-columns: repeat(2, 1fr); }
+        .cr-header { flex-direction: column; }
+        .cr-form-row { flex-direction: column; }
+        .cr-form-group-btn { margin-left: 0; }
+        .cr-btn-download { width: 100%; justify-content: center; }
+    }
+</style>
+
+<script>
+function setRange(preset) {
+    const from = document.getElementById('date_from');
+    const to   = document.getElementById('date_to');
+    const today = new Date();
+    const fmt = d => d.toISOString().split('T')[0];
+
+    if (preset === 'today') {
+        from.value = fmt(today);
+        to.value   = fmt(today);
+    } else if (preset === 'yesterday') {
+        const y = new Date(today); y.setDate(y.getDate() - 1);
+        from.value = fmt(y);
+        to.value   = fmt(y);
+    } else if (preset === 'week') {
+        const mon = new Date(today);
+        mon.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
+        from.value = fmt(mon);
+        to.value   = fmt(today);
+    } else if (preset === 'month') {
+        const f = new Date(today.getFullYear(), today.getMonth(), 1);
+        from.value = fmt(f);
+        to.value   = fmt(today);
+    } else if (preset === 'last_month') {
+        const f = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const l = new Date(today.getFullYear(), today.getMonth(), 0);
+        from.value = fmt(f);
+        to.value   = fmt(l);
+    }
+}
+</script>
+{% endblock %}

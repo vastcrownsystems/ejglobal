@@ -242,8 +242,20 @@ def cart_add(request, variant_id):
     request.session['current_order_id'] = cart.id
     request.session.modified = True
 
+    # Determine the price based on the customer type already on the cart
+    unit_price = None
+    if cart.customer:
+        from apps.catalog.models import ProductVariant as PV
+        try:
+            _v = PV.objects.select_related('product').get(pk=variant_id)
+            unit_price = _v.get_price_for_customer_type(cart.customer.customer_type)
+        except PV.DoesNotExist:
+            pass
+
+    customer_type = cart.customer.customer_type if cart.customer else 'INDIVIDUAL'
+
     try:
-        OrderService.add_item(cart, variant_id, quantity=1)
+        OrderService.add_item(cart, variant_id, quantity=1, unit_price=unit_price)
     except ValidationError as e:
         return HttpResponseBadRequest(str(e))
 
@@ -253,7 +265,7 @@ def cart_add(request, variant_id):
     response = render(
         request,
         "orders/partials/cart_panel.html",
-        {"order": cart, "items": items}
+        {"order": cart, "items": items, "customer_type": customer_type}
     )
 
     response["HX-Trigger"] = "cartUpdated"
@@ -1226,7 +1238,7 @@ def order_list(request):
         if cashier_filter:
             orders = orders.filter(created_by_id=cashier_filter)
 
-    orders = orders.order_by('-created_at')
+    orders = orders.order_by('-completed_at', '-created_at')
 
     # ✅ PAGINATION FOR ORDER HISTORY
     from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -1256,7 +1268,7 @@ def order_list(request):
     # ===== DAILY BREAKDOWN FOR SELECTED DATE =====
     base_orders = Order.objects.filter(
         status='COMPLETED',
-        created_at__date=selected_date
+        completed_at__date=selected_date
     )
 
     if not is_manager:
@@ -1300,7 +1312,7 @@ def order_list(request):
     # Products sold (all completed orders)
     daily_sales = OrderItem.objects.filter(
         order__status='COMPLETED',
-        order__created_at__date=selected_date
+        order__completed_at__date=selected_date
     )
 
     if not is_manager:
@@ -1474,6 +1486,25 @@ def order_cancel(request, pk):
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
+def _reprice_order_items(order, customer_type):
+    """
+    Reprice every DRAFT order item based on customer_type.
+    Calls variant.get_price_for_customer_type() and saves changed items,
+    then recalculates order totals.
+    """
+    for item in order.items.select_related('variant__product').all():
+        variant = item.variant
+        new_price = variant.get_price_for_customer_type(customer_type)
+        if new_price != item.unit_price:
+            item.unit_price = new_price
+            item.line_total = (new_price * item.quantity) - item.discount_amount
+            item.save(update_fields=['unit_price', 'line_total'])
+
+    from apps.orders.services import OrderService
+    OrderService._recalculate_totals(order)
+
+
+
 def _render_cart(request, message=None, message_type='success'):
     """Render a fresh cart panel — shared by all customer cart views."""
     from apps.orders.models import Order, OrderItem
@@ -1494,11 +1525,16 @@ def _render_cart(request, message=None, message_type='success'):
         except Order.DoesNotExist:
             pass
 
+    customer_type = 'INDIVIDUAL'
+    if order and order.customer:
+        customer_type = order.customer.customer_type or 'INDIVIDUAL'
+
     return render(request, 'orders/partials/cart_panel.html', {
         'order': order,
         'items': items,
         'message': message,
         'message_type': message_type,
+        'customer_type': customer_type,
     })
 
 
@@ -1574,6 +1610,7 @@ def cart_set_customer(request):
             order = get_object_or_404(Order, pk=order_id, status='DRAFT', created_by=request.user)
             order.customer = customer
             order.save(update_fields=['customer'])
+            _reprice_order_items(order, customer.customer_type)
 
         logger.info(f"Customer '{customer.full_name}' linked to order {order.pk}")
         response = _render_cart(request, f'{customer.full_name} added to order', 'success')
@@ -1606,6 +1643,7 @@ def cart_remove_customer(request):
         order = get_object_or_404(Order, pk=order_id, status='DRAFT', created_by=request.user)
         order.customer = None
         order.save(update_fields=['customer'])
+        _reprice_order_items(order, 'INDIVIDUAL')
 
         logger.info(f"Customer removed from order {order.pk}")
         return _render_cart(request, 'Customer removed', 'success')
@@ -1672,9 +1710,12 @@ def cart_quick_add_customer(request):
     from apps.customers.models import Customer
     from apps.orders.models import Order
 
-    full_name  = request.POST.get('full_name', '').strip()
-    phone = request.POST.get('phone', '').strip()
-    email = request.POST.get('email', '').strip()
+    full_name     = request.POST.get('full_name', '').strip()
+    phone         = request.POST.get('phone', '').strip()
+    email         = request.POST.get('email', '').strip()
+    customer_type = request.POST.get('customer_type', 'INDIVIDUAL').strip()
+    if customer_type not in ('INDIVIDUAL', 'RETAILER', 'DISTRIBUTOR'):
+        customer_type = 'INDIVIDUAL'
 
     if not full_name:
         return _render_cart(request, 'Customer name is required', 'error')
@@ -1685,23 +1726,24 @@ def cart_quick_add_customer(request):
             full_name=full_name,
             phone=phone or None,
             email=email or None,
+            customer_type=customer_type,
             is_active=True,
         )
 
-        # Link to current order
+        # Link to current order and reprice items
         order_id = request.session.get('current_order_id')
         if order_id:
             try:
                 order = Order.objects.get(pk=order_id, status='DRAFT', created_by=request.user)
                 order.customer = customer
                 order.save(update_fields=['customer'])
+                _reprice_order_items(order, customer_type)
             except Order.DoesNotExist:
                 pass
 
-        logger.info(f"Quick-added customer '{full_name}' and linked to cart")
+        logger.info(f"Quick-added '{full_name}' ({customer_type}) linked to cart")
         return _render_cart(request, f'{full_name} created and added to order', 'success')
 
     except Exception as e:
         logger.exception(f"Error quick-adding customer: {e}")
         return _render_cart(request, f'Could not create customer: {str(e)}', 'error')
-

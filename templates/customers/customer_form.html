@@ -57,9 +57,31 @@
                 <div class="form-group required">
                     <label for="customer_type">Customer Type</label>
                     <select name="customer_type" id="customer_type" class="form-select" required>
-                        <option value="INDIVIDUAL" {% if edit_mode and customer.customer_type == 'INDIVIDUAL' %}selected{% endif %}>Individual</option>
-                        <option value="BUSINESS" {% if edit_mode and customer.customer_type == 'BUSINESS' %}selected{% endif %}>Business / Corporate</option>
+                        <option value="INDIVIDUAL" {% if not edit_mode or customer.customer_type == 'INDIVIDUAL' %}selected{% endif %}>Individual</option>
+                        <option value="RETAILER" {% if edit_mode and customer.customer_type == 'RETAILER' %}selected{% endif %}>Retailer</option>
+                        <option value="DISTRIBUTOR" {% if edit_mode and customer.customer_type == 'DISTRIBUTOR' %}selected{% endif %}>Distributor</option>
                     </select>
+                </div>
+
+                <!-- Sales Person -->
+                <div class="form-group full-width">
+                    <label for="sales_person_id">
+                        Sales Person
+                        <span class="form-hint">(Optional)</span>
+                    </label>
+                    <select name="sales_person_id" id="sales_person_id" class="form-select">
+                        <option value="">— No sales person assigned —</option>
+                        {% for sp in sales_persons %}
+                        <option value="{{ sp.pk }}"
+                            {% if edit_mode and customer.sales_person_id == sp.pk %}selected{% endif %}>
+                            {{ sp.full_name }}{% if sp.employee_id %} ({{ sp.employee_id }}){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small class="form-hint">
+                        Assign a sales representative to this customer.
+                        {% if not sales_persons %}<a href="{% url 'customers:salesperson_create' %}">Create a sales person first →</a>{% endif %}
+                    </small>
                 </div>
             </div>
         </div>

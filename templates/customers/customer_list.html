@@ -20,6 +20,10 @@
         </div>
 
         <div class="header-actions">
+            <a href="{% url 'customers:salesperson_list' %}" class="btn-secondary">
+                <i class="fas fa-user-tie"></i>
+                Sales Persons
+            </a>
             <a href="{% url 'customers:customer_create' %}" class="btn-primary">
                 <i class="fas fa-user-plus"></i>
                 Add New Customer
@@ -89,7 +93,16 @@
             <select name="type" class="filter-select" onchange="this.form.submit()">
                 <option value="">All Types</option>
                 <option value="INDIVIDUAL" {% if request.GET.type == 'INDIVIDUAL' %}selected{% endif %}>Individual</option>
-                <option value="BUSINESS" {% if request.GET.type == 'BUSINESS' %}selected{% endif %}>Business</option>
+                <option value="RETAILER" {% if request.GET.type == 'RETAILER' %}selected{% endif %}>Retailer</option>
+                <option value="DISTRIBUTOR" {% if request.GET.type == 'DISTRIBUTOR' %}selected{% endif %}>Distributor</option>
+            </select>
+
+            <!-- Filter: Sales Person -->
+            <select name="sales_person" class="filter-select" onchange="this.form.submit()">
+                <option value="">All Sales Persons</option>
+                {% for sp in sales_persons %}
+                <option value="{{ sp.pk }}" {% if request.GET.sales_person == sp.pk|stringformat:"s" %}selected{% endif %}>{{ sp.full_name }}</option>
+                {% endfor %}
             </select>
 
             <!-- Sort -->
@@ -127,6 +140,7 @@
                         <th class="text-center">Orders</th>
                         <th class="text-right">Total Spent</th>
                         <th class="text-center">Last Purchase</th>
+                        <th>Sales Person</th>
                         <th class="text-center">Actions</th>
                     </tr>
                 </thead>
@@ -179,6 +193,16 @@
                                 <small class="time-ago">{{ customer.last_purchase_date|timesince }} ago</small>
                             {% else %}
                                 <span class="text-muted">Never</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if customer.sales_person %}
+                                <a href="{% url 'customers:salesperson_detail' customer.sales_person.pk %}" class="sp-link">
+                                    <div class="sp-avatar">{{ customer.sales_person.full_name|slice:":2"|upper }}</div>
+                                    <span>{{ customer.sales_person.full_name }}</span>
+                                </a>
+                            {% else %}
+                                <span class="text-muted">—</span>
                             {% endif %}
                         </td>
                         <td class="text-center">
@@ -532,10 +556,7 @@
         color: #4F46E5;
     }
 
-    .badge-business {
-        background: #FEF3C7;
-        color: #D97706;
-    }
+    .badge-business { background: #FEF3C7; color: #D97706; }
 
     .badge-group {
         background: #F3E8FF;
@@ -708,10 +729,28 @@
         }
     }
 
+    .badge-retailer { background: #FEF3C7; color: #D97706; }
+    .badge-distributor { background: #EDE9FE; color: #6D28D9; }
+
+    .sp-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        color: #1A1A1A;
+        font-size: 0.875rem;
+    }
+    .sp-link:hover { color: #0033A0; }
+    .sp-avatar {
+        width: 28px; height: 28px;
+        background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+        color: white; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.65rem; font-weight: 700; flex-shrink: 0;
+    }
+
     @media (max-width: 768px) {
-        .customers-table {
-            min-width: 900px;
-        }
+        .customers-table { min-width: 1000px; }
     }
 </style>
 {% endblock %}

@@ -111,7 +111,7 @@ class ReportService:
     def _completed_orders(date_from: date, date_to: date):
         return Order.objects.filter(
             status="COMPLETED",
-            created_at__date__range=(date_from, date_to),
+            completed_at__date__range=(date_from, date_to),
         )
 
     @staticmethod
@@ -221,11 +221,11 @@ class ReportService:
             "completed_orders": sales_data["total_orders"],
             "cancelled_orders": Order.objects.filter(
                 status="CANCELLED",
-                created_at__date__range=(date_from, date_to),
+                completed_at__date__range=(date_from, date_to),
             ).count(),
             "refunded_orders": Order.objects.filter(
                 payment_status="REFUNDED",
-                created_at__date__range=(date_from, date_to),
+                completed_at__date__range=(date_from, date_to),
             ).count(),
             "top_product": top_product,
             **payment,
@@ -238,7 +238,7 @@ class ReportService:
 
         rows = (
             ReportService._completed_orders(date_from, date_to)
-            .annotate(day=TruncDate("created_at"))
+            .annotate(day=TruncDate("completed_at"))
             .values("day")
             .annotate(
                 total_sales=Coalesce(Sum("total"), Decimal("0.00")),
@@ -265,7 +265,7 @@ class ReportService:
                 "total_items": (
                     OrderItem.objects.filter(
                         order__status="COMPLETED",
-                        order__created_at__date=current,
+                        order__completed_at__date=current,
                     ).aggregate(total=Coalesce(Sum("quantity"), 0))["total"] or 0
                 ),
             })
@@ -279,7 +279,7 @@ class ReportService:
         return list(
             OrderItem.objects.filter(
                 order__status="COMPLETED",
-                order__created_at__date=report_date,
+                order__completed_at__date=report_date,
             )
             .values("product_name", "variant_name", "sku")
             .annotate(
@@ -361,7 +361,7 @@ class ReportService:
             sales = (
                 OrderItem.objects.filter(
                     order__status="COMPLETED",
-                    order__created_at__date__range=(date_from, date_to),
+                    order__completed_at__date__range=(date_from, date_to),
                     variant=variant,
                 ).aggregate(total=Coalesce(Sum("quantity"), 0))["total"] or 0
             )
@@ -369,7 +369,7 @@ class ReportService:
             revenue = (
                 OrderItem.objects.filter(
                     order__status="COMPLETED",
-                    order__created_at__date__range=(date_from, date_to),
+                    order__completed_at__date__range=(date_from, date_to),
                     variant=variant,
                 ).aggregate(total=Coalesce(Sum("line_total"), Decimal("0.00")))["total"]
                 or Decimal("0.00")
@@ -731,7 +731,7 @@ class ReportService:
             OrderItem.objects
             .filter(
                 order__status="COMPLETED",
-                order__created_at__date__range=(date_from, date_to)
+                order__completed_at__date__range=(date_from, date_to)
             )
             .values(
                 "variant__product__name",
@@ -766,9 +766,9 @@ class ReportService:
             Order.objects
             .filter(
                 status="COMPLETED",
-                created_at__date__range=(date_from, date_to)
+                completed_at__date__range=(date_from, date_to)
             )
-            .annotate(day=TruncDate("created_at"))
+            .annotate(day=TruncDate("completed_at"))
             .values("day")
             .annotate(
                 orders=Count("id"),
@@ -792,7 +792,7 @@ class ReportService:
 
         total_orders = Order.objects.filter(
             status="COMPLETED",
-            created_at__date__range=(date_from, date_to)
+            completed_at__date__range=(date_from, date_to)
         ).count()
 
         total_items = sum(p["quantity_sold"] for p in products)
@@ -805,7 +805,7 @@ class ReportService:
 
         orders_qs = Order.objects.filter(
             status="COMPLETED",
-            created_at__date__range=(date_from, date_to)
+            completed_at__date__range=(date_from, date_to)
         )
 
         payments = ReportService._payment_breakdown(orders_qs)
@@ -853,7 +853,7 @@ class ReportService:
 
         orders = Order.objects.filter(
             status="COMPLETED",
-            created_at__date__range=(date_from, date_to)
+            completed_at__date__range=(date_from, date_to)
         )
 
         cashier_stats = {}
@@ -869,8 +869,8 @@ class ReportService:
                     "orders": 0,
                     "items_sold": 0,
                     "revenue": Decimal("0.00"),
-                    "first_sale": order.created_at,
-                    "last_sale": order.created_at
+                    "first_sale": order.completed_at,
+                    "last_sale": order.completed_at
                 }
 
             stat = cashier_stats[name]
@@ -881,11 +881,11 @@ class ReportService:
             items = order.items.aggregate(q=Coalesce(Sum("quantity"), 0))["q"]
             stat["items_sold"] += items
 
-            if order.created_at < stat["first_sale"]:
-                stat["first_sale"] = order.created_at
+            if order.completed_at and order.completed_at < stat["first_sale"]:
+                stat["first_sale"] = order.completed_at
 
-            if order.created_at > stat["last_sale"]:
-                stat["last_sale"] = order.created_at
+            if order.completed_at and order.completed_at > stat["last_sale"]:
+                stat["last_sale"] = order.completed_at
 
         cashier_list = []
 
@@ -957,7 +957,7 @@ class ReportService:
             Order.objects
             .filter(
                 status="COMPLETED",
-                created_at__date__range=(date_from, date_to),
+                completed_at__date__range=(date_from, date_to),
                 customer__isnull=False
             )
             .select_related("customer")
@@ -976,8 +976,8 @@ class ReportService:
                     "orders": 0,
                     "items": 0,
                     "revenue": Decimal("0.00"),
-                    "first_purchase": order.created_at,
-                    "last_purchase": order.created_at,
+                    "first_purchase": order.completed_at,
+                    "last_purchase": order.completed_at,
                 }
 
             stat = customer_map[customer.id]
@@ -991,11 +991,11 @@ class ReportService:
 
             stat["items"] += qty
 
-            if order.created_at < stat["first_purchase"]:
-                stat["first_purchase"] = order.created_at
+            if order.completed_at and order.completed_at < stat["first_purchase"]:
+                stat["first_purchase"] = order.completed_at
 
-            if order.created_at > stat["last_purchase"]:
-                stat["last_purchase"] = order.created_at
+            if order.completed_at and order.completed_at > stat["last_purchase"]:
+                stat["last_purchase"] = order.completed_at
 
         customers = list(customer_map.values())
 

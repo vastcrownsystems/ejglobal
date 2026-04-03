@@ -2,7 +2,7 @@ from django.db import transaction
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 import logging
-from .models import Customer, CustomerNote
+from .models import Customer, CustomerNote, SalesPerson
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,8 @@ class CustomerService:
 
     @staticmethod
     @transaction.atomic
-    def quick_add(full_name, phone="", email="", customer_type="", created_by=None):
+    def quick_add(full_name, phone="", email="", customer_type="",
+                  sales_person_id=None, created_by=None):
         """
         Quick add customer with minimal info
 
@@ -22,7 +23,8 @@ class CustomerService:
             full_name: Customer name (required)
             phone: Phone number (optional)
             email: Email (optional)
-            customer_type: INDIVIDUAL or BUSINESS
+            customer_type: INDIVIDUAL, RETAILER, or DISTRIBUTOR
+            sales_person_id: SalesPerson PK (optional)
             created_by: User creating customer
 
         Returns:
@@ -30,16 +32,22 @@ class CustomerService:
         """
         logger.info(f"Quick adding customer {full_name}")
 
-        # Validate name
         if not full_name or not full_name.strip():
             raise ValidationError("Customer name is required")
 
-        # Create customer
+        sales_person = None
+        if sales_person_id:
+            try:
+                sales_person = SalesPerson.objects.get(pk=sales_person_id, is_active=True)
+            except SalesPerson.DoesNotExist:
+                logger.warning(f"SalesPerson pk={sales_person_id} not found, skipping")
+
         customer = Customer.objects.create(
             full_name=full_name.strip(),
             phone=phone.strip() if phone else "",
             email=email.strip() if email else "",
             customer_type=customer_type or "INDIVIDUAL",
+            sales_person=sales_person,
             created_by=created_by
         )
 
@@ -51,6 +59,7 @@ class CustomerService:
     @transaction.atomic
     def create_customer(full_name, phone="", email="", customer_type="INDIVIDUAL",
                         address_line='', city="", state="", postal_code="",
+                        sales_person_id=None,
                         credit_limit=None, credit_terms_days=None, credit_status=None,
                         created_by=None):
         """
@@ -60,11 +69,12 @@ class CustomerService:
             full_name: Customer name
             phone: Phone number
             email: Email
-            customer_type: INDIVIDUAL or BUSINESS
+            customer_type: INDIVIDUAL, RETAILER, or DISTRIBUTOR
             address_line: Address line
             city: City
             state: State
             postal_code: Postal code
+            sales_person_id: SalesPerson PK (optional)
             credit_limit: Credit limit (optional, requires permission)
             credit_terms_days: Payment terms in days (optional)
             credit_status: Credit status (optional)
@@ -75,11 +85,16 @@ class CustomerService:
         """
         logger.info(f"Creating customer: {full_name}")
 
-        # Validate
         if not full_name or not full_name.strip():
             raise ValidationError("Customer name is required")
 
-        # Prepare customer data
+        sales_person = None
+        if sales_person_id:
+            try:
+                sales_person = SalesPerson.objects.get(pk=sales_person_id, is_active=True)
+            except SalesPerson.DoesNotExist:
+                logger.warning(f"SalesPerson pk={sales_person_id} not found, skipping")
+
         customer_data = {
             'full_name': full_name.strip(),
             'phone': phone.strip() if phone else '',
@@ -89,6 +104,7 @@ class CustomerService:
             'city': city.strip() if city else '',
             'state': state.strip() if state else '',
             'postal_code': postal_code.strip() if postal_code else '',
+            'sales_person': sales_person,
             'created_by': created_by
         }
 
@@ -418,3 +434,257 @@ class CustomerService:
             return False, f"Insufficient credit. Available: ₦{available}, Required: ₦{amount}"
 
         return True, "Credit approved"
+
+class SalesPersonService:
+    """Service for managing sales persons"""
+
+    @staticmethod
+    @transaction.atomic
+    def create(full_name, phone="", email="", employee_id=None, user_id=None):
+        """
+        Create a new sales person.
+
+        Args:
+            full_name: Full name (required)
+            phone: Phone number (optional)
+            email: Email address (optional)
+            employee_id: Custom employee ID (optional, auto-generated if blank)
+            user_id: Link to auth User PK (optional)
+
+        Returns:
+            SalesPerson instance
+        """
+        logger.info(f"Creating sales person: {full_name}")
+
+        if not full_name or not full_name.strip():
+            raise ValidationError("Sales person name is required")
+
+        if email and SalesPerson.objects.filter(user__email=email).exists():
+            pass  # email on user, not on sales person directly
+
+        # Validate user link
+        user = None
+        if user_id:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            try:
+                user = User.objects.get(pk=user_id, is_active=True)
+                if SalesPerson.objects.filter(user=user).exists():
+                    raise ValidationError(
+                        f"User '{user.username}' is already linked to another sales person"
+                    )
+            except User.DoesNotExist:
+                raise ValidationError(f"User with id={user_id} does not exist")
+
+        # Validate unique employee_id if provided
+        if employee_id:
+            if SalesPerson.objects.filter(employee_id=employee_id).exists():
+                raise ValidationError(f"Employee ID '{employee_id}' is already in use")
+
+        sales_person = SalesPerson.objects.create(
+            full_name=full_name.strip(),
+            phone=phone.strip() if phone else '',
+            email=email.strip() if email else '',
+            employee_id=employee_id or None,
+            user=user,
+            is_active=True,
+        )
+
+        logger.info(f"Sales person created: {sales_person.employee_id} - {sales_person.full_name}")
+
+        return sales_person
+
+    @staticmethod
+    @transaction.atomic
+    def update(sales_person, full_name, phone="", email="",
+               employee_id=None, user_id=None, is_active=True):
+        """
+        Update an existing sales person.
+
+        Args:
+            sales_person: SalesPerson instance
+            full_name: Full name (required)
+            phone: Phone number
+            email: Email
+            employee_id: Employee ID (optional)
+            user_id: Link to auth User PK (optional, pass None to unlink)
+            is_active: Active flag
+
+        Returns:
+            Updated SalesPerson instance
+        """
+        logger.info(f"Updating sales person: {sales_person.employee_id}")
+
+        if not full_name or not full_name.strip():
+            raise ValidationError("Sales person name is required")
+
+        # Validate user link
+        user = None
+        if user_id:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            try:
+                user = User.objects.get(pk=user_id, is_active=True)
+                already_linked = (
+                    SalesPerson.objects
+                    .filter(user=user)
+                    .exclude(pk=sales_person.pk)
+                    .exists()
+                )
+                if already_linked:
+                    raise ValidationError(
+                        f"User '{user.username}' is already linked to another sales person"
+                    )
+            except User.DoesNotExist:
+                raise ValidationError(f"User with id={user_id} does not exist")
+
+        # Validate employee_id uniqueness
+        if employee_id:
+            conflict = (
+                SalesPerson.objects
+                .filter(employee_id=employee_id)
+                .exclude(pk=sales_person.pk)
+                .exists()
+            )
+            if conflict:
+                raise ValidationError(f"Employee ID '{employee_id}' is already in use")
+
+        sales_person.full_name = full_name.strip()
+        sales_person.phone = phone.strip() if phone else ''
+        sales_person.email = email.strip() if email else ''
+        sales_person.employee_id = employee_id or sales_person.employee_id
+        sales_person.user = user
+        sales_person.is_active = is_active
+
+        sales_person.save()
+
+        logger.info(f"Sales person updated: {sales_person.employee_id}")
+
+        return sales_person
+
+    @staticmethod
+    @transaction.atomic
+    def deactivate(sales_person):
+        """
+        Deactivate a sales person.
+        Unassigns all their customers (sets sales_person=NULL, preserves customer records).
+
+        Args:
+            sales_person: SalesPerson instance
+
+        Returns:
+            int — number of customers unassigned
+        """
+        logger.info(f"Deactivating sales person: {sales_person.employee_id}")
+
+        customer_count = sales_person.customers.count()
+
+        # Unassign all customers
+        sales_person.customers.update(sales_person=None)
+
+        # Deactivate
+        sales_person.is_active = False
+        sales_person.save(update_fields=['is_active'])
+
+        logger.info(
+            f"Sales person {sales_person.employee_id} deactivated. "
+            f"{customer_count} customers unassigned."
+        )
+
+        return customer_count
+
+    @staticmethod
+    @transaction.atomic
+    def reassign_customers(from_sp, to_sp):
+        """
+        Move all customers from one sales person to another.
+
+        Args:
+            from_sp: Source SalesPerson instance
+            to_sp: Target SalesPerson instance
+
+        Returns:
+            int — number of customers moved
+        """
+        if from_sp.pk == to_sp.pk:
+            raise ValidationError("Source and target sales person must be different")
+
+        if not to_sp.is_active:
+            raise ValidationError(
+                f"Cannot reassign to inactive sales person '{to_sp.full_name}'"
+            )
+
+        count = from_sp.customers.count()
+        from_sp.customers.update(sales_person=to_sp)
+
+        logger.info(
+            f"Reassigned {count} customers from {from_sp.employee_id} to {to_sp.employee_id}"
+        )
+
+        return count
+
+    @staticmethod
+    def assign_customer(sales_person, customer):
+        """
+        Assign a specific customer to a sales person.
+
+        Args:
+            sales_person: SalesPerson instance
+            customer: Customer instance
+        """
+        if not sales_person.is_active:
+            raise ValidationError(f"Sales person '{sales_person.full_name}' is not active")
+
+        customer.sales_person = sales_person
+        customer.save(update_fields=['sales_person'])
+
+        logger.info(
+            f"Customer {customer.customer_number} assigned to {sales_person.employee_id}"
+        )
+
+    @staticmethod
+    def unassign_customer(customer):
+        """
+        Remove the sales person assignment from a customer.
+
+        Args:
+            customer: Customer instance
+        """
+        customer.sales_person = None
+        customer.save(update_fields=['sales_person'])
+
+        logger.info(f"Sales person unassigned from customer {customer.customer_number}")
+
+    @staticmethod
+    def get_performance_summary(sales_person):
+        """
+        Summarise a sales person's portfolio.
+
+        Returns:
+            dict with customer counts, revenue, and credit stats
+        """
+        from django.db.models import Sum, Count, Avg
+
+        customers = sales_person.customers.filter(is_active=True)
+
+        agg = customers.aggregate(
+            total_customers=Count('id'),
+            total_revenue=Sum('total_spent'),
+            total_orders=Sum('total_orders'),
+            avg_order_value=Avg('total_spent'),
+        )
+
+        outstanding = sum(c.total_credit_outstanding for c in customers)
+
+        return {
+            'total_customers': agg['total_customers'] or 0,
+            'total_revenue': agg['total_revenue'] or Decimal('0.00'),
+            'total_orders': agg['total_orders'] or 0,
+            'avg_order_value': agg['avg_order_value'] or Decimal('0.00'),
+            'total_credit_outstanding': outstanding,
+            'customer_types': {
+                'individual': customers.filter(customer_type='INDIVIDUAL').count(),
+                'retailer': customers.filter(customer_type='RETAILER').count(),
+                'distributor': customers.filter(customer_type='DISTRIBUTOR').count(),
+            }
+        }

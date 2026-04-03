@@ -18,10 +18,10 @@ class Category(TimeStampedModel):
         related_name='children'
     )
     is_active = models.BooleanField(default=True)
-    display_order = models.IntegerField(default=0, help_text="Lower numbers appear first")
+    display_order = models.IntegerField(default=0, help_text='Lower numbers appear first')
 
     class Meta:
-        verbose_name_plural = "Categories"
+        verbose_name_plural = 'Categories'
         ordering = ['display_order', 'name']
         indexes = [
             models.Index(fields=['slug']),
@@ -30,7 +30,7 @@ class Category(TimeStampedModel):
 
     def __str__(self):
         if self.parent:
-            return f"{self.parent.name} > {self.name}"
+            return f'{self.parent.name} > {self.name}'
         return self.name
 
     def save(self, *args, **kwargs):
@@ -39,7 +39,6 @@ class Category(TimeStampedModel):
         super().save(*args, **kwargs)
 
     def get_products_count(self):
-        """Count active products in this category"""
         return self.products.filter(is_active=True).count()
 
 
@@ -52,7 +51,7 @@ class Product(TimeStampedModel):
         unique=True,
         blank=True,
         null=True,
-        help_text="Stock Keeping Unit - leave blank for auto-generation"
+        help_text='Stock Keeping Unit - leave blank for auto-generation'
     )
     category = models.ForeignKey(
         Category,
@@ -62,18 +61,30 @@ class Product(TimeStampedModel):
     description = models.TextField(blank=True)
     image = models.ImageField(upload_to='products/', blank=True, null=True)
 
-    # Base price (can be overridden by variants)
+    # Pricing
     base_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=0,
-        help_text="Default price if no variants or variant has no price"
+        help_text='Standard retail price (used when no variant price is set)'
+    )
+    retailer_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text='Default price for Retailer customers at product level'
+    )
+    distributor_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text='Default price for Distributor customers at product level'
     )
 
     # Inventory tracking
     track_inventory = models.BooleanField(
         default=True,
-        help_text="Enable stock tracking for this product"
+        help_text='Enable stock tracking for this product'
     )
 
     # Status
@@ -100,29 +111,35 @@ class Product(TimeStampedModel):
         if not self.slug:
             self.slug = slugify(self.name)
         if not self.sku:
-            # Auto-generate SKU
             import uuid
-            self.sku = f"SKU-{uuid.uuid4().hex[:8].upper()}"
+            self.sku = f'SKU-{uuid.uuid4().hex[:8].upper()}'
         super().save(*args, **kwargs)
 
     def get_variants_count(self):
-        """Count product variants"""
         return self.variants.count()
 
     def get_price_range(self):
-        """Get min and max prices from variants"""
         variants = self.variants.all()
         if not variants:
             return self.base_price, self.base_price
-
         prices = [v.price for v in variants]
         return min(prices), max(prices)
 
     def get_total_stock(self):
-        """Get total stock across all variants"""
         if not self.track_inventory:
             return None
         return sum(v.stock_quantity for v in self.variants.all())
+
+    def get_price_for_customer_type(self, customer_type):
+        """
+        Return the appropriate product-level price for a given customer type.
+        Falls back to base_price if the specific price is not set (0).
+        """
+        if customer_type == 'RETAILER' and self.retailer_price:
+            return self.retailer_price
+        if customer_type == 'DISTRIBUTOR' and self.distributor_price:
+            return self.distributor_price
+        return self.base_price
 
 
 class VariantAttribute(TimeStampedModel):
@@ -133,8 +150,8 @@ class VariantAttribute(TimeStampedModel):
     display_name = models.CharField(
         max_length=100,
         blank=True,
-        default="",
-        help_text="User-friendly name shown to customers"
+        default='',
+        help_text='User-friendly name shown to customers'
     )
     display_order = models.IntegerField(default=0)
 
@@ -162,7 +179,7 @@ class VariantAttributeValue(TimeStampedModel):
         unique_together = [['attribute', 'value']]
 
     def __str__(self):
-        return f"{self.attribute.name}: {self.value}"
+        return f'{self.attribute.name}: {self.value}'
 
 
 class ProductVariant(TimeStampedModel):
@@ -179,21 +196,19 @@ class ProductVariant(TimeStampedModel):
         unique=True,
         blank=True,
         null=True,
-        help_text="Variant-specific SKU"
+        help_text='Variant-specific SKU'
     )
 
-    # Variant attributes (e.g., size=Small, color=Red)
     attribute_values = models.ManyToManyField(
         VariantAttributeValue,
         related_name='product_variants',
         blank=True
     )
 
-    # Variant name (auto-generated or custom)
     name = models.CharField(
         max_length=200,
         blank=True,
-        help_text="e.g 800g for weight, Big for size or Black for color",
+        help_text='e.g 800g for weight, Big for size or Black for color',
         null=False
     )
 
@@ -202,24 +217,30 @@ class ProductVariant(TimeStampedModel):
         max_digits=10,
         decimal_places=2,
         default=0,
-        help_text="Variant-specific price"
+        help_text='Standard (individual) price for this variant'
+    )
+    retailer_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text='Price for Retailer customers. Falls back to product retailer_price if 0.'
+    )
+    distributor_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text='Price for Distributor customers. Falls back to product distributor_price if 0.'
     )
     cost_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=0,
-        help_text="Cost to purchase/produce this variant"
+        help_text='Cost to purchase/produce this variant'
     )
 
     # Inventory
-    stock_quantity = models.IntegerField(
-        default=0,
-        help_text="Current stock level"
-    )
-    low_stock_threshold = models.IntegerField(
-        default=10,
-        help_text="Alert when stock falls below this level"
-    )
+    stock_quantity = models.IntegerField(default=0, help_text='Current stock level')
+    low_stock_threshold = models.IntegerField(default=10, help_text='Alert when stock falls below this level')
 
     # Physical attributes
     weight = models.DecimalField(
@@ -227,31 +248,25 @@ class ProductVariant(TimeStampedModel):
         decimal_places=2,
         null=True,
         blank=True,
-        help_text="Weight in kg"
+        help_text='Weight in kg'
     )
 
-    # Barcode
     barcode = models.CharField(
         max_length=50,
         blank=True,
         null=True,
         unique=True,
-        help_text="Barcode/UPC for scanning"
+        help_text='Barcode/UPC for scanning'
     )
 
-    # Status
     is_active = models.BooleanField(default=True)
-    is_default = models.BooleanField(
-        default=False,
-        help_text="Default variant to display"
-    )
+    is_default = models.BooleanField(default=False, help_text='Default variant to display')
 
-    # Image (optional variant-specific image)
     image = models.ImageField(
         upload_to='variants/',
         blank=True,
         null=True,
-        help_text="Variant-specific image (optional)"
+        help_text='Variant-specific image (optional)'
     )
 
     class Meta:
@@ -265,58 +280,78 @@ class ProductVariant(TimeStampedModel):
 
     def __str__(self):
         if self.name:
-            return f"{self.product.name} - {self.name}"
-
-        # Auto-generate name from attributes
+            return f'{self.product.name} - {self.name}'
         attrs = self.attribute_values.all()
         if attrs:
-            attr_str = ", ".join([av.value for av in attrs])
-            return f"{self.product.name} - {attr_str}"
-
-        return f"{self.product.name} - Variant #{self.id}"
+            attr_str = ', '.join([av.value for av in attrs])
+            return f'{self.product.name} - {attr_str}'
+        return f'{self.product.name} - Variant #{self.id}'
 
     def save(self, *args, **kwargs):
-        # Auto-generate SKU if not provided
         if not self.sku:
             import uuid
-            base_sku = self.product.sku or "VAR"
-            self.sku = f"{base_sku}-{uuid.uuid4().hex[:6].upper()}"
-
-        # Set as default if it's the first variant
+            base_sku = self.product.sku or 'VAR'
+            self.sku = f'{base_sku}-{uuid.uuid4().hex[:6].upper()}'
         if not self.pk and not self.product.variants.exists():
             self.is_default = True
-
         super().save(*args, **kwargs)
 
+    def get_price_for_customer_type(self, customer_type):
+        """
+        Return the correct sale price based on the customer type.
+
+        Priority (variant only — no product-level fallback):
+          DISTRIBUTOR → variant.distributor_price if set, else variant.price
+          RETAILER    → variant.retailer_price    if set, else variant.price
+          INDIVIDUAL  → variant.price
+        """
+        if customer_type == 'DISTRIBUTOR':
+            return self.distributor_price if self.distributor_price else self.price
+
+        if customer_type == 'RETAILER':
+            return self.retailer_price if self.retailer_price else self.price
+
+        return self.price  # INDIVIDUAL or unrecognised
+
     def get_attribute_display(self):
-        """Get formatted string of variant attributes"""
         attrs = self.attribute_values.all()
         if not attrs:
-            return "Standard"
-        return ", ".join([f"{av.attribute.display_name}: {av.value}" for av in attrs])
+            return 'Standard'
+        return ', '.join([f'{av.attribute.display_name}: {av.value}' for av in attrs])
 
     def get_attribute_values_display(self):
-        """Return only attribute values (e.g., Large, 500g)"""
         attrs = self.attribute_values.all().order_by('attribute__display_order')
         if not attrs:
-            return "Standard"
-        return ", ".join([av.value for av in attrs])
+            return 'Standard'
+        return ', '.join([av.value for av in attrs])
 
     def is_low_stock(self):
-        """Check if stock is below threshold"""
         if not self.product.track_inventory:
             return False
         return self.stock_quantity <= self.low_stock_threshold
 
     def is_out_of_stock(self):
-        """Check if out of stock"""
         if not self.product.track_inventory:
             return False
         return self.stock_quantity <= 0
 
     @property
     def profit_margin(self):
-        """Calculate profit margin percentage"""
+        """Calculate profit margin percentage based on standard price"""
         if self.cost_price == 0:
             return 0
         return ((self.price - self.cost_price) / self.cost_price) * 100
+
+    @property
+    def retailer_margin(self):
+        if self.cost_price == 0:
+            return 0
+        effective = self.retailer_price if self.retailer_price else self.price
+        return ((effective - self.cost_price) / self.cost_price) * 100
+
+    @property
+    def distributor_margin(self):
+        if self.cost_price == 0:
+            return 0
+        effective = self.distributor_price if self.distributor_price else self.price
+        return ((effective - self.cost_price) / self.cost_price) * 100

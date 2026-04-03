@@ -164,10 +164,11 @@ class Order(models.Model):
     )
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ['-completed_at', '-created_at']
         indexes = [
+            models.Index(fields=['-completed_at']),
             models.Index(fields=['-created_at']),
-            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['status', '-completed_at']),
             models.Index(fields=['customer']),
             models.Index(fields=['order_number']),
         ]

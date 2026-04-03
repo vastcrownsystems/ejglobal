@@ -12,8 +12,8 @@ from datetime import timedelta
 from decimal import Decimal
 import json
 
-from .models import Customer
-from .services import CustomerService
+from .models import Customer, SalesPerson
+from .services import CustomerService, SalesPersonService
 
 
 def user_can_manage_credit(user):
@@ -78,21 +78,25 @@ def customer_dashboard(request):
     # Credit statistics (for managers/admins only)
     credit_stats = None
     if user_can_manage_credit(request.user):
+        from apps.credit.models import CreditLedger
+        from django.db.models import DecimalField
+        from django.db.models.functions import Coalesce
+
+        total_outstanding = CreditLedger.objects.filter(
+            customer__is_active=True,
+            status__in=['PENDING', 'PARTIAL', 'OVERDUE']
+        ).aggregate(total=Sum('balance_outstanding'))['total'] or Decimal('0.00')
+
         credit_stats = {
             'total_credit_extended': Customer.objects.filter(
                 is_active=True,
                 credit_limit__gt=0
             ).aggregate(total=Sum('credit_limit'))['total'] or Decimal('0.00'),
-
-            'total_outstanding': Customer.objects.filter(
-                is_active=True
-            ).aggregate(total=Sum('total_credit_outstanding'))['total'] or Decimal('0.00'),
-
+            'total_outstanding': total_outstanding,
             'customers_with_credit': Customer.objects.filter(
                 is_active=True,
                 credit_limit__gt=0
             ).count(),
-
             'overdue_customers': Customer.objects.filter(
                 is_active=True,
                 credit_status='SUSPENDED'
@@ -370,6 +374,7 @@ def customer_create(request):
                 address_line=request.POST.get('address_line', ''),
                 city=request.POST.get('city', ''),
                 state=request.POST.get('state', ''),
+                sales_person_id=request.POST.get('sales_person_id') or None,
                 created_by=request.user
             )
 
@@ -398,6 +403,7 @@ def customer_create(request):
 
     context = {
         'can_manage_credit': user_can_manage_credit(request.user),
+        'sales_persons': SalesPerson.objects.filter(is_active=True).order_by('full_name'),
     }
 
     return render(request, 'customers/customer_form.html', context)
@@ -423,6 +429,16 @@ def customer_edit(request, pk):
             customer.address_line = request.POST.get('address_line', '')
             customer.city = request.POST.get('city', '')
             customer.state = request.POST.get('state', '')
+
+            # Update sales person assignment
+            sp_id = request.POST.get('sales_person_id') or None
+            if sp_id:
+                try:
+                    customer.sales_person = SalesPerson.objects.get(pk=sp_id, is_active=True)
+                except SalesPerson.DoesNotExist:
+                    pass
+            else:
+                customer.sales_person = None
 
             # Handle credit fields (admin/manager only)
             if user_can_manage_credit(request.user):
@@ -463,6 +479,7 @@ def customer_edit(request, pk):
         'customer': customer,
         'edit_mode': True,
         'can_manage_credit': user_can_manage_credit(request.user),
+        'sales_persons': SalesPerson.objects.filter(is_active=True).order_by('full_name'),
     }
 
     return render(request, 'customers/customer_form.html', context)
@@ -583,28 +600,303 @@ def credit_customers_report(request):
     if not user_can_manage_credit(request.user):
         raise PermissionDenied("You don't have permission to view credit reports")
 
-    # Get all customers with credit limits
+    from apps.credit.models import CreditLedger
+    from django.db.models import DecimalField
+    from django.db.models.functions import Coalesce
+
     customers = Customer.objects.filter(
         is_active=True,
         credit_limit__gt=0
-    ).order_by('-total_credit_outstanding')
+    ).annotate(
+        outstanding_balance=Coalesce(
+            Sum(
+                'credit_ledger_entries__balance_outstanding',
+                filter=Q(credit_ledger_entries__status__in=['PENDING', 'PARTIAL', 'OVERDUE'])
+            ),
+            Decimal('0.00'),
+            output_field=DecimalField()
+        )
+    )
 
-    # Filter by status if provided
     status_filter = request.GET.get('status')
     if status_filter:
         customers = customers.filter(credit_status=status_filter)
 
-    # Calculate totals
-    totals = customers.aggregate(
-        total_limits=Sum('credit_limit'),
-        total_outstanding=Sum('total_credit_outstanding')
-    )
+    customers = customers.order_by('-outstanding_balance')
+
+    total_outstanding = CreditLedger.objects.filter(
+        customer__is_active=True,
+        customer__credit_limit__gt=0,
+        status__in=['PENDING', 'PARTIAL', 'OVERDUE']
+    ).aggregate(total=Sum('balance_outstanding'))['total'] or Decimal('0.00')
+
+    totals = customers.aggregate(total_limits=Sum('credit_limit'))
 
     context = {
         'customers': customers,
         'total_credit_limits': totals['total_limits'] or Decimal('0.00'),
-        'total_outstanding': totals['total_outstanding'] or Decimal('0.00'),
+        'total_outstanding': total_outstanding,
         'can_manage_credit': True,
     }
 
     return render(request, 'customers/credit_report.html', context)
+
+# ============================================================
+# SALES PERSON VIEWS
+# ============================================================
+
+def user_can_manage_sales_persons(user):
+    """
+    Only superusers, staff, managers, or admins can manage sales persons.
+    """
+    if user.is_superuser or user.is_staff:
+        return True
+    return user.groups.filter(name__in=['Manager', 'Admin']).exists()
+
+
+@login_required
+@require_http_methods(["GET"])
+def salesperson_list(request):
+    """
+    List all sales persons with summary stats.
+
+    URL: GET /customers/sales-persons/
+    """
+    if not user_can_manage_sales_persons(request.user):
+        raise PermissionDenied("You don't have permission to manage sales persons")
+
+    sales_persons = SalesPerson.objects.prefetch_related('customers').order_by('full_name')
+
+    search = request.GET.get('search', '').strip()
+    if search:
+        sales_persons = sales_persons.filter(
+            Q(full_name__icontains=search) |
+            Q(email__icontains=search) |
+            Q(phone__icontains=search) |
+            Q(employee_id__icontains=search)
+        )
+
+    status_filter = request.GET.get('status')
+    if status_filter == 'active':
+        sales_persons = sales_persons.filter(is_active=True)
+    elif status_filter == 'inactive':
+        sales_persons = sales_persons.filter(is_active=False)
+
+    sales_persons = sales_persons.annotate(
+        total_customers=Count('customers'),
+        active_customers=Count('customers', filter=Q(customers__is_active=True)),
+        total_revenue=Sum(
+            'customers__total_spent',
+            filter=Q(customers__is_active=True)
+        )
+    )
+
+    context = {
+        'sales_persons': sales_persons,
+        'search': search,
+        'status_filter': status_filter,
+        'total_count': SalesPerson.objects.count(),
+        'active_count': SalesPerson.objects.filter(is_active=True).count(),
+    }
+
+    return render(request, 'customers/salesperson_list.html', context)
+
+
+@login_required
+@require_http_methods(["GET"])
+def salesperson_detail(request, pk):
+    """
+    Sales person detail — their assigned customers, stats, revenue.
+
+    URL: GET /customers/sales-persons/<pk>/
+    """
+    if not user_can_manage_sales_persons(request.user):
+        raise PermissionDenied("You don't have permission to view sales person details")
+
+    sales_person = get_object_or_404(SalesPerson, pk=pk)
+
+    customers = sales_person.customers.filter(is_active=True).order_by('-total_spent')
+
+    stats = customers.aggregate(
+        total_customers=Count('id'),
+        total_revenue=Sum('total_spent'),
+        total_orders=Sum('total_orders'),
+        avg_spent=Avg('total_spent'),
+    )
+
+    # Credit exposure for this sales person's customers
+    total_outstanding = sum(
+        c.total_credit_outstanding for c in customers
+    )
+
+    context = {
+        'sales_person': sales_person,
+        'customers': customers,
+        'stats': stats,
+        'total_outstanding': total_outstanding,
+        'can_manage_credit': user_can_manage_credit(request.user),
+    }
+
+    return render(request, 'customers/salesperson_detail.html', context)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def salesperson_create(request):
+    """
+    Create a new sales person.
+
+    URL: GET/POST /customers/sales-persons/create/
+    """
+    if not user_can_manage_sales_persons(request.user):
+        raise PermissionDenied("You don't have permission to manage sales persons")
+
+    if request.method == 'POST':
+        try:
+            sales_person = SalesPersonService.create(
+                full_name=request.POST.get('full_name'),
+                phone=request.POST.get('phone', ''),
+                email=request.POST.get('email', ''),
+                employee_id=request.POST.get('employee_id', '') or None,
+                user_id=request.POST.get('user_id') or None,
+            )
+            messages.success(request, f'✅ Sales person {sales_person.full_name} created successfully')
+            return redirect('customers:salesperson_detail', pk=sales_person.pk)
+
+        except Exception as e:
+            messages.error(request, f'❌ Error: {str(e)}')
+
+    context = {
+        'edit_mode': False,
+    }
+
+    return render(request, 'customers/salesperson_form.html', context)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def salesperson_edit(request, pk):
+    """
+    Edit an existing sales person.
+
+    URL: GET/POST /customers/sales-persons/<pk>/edit/
+    """
+    if not user_can_manage_sales_persons(request.user):
+        raise PermissionDenied("You don't have permission to manage sales persons")
+
+    sales_person = get_object_or_404(SalesPerson, pk=pk)
+
+    if request.method == 'POST':
+        try:
+            sales_person = SalesPersonService.update(
+                sales_person=sales_person,
+                full_name=request.POST.get('full_name'),
+                phone=request.POST.get('phone', ''),
+                email=request.POST.get('email', ''),
+                employee_id=request.POST.get('employee_id', '') or None,
+                user_id=request.POST.get('user_id') or None,
+                is_active=request.POST.get('is_active') == 'on',
+            )
+            messages.success(request, f'✅ Sales person {sales_person.full_name} updated successfully')
+            return redirect('customers:salesperson_detail', pk=sales_person.pk)
+
+        except Exception as e:
+            messages.error(request, f'❌ Error: {str(e)}')
+
+    context = {
+        'sales_person': sales_person,
+        'edit_mode': True,
+    }
+
+    return render(request, 'customers/salesperson_form.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def salesperson_delete(request, pk):
+    """
+    Soft-delete (deactivate) a sales person.
+    Customers are NOT deleted — their sales_person FK is set to NULL.
+
+    URL: POST /customers/sales-persons/<pk>/delete/
+    """
+    if not user_can_manage_sales_persons(request.user):
+        raise PermissionDenied("You don't have permission to manage sales persons")
+
+    sales_person = get_object_or_404(SalesPerson, pk=pk)
+
+    try:
+        customer_count = SalesPersonService.deactivate(sales_person)
+        messages.success(
+            request,
+            f'✅ {sales_person.full_name} deactivated. '
+            f'{customer_count} customer(s) unassigned.'
+        )
+    except Exception as e:
+        messages.error(request, f'❌ Error: {str(e)}')
+
+    return redirect('customers:salesperson_list')
+
+
+@login_required
+@require_http_methods(["POST"])
+def salesperson_reassign_customers(request, pk):
+    """
+    Reassign all customers from one sales person to another.
+
+    URL: POST /customers/sales-persons/<pk>/reassign/
+    Body: { "to_id": <int> }
+    """
+    if not user_can_manage_sales_persons(request.user):
+        raise PermissionDenied("You don't have permission to manage sales persons")
+
+    sales_person = get_object_or_404(SalesPerson, pk=pk)
+
+    try:
+        data = json.loads(request.body)
+        to_id = data.get('to_id')
+
+        if not to_id:
+            return JsonResponse({'success': False, 'error': 'Target sales person required'})
+
+        to_sp = get_object_or_404(SalesPerson, pk=to_id, is_active=True)
+        moved = SalesPersonService.reassign_customers(from_sp=sales_person, to_sp=to_sp)
+
+        return JsonResponse({
+            'success': True,
+            'moved': moved,
+            'message': f'{moved} customer(s) reassigned to {to_sp.full_name}'
+        })
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+@require_http_methods(["GET"])
+def salesperson_search_api(request):
+    """
+    JSON search for active sales persons (used in customer form dropdowns).
+
+    URL: GET /customers/sales-persons/search/?q=<query>
+    """
+    query = request.GET.get('q', '').strip()
+    sales_persons = SalesPerson.objects.filter(is_active=True)
+
+    if query:
+        sales_persons = sales_persons.filter(
+            Q(full_name__icontains=query) |
+            Q(employee_id__icontains=query)
+        )
+
+    data = [
+        {
+            'id': sp.pk,
+            'full_name': sp.full_name,
+            'employee_id': sp.employee_id or '',
+            'phone': sp.phone or '',
+        }
+        for sp in sales_persons.order_by('full_name')[:20]
+    ]
+
+    return JsonResponse({'results': data})

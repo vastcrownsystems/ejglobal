@@ -9,9 +9,9 @@
     <!-- Header -->
     <div class="page-header">
         <div class="header-left">
-            <a href="{% url 'credit:ledger_detail' ledger.ledger_id %}" class="btn-back">
+           <button onclick="window.history.back()" class="btn-back">
                 <i class="fas fa-arrow-left"></i>
-            </a>
+            </button>
             <div>
                 <h1>Record Payment</h1>
                 <p class="page-subtitle">{{ ledger.customer.full_name }} - {{ ledger.ledger_id }}</p>
@@ -75,7 +75,7 @@
         <!-- Payment Form -->
         <div class="form-card">
             <h2 class="card-title">
-                <i class="fas fa-dollar-sign"></i>
+                <i class="fas fa-naira-sign"></i>
                 Payment Information
             </h2>
 
@@ -146,6 +146,42 @@
 </div>
 
 <style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .btn-back {
+        width: 40px;
+        height: 40px;
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        color: #6B7280;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .btn-back:hover {
+        background: #F9FAFB;
+        border-color: #0033A0;
+        color: #0033A0;
+    }
+
     .form-container {
         max-width: 900px;
         margin: 0 auto;

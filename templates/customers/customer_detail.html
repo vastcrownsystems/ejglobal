@@ -79,6 +79,34 @@
                         </div>
                     </div>
                 {% endif %}
+
+                <div class="info-row">
+                    <div class="info-label">Sales Person</div>
+                    <div class="info-value">
+                        <i class="fas fa-user-tie"></i>
+                        {% if customer.sales_person %}
+                            <a href="{% url 'customers:salesperson_detail' customer.sales_person.pk %}" class="sp-inline-link">
+                                {{ customer.sales_person.full_name }}
+                                {% if customer.sales_person.employee_id %}
+                                    <span class="sp-id-badge">{{ customer.sales_person.employee_id }}</span>
+                                {% endif %}
+                            </a>
+                        {% else %}
+                            <span class="text-muted">Not assigned</span>
+                            <a href="{% url 'customers:customer_edit' customer.pk %}" class="assign-link">Assign →</a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="info-row">
+                    <div class="info-label">Customer Type</div>
+                    <div class="info-value">
+                        <i class="fas fa-tag"></i>
+                        <span class="badge badge-{{ customer.customer_type|lower }}">
+                            {{ customer.get_customer_type_display }}
+                        </span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -418,7 +446,7 @@
         color: #1E40AF;
     }
 
-    .badge-business {
+    .badge-{{ customer.customer_type|lower }} {
         background: #E0E7FF;
         color: #4338CA;
     }
@@ -1005,5 +1033,30 @@
             gap: 0.5rem;
         }
     }
+    .sp-inline-link {
+        color: #0033A0;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .sp-inline-link:hover { text-decoration: underline; }
+    .sp-id-badge {
+        font-size: 0.7rem;
+        background: #E0F2FE;
+        color: #0369A1;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+    }
+    .assign-link {
+        margin-left: 0.5rem;
+        font-size: 0.8125rem;
+        color: #0033A0;
+        text-decoration: none;
+    }
+    .assign-link:hover { text-decoration: underline; }
+    .badge-retailer  { background: #FEF3C7; color: #D97706; }
+    .badge-distributor { background: #EDE9FE; color: #6D28D9; }
 </style>
 {% endblock %}

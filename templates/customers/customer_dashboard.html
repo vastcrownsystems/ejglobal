@@ -15,6 +15,10 @@
         </div>
 
         <div class="header-actions">
+            <a href="{% url 'customers:salesperson_list' %}" class="btn-secondary">
+                <i class="fas fa-user-tie"></i>
+                Sales Persons
+            </a>
             <a href="{% url 'customers:customer_list' %}" class="btn-secondary">
                 <i class="fas fa-list"></i>
                 View All Customers
@@ -173,27 +177,35 @@
     </div>
 
     <!-- Quick Actions -->
-    <div class="quick-actions">
-        <h3>Quick Actions</h3>
-        <div class="actions-grid">
-            <a href="{% url 'customers:customer_create' %}" class="action-card">
-                <i class="fas fa-user-plus"></i>
-                <span>Add New Customer</span>
-            </a>
-            <a href="{% url 'customers:customer_list' %}?sort=-created_at" class="action-card">
-                <i class="fas fa-clock"></i>
-                <span>Recent Customers</span>
-            </a>
-            <a href="{% url 'customers:customer_list' %}?sort=-total_spent" class="action-card">
-                <i class="fas fa-trophy"></i>
-                <span>Top Spenders</span>
-            </a>
-            <a href="{% url 'customers:customer_list' %}" class="action-card">
-                <i class="fas fa-search"></i>
-                <span>Search Customers</span>
-            </a>
-        </div>
-    </div>
+<!--    <div class="quick-actions">-->
+<!--        <h3>Quick Actions</h3>-->
+<!--        <div class="actions-grid">-->
+<!--            <a href="{% url 'customers:customer_create' %}" class="action-card">-->
+<!--                <i class="fas fa-user-plus"></i>-->
+<!--                <span>Add New Customer</span>-->
+<!--            </a>-->
+<!--            <a href="{% url 'customers:customer_list' %}?sort=-created_at" class="action-card">-->
+<!--                <i class="fas fa-clock"></i>-->
+<!--                <span>Recent Customers</span>-->
+<!--            </a>-->
+<!--            <a href="{% url 'customers:customer_list' %}?sort=-total_spent" class="action-card">-->
+<!--                <i class="fas fa-trophy"></i>-->
+<!--                <span>Top Spenders</span>-->
+<!--            </a>-->
+<!--            <a href="{% url 'customers:customer_list' %}" class="action-card">-->
+<!--                <i class="fas fa-search"></i>-->
+<!--                <span>Search Customers</span>-->
+<!--            </a>-->
+<!--            <a href="{% url 'customers:salesperson_list' %}" class="action-card">-->
+<!--                <i class="fas fa-user-tie"></i>-->
+<!--                <span>Sales Persons</span>-->
+<!--            </a>-->
+<!--            <a href="{% url 'customers:salesperson_create' %}" class="action-card">-->
+<!--                <i class="fas fa-user-plus"></i>-->
+<!--                <span>Add Sales Person</span>-->
+<!--            </a>-->
+<!--        </div>-->
+<!--    </div>-->
 </div>
 
 <style>
@@ -498,6 +510,8 @@
         color: #4F46E5;
     }
 
+    .badge-retailer { background: #FEF3C7; color: #D97706; }
+    .badge-distributor { background: #EDE9FE; color: #6D28D9; }
     .badge-business {
         background: #FEF3C7;
         color: #D97706;
@@ -591,7 +605,7 @@
 
     .actions-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         gap: 1rem;
     }
 

@@ -224,8 +224,13 @@
                                 </a>
                             </td>
                             <td data-label="Date">
-                                <div class="date">{{ order.created_at|date:"M d, Y" }}</div>
-                                <div class="time">{{ order.created_at|date:"g:i A" }}</div>
+                                {% if order.completed_at %}
+                                    <div class="date">{{ order.completed_at|date:"M d, Y" }}</div>
+                                    <div class="time">{{ order.completed_at|date:"g:i A" }}</div>
+                                {% else %}
+                                    <div class="date">{{ order.created_at|date:"M d, Y" }}</div>
+                                    <div class="time">{{ order.created_at|date:"g:i A" }}<span class="draft-label"> (draft)</span></div>
+                                {% endif %}
                             </td>
                             {% if is_manager %}
                             <td data-label="Cashier">
@@ -1120,6 +1125,11 @@
         .revenue-amount {
             font-size: 0.9rem;
         }
+    }
+    .draft-label {
+        font-size: 0.7rem;
+        color: #aaa;
+        font-style: italic;
     }
 </style>
 

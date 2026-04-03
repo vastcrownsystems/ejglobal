@@ -120,6 +120,36 @@ class ProductForm(forms.ModelForm):
         })
     )
 
+    retailer_price = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=0,
+        required=False,
+        initial=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-input',
+            'placeholder': '0.00',
+            'step': '0.01',
+            'id': 'id_retailer_price'
+        }),
+        help_text='Leave 0 to use base price for retailer customers'
+    )
+
+    distributor_price = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=0,
+        required=False,
+        initial=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-input',
+            'placeholder': '0.00',
+            'step': '0.01',
+            'id': 'id_distributor_price'
+        }),
+        help_text='Leave 0 to use base price for distributor customers'
+    )
+
     image = forms.ImageField(
         required=False,
         widget=forms.FileInput(attrs={
@@ -163,6 +193,8 @@ class ProductForm(forms.ModelForm):
             'sku',
             'description',
             'base_price',
+            'retailer_price',
+            'distributor_price',
             'image',
             'track_inventory',
             'is_active',
@@ -193,6 +225,8 @@ class ProductVariantForm(forms.ModelForm):
             # 'sku',
             'barcode',
             'price',
+            'retailer_price',
+            'distributor_price',
             # 'cost_price',
             'stock_quantity',
             'low_stock_threshold',
@@ -227,6 +261,20 @@ class ProductVariantForm(forms.ModelForm):
                 'min': '0',
                 'required': True
             }),
+            'retailer_price': forms.NumberInput(attrs={
+                'class': 'form-input',
+                'placeholder': '0.00',
+                'step': '0.01',
+                'min': '0',
+                'id': 'id_retailer_price'
+            }),
+            'distributor_price': forms.NumberInput(attrs={
+                'class': 'form-input',
+                'placeholder': '0.00',
+                'step': '0.01',
+                'min': '0',
+                'id': 'id_distributor_price'
+            }),
             # 'cost_price': forms.NumberInput(attrs={
             #     'class': 'form-input',
             #     'placeholder': '0.00',
@@ -258,6 +306,8 @@ class ProductVariantForm(forms.ModelForm):
             # 'sku': 'SKU',
             'barcode': 'Barcode / UPC',
             # 'cost_price': 'Cost Price',
+            'retailer_price': 'Retailer Price',
+            'distributor_price': 'Distributor Price',
             'is_active': 'Active',
             'is_default': 'Set as Default Variant',
             'attribute_values': 'Variant Attributes',
@@ -267,7 +317,9 @@ class ProductVariantForm(forms.ModelForm):
             'attribute_values': 'Select the attributes that define this variant (e.g., Size: Small, Color: Red)',
             # 'sku': 'Unique identifier - leave blank to auto-generate',
             'barcode': 'For barcode scanning at checkout. Optional - leave blank if not using barcodes.',
-            'price': 'Selling price for this variant',
+            'price': 'Standard selling price for individual customers',
+            'retailer_price': 'Leave 0 to fall back to product retailer price or standard price',
+            'distributor_price': 'Leave 0 to fall back to product distributor price or standard price',
             # 'cost_price': 'Your cost to purchase/produce this variant',
             'low_stock_threshold': 'Alert when stock falls below this number',
             'is_default': 'This variant will be shown by default when viewing the product',
@@ -365,20 +417,6 @@ class ProductVariantForm(forms.ModelForm):
     def clean(self):
         """Form-level validation"""
         cleaned_data = super().clean()
-
-        price = cleaned_data.get('price')
-        cost_price = cleaned_data.get('cost_price')
-
-        # Warn if selling below cost (don't prevent, just warn)
-        if price and cost_price and price < cost_price:
-            self.add_error('price',
-                           ValidationError(
-                               'Warning: Selling price is lower than cost price. '
-                               'You will be selling at a loss.',
-                               code='price_below_cost'
-                           )
-                           )
-
         return cleaned_data
 
 

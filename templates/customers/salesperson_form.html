@@ -1,0 +1,168 @@
+<!-- apps/customers/templates/customers/salesperson_form.html -->
+
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if edit_mode %}Edit{% else %}Add{% endif %} Sales Person{% endblock %}
+
+{% block content %}
+<div class="sp-form-page">
+
+    <!-- Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <a href="{% if edit_mode %}{% url 'customers:salesperson_detail' sales_person.pk %}{% else %}{% url 'customers:salesperson_list' %}{% endif %}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+            <h1>
+                {% if edit_mode %}
+                    <i class="fas fa-edit"></i> Edit Sales Person
+                {% else %}
+                    <i class="fas fa-user-plus"></i> Add Sales Person
+                {% endif %}
+            </h1>
+        </div>
+    </div>
+
+    <form method="post" class="sp-form">
+        {% csrf_token %}
+
+        <!-- Basic Info -->
+        <div class="form-section">
+            <h2 class="section-title"><i class="fas fa-user-tie"></i> Basic Information</h2>
+            <div class="form-grid">
+
+                <div class="form-group required">
+                    <label for="full_name">Full Name</label>
+                    <input type="text" name="full_name" id="full_name" class="form-input"
+                           value="{% if edit_mode %}{{ sales_person.full_name }}{% endif %}"
+                           required placeholder="e.g., Emeka Nwosu">
+                </div>
+
+                <div class="form-group">
+                    <label for="employee_id">
+                        Employee ID
+                        <span class="form-hint">(auto-generated if blank)</span>
+                    </label>
+                    <input type="text" name="employee_id" id="employee_id" class="form-input"
+                           value="{% if edit_mode %}{{ sales_person.employee_id|default:'' }}{% endif %}"
+                           placeholder="e.g., SP-20260101-0001">
+                    <small class="form-hint">Must be unique across all sales persons</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" name="phone" id="phone" class="form-input"
+                           value="{% if edit_mode %}{{ sales_person.phone|default:'' }}{% endif %}"
+                           placeholder="+234-XXX-XXX-XXXX">
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" name="email" id="email" class="form-input"
+                           value="{% if edit_mode %}{{ sales_person.email|default:'' }}{% endif %}"
+                           placeholder="emeka@company.com">
+                </div>
+
+                {% if edit_mode %}
+                <div class="form-group">
+                    <label for="is_active">Status</label>
+                    <select name="is_active" id="is_active" class="form-select">
+                        <option value="on" {% if sales_person.is_active %}selected{% endif %}>Active</option>
+                        <option value="" {% if not sales_person.is_active %}selected{% endif %}>Inactive</option>
+                    </select>
+                    <small class="form-hint">Inactive sales persons cannot be assigned to new customers</small>
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+
+        <!-- Stats (edit only) -->
+        {% if edit_mode %}
+        <div class="form-section info-section">
+            <h2 class="section-title"><i class="fas fa-chart-bar"></i> Current Portfolio</h2>
+            <div class="portfolio-stats">
+                <div class="portfolio-stat">
+                    <div class="portfolio-val">{{ sales_person.customer_count }}</div>
+                    <div class="portfolio-label">Total Customers</div>
+                </div>
+                <div class="portfolio-stat">
+                    <div class="portfolio-val">{{ sales_person.active_customer_count }}</div>
+                    <div class="portfolio-label">Active Customers</div>
+                </div>
+                <div class="portfolio-stat">
+                    <div class="portfolio-val">{{ sales_person.employee_id|default:"—" }}</div>
+                    <div class="portfolio-label">Current ID</div>
+                </div>
+            </div>
+            {% if sales_person.customer_count > 0 %}
+            <div class="reassign-section">
+                <a href="{% url 'customers:salesperson_detail' sales_person.pk %}" class="btn-secondary btn-sm">
+                    <i class="fas fa-users"></i> View Assigned Customers
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Actions -->
+        <div class="form-actions">
+            <a href="{% if edit_mode %}{% url 'customers:salesperson_detail' sales_person.pk %}{% else %}{% url 'customers:salesperson_list' %}{% endif %}"
+               class="btn-cancel">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-save"></i>
+                {% if edit_mode %}Save Changes{% else %}Create Sales Person{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+    .sp-form-page { max-width: 860px; margin: 0 auto; padding: 2rem; }
+    .page-header { margin-bottom: 2rem; }
+    .back-link { display: inline-flex; align-items: center; gap: 0.5rem; color: #666; text-decoration: none; margin-bottom: 0.75rem; font-size: 0.875rem; }
+    .back-link:hover { color: #0033A0; }
+    .page-header h1 { margin: 0; font-size: 2rem; color: #1A1A1A; display: flex; align-items: center; gap: 0.75rem; }
+
+    .form-section { background: white; border: 1px solid #E8E8E8; border-radius: 12px; padding: 2rem; margin-bottom: 1.5rem; }
+    .info-section { background: #F9FAFB; }
+    .section-title { margin: 0 0 1.5rem; font-size: 1.125rem; color: #1A1A1A; display: flex; align-items: center; gap: 0.5rem; padding-bottom: 1rem; border-bottom: 2px solid #F5F5F5; }
+
+
+    .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+    .form-group.full-width { grid-column: 1 / -1; }
+    .form-group.required label::after { content: " *"; color: #EF4444; }
+    .form-group label { font-weight: 600; color: #1A1A1A; font-size: 0.875rem; }
+    .form-input, .form-select { padding: 0.875rem 1rem; border: 1px solid #E8E8E8; border-radius: 8px; font-size: 0.9375rem; font-family: inherit; transition: all 0.2s; }
+    .form-input:focus, .form-select:focus { outline: none; border-color: #0033A0; box-shadow: 0 0 0 3px rgba(0,51,160,0.1); }
+    .form-hint { font-size: 0.8125rem; color: #999; }
+
+    .portfolio-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 1rem; }
+    .portfolio-stat { text-align: center; background: white; border: 1px solid #E8E8E8; border-radius: 8px; padding: 1rem; }
+    .portfolio-val { font-size: 1.75rem; font-weight: 800; color: #1A1A1A; margin-bottom: 0.25rem; }
+    .portfolio-label { font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; }
+    .reassign-section { padding-top: 0.75rem; border-top: 1px solid #E8E8E8; }
+    .btn-sm { padding: 0.5rem 1rem; font-size: 0.875rem; }
+
+    .form-actions { display: flex; gap: 1rem; justify-content: flex-end; padding: 2rem; background: white; border: 1px solid #E8E8E8; border-radius: 12px; }
+    .btn-cancel, .btn-submit { padding: 1rem 2rem; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; text-decoration: none; transition: all 0.2s; }
+    .btn-cancel { background: #F5F5F5; color: #666; }
+    .btn-cancel:hover { background: #E8E8E8; color: #1A1A1A; }
+    .btn-submit { background: linear-gradient(135deg, #0033A0, #0047D1); color: white; }
+    .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,51,160,0.3); }
+    .btn-secondary { padding: 0.875rem 1.5rem; background: #F5F5F5; color: #666; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s; }
+    .btn-secondary:hover { background: #E8E8E8; color: #1A1A1A; }
+
+    @media (max-width: 768px) {
+        .sp-form-page { padding: 1rem; }
+        .form-grid { grid-template-columns: 1fr; }
+        .portfolio-stats { grid-template-columns: 1fr 1fr; }
+        .form-actions { flex-direction: column-reverse; }
+        .btn-cancel, .btn-submit { width: 100%; justify-content: center; }
+    }
+</style>
+{% endblock %}

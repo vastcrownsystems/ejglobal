@@ -365,8 +365,8 @@
             <tr>
                 <th>Product / Variant</th>
                 <th>SKU</th>
-                <th>Price / Cost</th>
-                <th>Profit</th>
+                <th>Standard Price</th>
+<!--                <th>Profit</th>-->
                 <th>Stock</th>
                 <th>Barcode</th>
                 <th>Status</th>
@@ -393,20 +393,20 @@
                 <td>
                     <div class="price-group">
                         <div class="price-main">₦{{ variant.price|floatformat:2 }}</div>
-                        <div class="price-cost">Cost: ₦{{ variant.cost_price|floatformat:2 }}</div>
+<!--                        <div class="price-cost">Cost: ₦{{ variant.cost_price|floatformat:2 }}</div>-->
                     </div>
                 </td>
-                <td>
-                    {% with margin=variant.profit_margin %}
-                        {% if margin > 50 %}
-                            <div class="profit-margin high">{{ margin|floatformat:1 }}%</div>
-                        {% elif margin > 20 %}
-                            <div class="profit-margin medium">{{ margin|floatformat:1 }}%</div>
-                        {% else %}
-                            <div class="profit-margin low">{{ margin|floatformat:1 }}%</div>
-                        {% endif %}
-                    {% endwith %}
-                </td>
+<!--                <td>-->
+<!--                    {% with margin=variant.profit_margin %}-->
+<!--                        {% if margin > 50 %}-->
+<!--                            <div class="profit-margin high">{{ margin|floatformat:1 }}%</div>-->
+<!--                        {% elif margin > 20 %}-->
+<!--                            <div class="profit-margin medium">{{ margin|floatformat:1 }}%</div>-->
+<!--                        {% else %}-->
+<!--                            <div class="profit-margin low">{{ margin|floatformat:1 }}%</div>-->
+<!--                        {% endif %}-->
+<!--                    {% endwith %}-->
+<!--                </td>-->
                 <td>
                     {% if variant.product.track_inventory %}
                         {% if variant.is_out_of_stock %}

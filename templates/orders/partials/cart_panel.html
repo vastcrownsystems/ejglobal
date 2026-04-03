@@ -34,13 +34,30 @@
             <!-- Customer linked -->
             <div class="customer-linked">
                 <div class="customer-linked-info">
-                    <div class="customer-avatar">
+                    <div class="customer-avatar customer-avatar-{{ order.customer.customer_type|lower }}">
                         {{ order.customer.full_name|slice:":1"|upper }}
                     </div>
                     <div class="customer-linked-details">
-                        <span class="customer-linked-name">{{ order.customer.full_name }}</span>
+                        <div class="customer-linked-name-row">
+                            <span class="customer-linked-name">{{ order.customer.full_name }}</span>
+                            <span class="customer-type-badge customer-type-{{ order.customer.customer_type|lower }}">
+                                {% if order.customer.customer_type == 'RETAILER' %}
+                                    <i class="fas fa-store"></i> Retailer
+                                {% elif order.customer.customer_type == 'DISTRIBUTOR' %}
+                                    <i class="fas fa-truck"></i> Distributor
+                                {% else %}
+                                    <i class="fas fa-user"></i> Individual
+                                {% endif %}
+                            </span>
+                        </div>
                         {% if order.customer.phone %}
                             <span class="customer-linked-phone">{{ order.customer.phone }}</span>
+                        {% endif %}
+                        {% if order.customer.customer_type != 'INDIVIDUAL' %}
+                            <span class="customer-price-notice">
+                                <i class="fas fa-tag"></i>
+                                {{ order.customer.get_customer_type_display }} prices applied
+                            </span>
                         {% endif %}
                     </div>
                 </div>
@@ -158,6 +175,11 @@
                                 </div>
                                 <div class="cart-item-meta">
                                     <span class="cart-item-price">₦{{ item.unit_price|floatformat:2 }} each</span>
+                                    {% if customer_type and customer_type != 'INDIVIDUAL' %}
+                                        <span class="cart-item-price-type cart-item-price-type-{{ customer_type|lower }}">
+                                            {{ customer_type|capfirst }}
+                                        </span>
+                                    {% endif %}
                                     {% if item.discount_amount > 0 %}
                                         <span class="cart-item-discount">-₦{{ item.discount_amount|floatformat:2 }}</span>
                                     {% endif %}
@@ -503,6 +525,54 @@
     }
 
     .customer-search-results:empty { display: none; }
+
+    /* ── Customer type badges ── */
+    .customer-linked-name-row {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+    }
+
+    .customer-type-badge {
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .customer-type-individual  { background: #E0E7FF; color: #3730A3; }
+    .customer-type-retailer    { background: #FEF3C7; color: #92400E; }
+    .customer-type-distributor { background: #EDE9FE; color: #5B21B6; }
+
+    .customer-avatar-retailer    { background: #D97706 !important; }
+    .customer-avatar-distributor { background: #6D28D9 !important; }
+
+    .customer-price-notice {
+        font-size: 0.7rem;
+        color: #7FBA00;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        margin-top: 1px;
+        font-weight: 600;
+    }
+
+    .cart-item-price-type {
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 1px 5px;
+        border-radius: 4px;
+        margin-left: 3px;
+        vertical-align: middle;
+    }
+    .cart-item-price-type-retailer    { background: #FEF3C7; color: #92400E; }
+    .cart-item-price-type-distributor { background: #EDE9FE; color: #5B21B6; }
 </style>
 
 <script>

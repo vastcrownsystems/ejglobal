@@ -250,7 +250,7 @@ function initSalesChart() {
         : salesData;
 
     const isManager = {{ is_manager|yesno:"true,false" }};
-    const chartLabel = isManager ? 'Daily Revenue (₦)' : 'My Daily Revenue (₦)';
+    const chartLabel = isManager ? 'Daily Revenue — Last 14 Days (₦)' : 'My Daily Revenue — Last 14 Days (₦)';
 
     new Chart(ctx, {
         type: 'line',

@@ -45,6 +45,14 @@
             >
         </div>
 
+        <div class="cqf-field">
+            <select name="customer_type" class="cqf-input cqf-select">
+                <option value="INDIVIDUAL">Individual</option>
+                <option value="RETAILER">Retailer</option>
+                <option value="DISTRIBUTOR">Distributor</option>
+            </select>
+        </div>
+
         <div class="cqf-actions">
             <button type="submit" class="cqf-btn-save">
                 <i class="fas fa-check"></i> Save & Select
@@ -127,4 +135,14 @@
     }
 
     .cqf-btn-cancel:hover { background: #e2e5eb; }
+
+    .cqf-select {
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        padding-right: 2rem;
+        cursor: pointer;
+    }
 </style>

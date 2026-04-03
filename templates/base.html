@@ -96,7 +96,7 @@
                 {% endwith %}
 
                 <!-- Customers (Everyone can see) -->
-                <a href="{% url 'customers:customer_list' %}" class="nav-item {% if request.resolver_match.namespace == 'customers' %}active{% endif %}" data-title="Customers">
+                <a href="{% url 'customers:customer_dashboard' %}" class="nav-item {% if request.resolver_match.namespace == 'customers' %}active{% endif %}" data-title="Customers">
                     <i class="fas fa-users"></i>
                     <span>Customers</span>
                 </a>
@@ -120,7 +120,7 @@
                 {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
                     <a href="{% url 'credit:ledger_list' %}"
                        class="nav-item
-                       {% if ns == 'credit' and 'ledger' in name %}
+                       {% if ns == 'credit' and 'ledger' and 'pay' in name %}
                            active
                        {% endif %}"
                        data-title="Credit Ledger">

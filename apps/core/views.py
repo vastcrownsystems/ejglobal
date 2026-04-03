@@ -58,14 +58,14 @@ def _manager_dashboard(request):
 
     # ── 1. Total Revenue (Today) ─────────────────────────────────────────
     today_revenue = Order.objects.filter(
-        status__in=['CONFIRMED', 'COMPLETED'],
-        created_at__gte=today_start,
+        status='COMPLETED',
+        completed_at__gte=today_start,
     ).aggregate(total=Sum('total'))['total'] or Decimal('0.00')
 
     yesterday_revenue = Order.objects.filter(
-        status__in=['CONFIRMED', 'COMPLETED'],
-        created_at__gte=yesterday_start,
-        created_at__lt=yesterday_end,
+        status='COMPLETED',
+        completed_at__gte=yesterday_start,
+        completed_at__lt=yesterday_end,
     ).aggregate(total=Sum('total'))['total'] or Decimal('0.00')
 
     if yesterday_revenue > 0:
@@ -75,19 +75,19 @@ def _manager_dashboard(request):
 
     # ── 2. Total Sales and (today_items_sold) ────────────────────────────────────
     today_sales = Order.objects.filter(
-        status__in=['CONFIRMED', 'COMPLETED'],
-        created_at__gte=today_start,
+        status='COMPLETED',
+        completed_at__gte=today_start,
     ).count()
 
     today_items_sold = OrderItem.objects.filter(
-        order__status__in=['CONFIRMED', 'COMPLETED'],
-        order__created_at__gte=today_start,
+        order__status='COMPLETED',
+        order__completed_at__gte=today_start,
     ).aggregate(total=Sum('quantity'))['total'] or 0
 
     yesterday_sales = Order.objects.filter(
-        status__in=['CONFIRMED', 'COMPLETED'],
-        created_at__gte=yesterday_start,
-        created_at__lt=yesterday_end,
+        status='COMPLETED',
+        completed_at__gte=yesterday_start,
+        completed_at__lt=yesterday_end,
     ).count()
 
     if yesterday_sales > 0:
@@ -136,9 +136,9 @@ def _manager_dashboard(request):
     # Mock % change (you'd need historical tracking for real change)
     stock_change = 0
 
-    # ── 5. Sales Chart Data (Last 7 Days) ───────────────────────────────
+    # ── 5. Sales Chart Data (Last 14 Days) ──────────────────────────────
     sales_chart_data = []
-    for i in range(6, -1, -1):
+    for i in range(13, -1, -1):
         day = today - timedelta(days=i)
         day_start = timezone.make_aware(
             timezone.datetime.combine(day, timezone.datetime.min.time())
@@ -146,9 +146,9 @@ def _manager_dashboard(request):
         day_end = day_start + timedelta(days=1)
 
         day_revenue = Order.objects.filter(
-            status__in=['CONFIRMED', 'COMPLETED'],
-            created_at__gte=day_start,
-            created_at__lt=day_end,
+            status='COMPLETED',
+            completed_at__gte=day_start,
+            completed_at__lt=day_end,
         ).aggregate(total=Sum('total'))['total'] or Decimal('0.00')
 
         sales_chart_data.append({
@@ -187,7 +187,7 @@ def _manager_dashboard(request):
     recent_orders = Order.objects.filter(
         status__in=['CONFIRMED', 'COMPLETED', 'CANCELLED'],
     ).select_related('customer', 'created_by', 'cashier_session__register').prefetch_related('items').order_by(
-        '-created_at')[:5]
+        '-completed_at', '-created_at')[:5]
 
     orders_list = []
     for order in recent_orders:
@@ -201,7 +201,7 @@ def _manager_dashboard(request):
             'customer_name': order.customer.full_name if order.customer else 'Walk-in Customer',
             'cashier_name': order.created_by.get_full_name() if order.created_by else 'Unknown',
             'register_id': register_id,
-            'date': order.created_at,
+            'date': order.completed_at or order.created_at,
             'total': order.total,
             'status': order.status,
             'status_display': order.get_status_display(),
@@ -271,15 +271,15 @@ def _user_dashboard(request):
     # ── 1. Personal Revenue (Today) ──────────────────────────────────────
     today_revenue = Order.objects.filter(
         user_orders_filter,
-        status__in=['CONFIRMED', 'COMPLETED'],
-        created_at__gte=today_start,
+        status='COMPLETED',
+        completed_at__gte=today_start,
     ).aggregate(total=Sum('total'))['total'] or Decimal('0.00')
 
     yesterday_revenue = Order.objects.filter(
         user_orders_filter,
-        status__in=['CONFIRMED', 'COMPLETED'],
-        created_at__gte=yesterday_start,
-        created_at__lt=yesterday_end,
+        status='COMPLETED',
+        completed_at__gte=yesterday_start,
+        completed_at__lt=yesterday_end,
     ).aggregate(total=Sum('total'))['total'] or Decimal('0.00')
 
     if yesterday_revenue > 0:
@@ -290,15 +290,15 @@ def _user_dashboard(request):
     # ── 2. Personal Sales (Orders Today) ─────────────────────────────────
     today_sales = Order.objects.filter(
         user_orders_filter,
-        status__in=['CONFIRMED', 'COMPLETED'],
-        created_at__gte=today_start,
+        status='COMPLETED',
+        completed_at__gte=today_start,
     ).count()
 
     yesterday_sales = Order.objects.filter(
         user_orders_filter,
-        status__in=['CONFIRMED', 'COMPLETED'],
-        created_at__gte=yesterday_start,
-        created_at__lt=yesterday_end,
+        status='COMPLETED',
+        completed_at__gte=yesterday_start,
+        completed_at__lt=yesterday_end,
     ).count()
 
     if yesterday_sales > 0:
@@ -314,15 +314,15 @@ def _user_dashboard(request):
 
     new_customers_today = Order.objects.filter(
         user_orders_filter,
-        status__in=['CONFIRMED', 'COMPLETED'],
-        created_at__gte=today_start,
+        status='COMPLETED',
+        completed_at__gte=today_start,
     ).values('customer').distinct().count()
 
     new_customers_yesterday = Order.objects.filter(
         user_orders_filter,
-        status__in=['CONFIRMED', 'COMPLETED'],
-        created_at__gte=yesterday_start,
-        created_at__lt=yesterday_end,
+        status='COMPLETED',
+        completed_at__gte=yesterday_start,
+        completed_at__lt=yesterday_end,
     ).values('customer').distinct().count()
 
     if new_customers_yesterday > 0:
@@ -334,17 +334,17 @@ def _user_dashboard(request):
     items_sold_today = OrderItem.objects.filter(
         order__in=Order.objects.filter(
             user_orders_filter,
-            status__in=['CONFIRMED', 'COMPLETED'],
-            created_at__gte=today_start,
+            status='COMPLETED',
+            completed_at__gte=today_start,
         )
     ).aggregate(total=Sum('quantity'))['total'] or 0
 
     items_sold_yesterday = OrderItem.objects.filter(
         order__in=Order.objects.filter(
             user_orders_filter,
-            status__in=['CONFIRMED', 'COMPLETED'],
-            created_at__gte=yesterday_start,
-            created_at__lt=yesterday_end,
+            status='COMPLETED',
+            completed_at__gte=yesterday_start,
+            completed_at__lt=yesterday_end,
         )
     ).aggregate(total=Sum('quantity'))['total'] or 0
 
@@ -353,9 +353,9 @@ def _user_dashboard(request):
     else:
         items_change = 100 if items_sold_today > 0 else 0
 
-    # ── 5. Sales Chart Data (Last 7 Days) - Personal ────────────────────
+    # ── 5. Sales Chart Data (Last 14 Days) - Personal ───────────────────
     sales_chart_data = []
-    for i in range(6, -1, -1):
+    for i in range(13, -1, -1):
         day = today - timedelta(days=i)
         day_start = timezone.make_aware(
             timezone.datetime.combine(day, timezone.datetime.min.time())
@@ -364,9 +364,9 @@ def _user_dashboard(request):
 
         day_revenue = Order.objects.filter(
             user_orders_filter,
-            status__in=['CONFIRMED', 'COMPLETED'],
-            created_at__gte=day_start,
-            created_at__lt=day_end,
+            status='COMPLETED',
+            completed_at__gte=day_start,
+            completed_at__lt=day_end,
         ).aggregate(total=Sum('total'))['total'] or Decimal('0.00')
 
         sales_chart_data.append({
@@ -397,7 +397,7 @@ def _user_dashboard(request):
         user_orders_filter,
         status__in=['CONFIRMED', 'COMPLETED', 'CANCELLED'],
     ).select_related('customer', 'created_by', 'cashier_session__register').prefetch_related('items').order_by(
-        '-created_at')[:5]
+        '-completed_at', '-created_at')[:5]
 
     orders_list = []
     for order in recent_orders:
@@ -411,7 +411,7 @@ def _user_dashboard(request):
             'customer_name': order.customer.full_name if order.customer else 'Walk-in Customer',
             'cashier_name': order.created_by.get_full_name() if order.created_by else 'Unknown',
             'register_id': register_id,
-            'date': order.created_at,
+            'date': order.completed_at or order.created_at,
             'total': order.total,
             'status': order.status,
             'status_display': order.get_status_display(),

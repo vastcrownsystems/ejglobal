@@ -1,0 +1,274 @@
+<!-- apps/customers/templates/customers/salesperson_list.html -->
+
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Sales Persons{% endblock %}
+{% block page_title %}Sales Persons{% endblock %}
+
+{% block content %}
+<div class="sp-page">
+
+    <!-- Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <a href="{% url 'customers:customer_list' %}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Customers
+            </a>
+            <h1><i class="fas fa-user-tie"></i> Sales Persons</h1>
+            <p class="subtitle">Manage your sales team and customer assignments</p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'customers:salesperson_create' %}" class="btn-primary">
+                <i class="fas fa-user-plus"></i> Add Sales Person
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon blue"><i class="fas fa-user-tie"></i></div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_count }}</div>
+                <div class="stat-label">Total</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+            <div class="stat-content">
+                <div class="stat-value">{{ active_count }}</div>
+                <div class="stat-label">Active</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon orange"><i class="fas fa-users"></i></div>
+            <div class="stat-content">
+                <div class="stat-value">{{ sales_persons|length }}</div>
+                <div class="stat-label">Showing</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+        <form method="get" class="filters-form">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" name="search" value="{{ search }}" placeholder="Search by name, ID or email..." class="search-input">
+            </div>
+            <select name="status" class="filter-select" onchange="this.form.submit()">
+                <option value="">All Statuses</option>
+                <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+            </select>
+            <button type="submit" class="btn-filter"><i class="fas fa-filter"></i> Apply</button>
+            {% if search or status_filter %}
+                <a href="{% url 'customers:salesperson_list' %}" class="btn-clear"><i class="fas fa-times"></i> Clear</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrapper">
+        {% if sales_persons %}
+        <table class="sp-table">
+            <thead>
+                <tr>
+                    <th>Sales Person</th>
+                    <th>Employee ID</th>
+                    <th>Contact</th>
+                    <th>Linked User</th>
+                    <th class="text-center">Customers</th>
+                    <th class="text-right">Portfolio Revenue</th>
+                    <th class="text-center">Status</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sp in sales_persons %}
+                <tr>
+                    <td>
+                        <div class="sp-info">
+                            <div class="sp-avatar">{{ sp.full_name|slice:":2"|upper }}</div>
+                            <div>
+                                <a href="{% url 'customers:salesperson_detail' sp.pk %}" class="sp-name">
+                                    {{ sp.full_name }}
+                                </a>
+                                <div class="sp-since">Since {{ sp.created_at|date:"M Y" }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="emp-id">{{ sp.employee_id|default:"—" }}</span></td>
+                    <td>
+                        <div class="contact-info">
+                            {% if sp.phone %}
+                                <div class="contact-item"><i class="fas fa-phone"></i> {{ sp.phone }}</div>
+                            {% endif %}
+                            {% if sp.email %}
+                                <div class="contact-item"><i class="fas fa-envelope"></i> {{ sp.email }}</div>
+                            {% endif %}
+                            {% if not sp.phone and not sp.email %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if sp.user %}
+                            <div class="user-link">
+                                <i class="fas fa-link"></i>
+                                {{ sp.user.username }}
+                            </div>
+                        {% else %}
+                            <span class="text-muted">Not linked</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <strong>{{ sp.active_customers }}</strong>
+                        {% if sp.total_customers != sp.active_customers %}
+                            <small class="text-muted"> / {{ sp.total_customers }}</small>
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        <strong class="amount">₦{{ sp.total_revenue|default:0|floatformat:2 }}</strong>
+                    </td>
+                    <td class="text-center">
+                        {% if sp.is_active %}
+                            <span class="badge badge-active">Active</span>
+                        {% else %}
+                            <span class="badge badge-inactive">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <div class="action-buttons">
+                            <a href="{% url 'customers:salesperson_detail' sp.pk %}" class="btn-icon" title="View">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{% url 'customers:salesperson_edit' sp.pk %}" class="btn-icon" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% if sp.is_active %}
+                            <button class="btn-icon btn-danger-icon"
+                                    onclick="confirmDeactivate({{ sp.pk }}, '{{ sp.full_name|escapejs }}', {{ sp.active_customers }})"
+                                    title="Deactivate">
+                                <i class="fas fa-user-slash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon"><i class="fas fa-user-tie"></i></div>
+            <h3>No sales persons found</h3>
+            {% if search or status_filter %}
+                <p>Try adjusting your filters</p>
+                <a href="{% url 'customers:salesperson_list' %}" class="btn-secondary">Clear Filters</a>
+            {% else %}
+                <p>Add your first sales person to start tracking customer assignments</p>
+                <a href="{% url 'customers:salesperson_create' %}" class="btn-primary">
+                    <i class="fas fa-user-plus"></i> Add Sales Person
+                </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Deactivate confirmation form (hidden) -->
+<form id="deactivate-form" method="post" action="" style="display:none">
+    {% csrf_token %}
+</form>
+
+<style>
+    .sp-page { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
+    .back-link { display: inline-flex; align-items: center; gap: 0.5rem; color: #666; text-decoration: none; margin-bottom: 0.75rem; font-size: 0.875rem; }
+    .back-link:hover { color: #0033A0; }
+    .page-header h1 { margin: 0 0 0.25rem; font-size: 2rem; color: #1A1A1A; display: flex; align-items: center; gap: 0.75rem; }
+    .subtitle { margin: 0; color: #666; }
+    .header-actions { display: flex; gap: 1rem; }
+    .btn-primary { padding: 0.875rem 1.5rem; background: #0033A0; color: white; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s; border: none; cursor: pointer; }
+    .btn-primary:hover { background: #0047D1; transform: translateY(-2px); }
+    .btn-secondary { padding: 0.875rem 1.5rem; background: #F5F5F5; color: #666; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s; }
+    .btn-secondary:hover { background: #E8E8E8; color: #1A1A1A; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
+    .stat-card { background: white; border: 1px solid #E8E8E8; border-radius: 12px; padding: 1.5rem; display: flex; gap: 1rem; }
+    .stat-icon { width: 56px; height: 56px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; flex-shrink: 0; }
+    .stat-icon.blue { background: linear-gradient(135deg, #0033A0, #0047D1); }
+    .stat-icon.green { background: linear-gradient(135deg, #10B981, #059669); }
+    .stat-icon.orange { background: linear-gradient(135deg, #F59E0B, #D97706); }
+    .stat-value { font-size: 1.75rem; font-weight: 800; color: #1A1A1A; }
+    .stat-label { font-size: 0.875rem; color: #666; }
+
+    .filters-section { background: white; border: 1px solid #E8E8E8; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }
+    .filters-form { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+    .search-box { flex: 1; min-width: 200px; position: relative; }
+    .search-box i { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #999; }
+    .search-input { width: 100%; padding: 0.8rem 1rem 0.8rem 3rem; border: 1px solid #E8E8E8; border-radius: 8px; font-size: 0.9375rem; }
+    .search-input:focus { outline: none; border-color: #0033A0; }
+    .filter-select { padding: 0.8rem 1rem; border: 1px solid #E8E8E8; border-radius: 8px; font-size: 0.875rem; min-width: 140px; }
+    .btn-filter { padding: 0.8rem 1.25rem; background: #0033A0; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; }
+    .btn-filter:hover { background: #0047D1; }
+    .btn-clear { padding: 0.8rem 1.25rem; background: #F5F5F5; color: #666; border-radius: 8px; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .btn-clear:hover { background: #E8E8E8; }
+
+    .table-wrapper { background: white; border: 1px solid #E8E8E8; border-radius: 12px; overflow-x: auto; }
+    .sp-table { width: 100%; border-collapse: collapse; }
+    .sp-table th { background: #FAFAFA; padding: 1rem 1.25rem; text-align: left; font-weight: 700; font-size: 0.8125rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid #E8E8E8; white-space: nowrap; }
+    .sp-table td { padding: 1.25rem; border-bottom: 1px solid #F5F5F5; vertical-align: middle; }
+    .sp-table tr:hover { background: #FAFAFA; }
+
+    .sp-info { display: flex; align-items: center; gap: 0.875rem; }
+    .sp-avatar { width: 44px; height: 44px; background: linear-gradient(135deg, #10B981, #059669); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; flex-shrink: 0; }
+    .sp-name { font-weight: 700; color: #1A1A1A; text-decoration: none; display: block; margin-bottom: 0.2rem; }
+    .sp-name:hover { color: #0033A0; }
+    .sp-since { font-size: 0.75rem; color: #999; }
+    .emp-id { font-family: monospace; font-size: 0.8125rem; color: #0033A0; background: #EFF6FF; padding: 2px 8px; border-radius: 4px; }
+    .contact-info { display: flex; flex-direction: column; gap: 0.2rem; }
+    .contact-item { font-size: 0.8125rem; color: #666; display: flex; align-items: center; gap: 0.4rem; }
+    .contact-item i { color: #999; width: 12px; font-size: 0.75rem; }
+    .user-link { font-size: 0.875rem; color: #374151; display: flex; align-items: center; gap: 0.4rem; }
+    .user-link i { color: #10B981; }
+    .amount { color: #10B981; font-family: monospace; }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .text-muted { color: #999; font-size: 0.875rem; }
+
+    .badge { padding: 0.3rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; display: inline-block; }
+    .badge-active { background: #D1FAE5; color: #065F46; }
+    .badge-inactive { background: #F3F4F6; color: #6B7280; }
+
+    .action-buttons { display: flex; gap: 0.5rem; justify-content: center; }
+    .btn-icon { width: 34px; height: 34px; background: #F5F5F5; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #666; text-decoration: none; border: none; cursor: pointer; transition: all 0.2s; }
+    .btn-icon:hover { background: #0033A0; color: white; }
+    .btn-danger-icon:hover { background: #EF4444 !important; color: white !important; }
+
+    .empty-state { text-align: center; padding: 4rem 2rem; }
+    .empty-icon { width: 100px; height: 100px; background: #F5F5F5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
+    .empty-icon i { font-size: 3rem; color: #D0D0D0; }
+    .empty-state h3 { margin: 0 0 0.5rem; color: #1A1A1A; }
+    .empty-state p { margin: 0 0 1.5rem; color: #666; }
+
+    @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 768px) { .sp-page { padding: 1rem; } .stats-grid { grid-template-columns: 1fr; } .sp-table { min-width: 900px; } }
+</style>
+
+<script>
+function confirmDeactivate(pk, name, customerCount) {
+    let msg = `Deactivate "${name}"?`;
+    if (customerCount > 0) {
+        msg += `\n\nThis will unassign ${customerCount} customer(s). Their records will NOT be deleted.`;
+    }
+    if (confirm(msg)) {
+        const form = document.getElementById('deactivate-form');
+        form.action = `/customers/sales-persons/${pk}/delete/`;
+        form.submit();
+    }
+}
+</script>
+{% endblock %}
