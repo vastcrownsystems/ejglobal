@@ -57,7 +57,6 @@
                 <div class="form-group required">
                     <label for="customer_type">Customer Type</label>
                     <select name="customer_type" id="customer_type" class="form-select" required>
-                        <option value="INDIVIDUAL" {% if not edit_mode or customer.customer_type == 'INDIVIDUAL' %}selected{% endif %}>Individual</option>
                         <option value="RETAILER" {% if edit_mode and customer.customer_type == 'RETAILER' %}selected{% endif %}>Retailer</option>
                         <option value="DISTRIBUTOR" {% if edit_mode and customer.customer_type == 'DISTRIBUTOR' %}selected{% endif %}>Distributor</option>
                     </select>

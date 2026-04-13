@@ -163,7 +163,6 @@
                 <option value="CONFIRMED" {% if request.GET.status == 'CONFIRMED' %}selected{% endif %}>Confirmed</option>
                 <option value="PROCESSING" {% if request.GET.status == 'PROCESSING' %}selected{% endif %}>Processing</option>
                 <option value="COMPLETED" {% if request.GET.status == 'COMPLETED' %}selected{% endif %}>Completed</option>
-                <option value="CANCELLED" {% if request.GET.status == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
             </select>
 
             <!-- ✅ NEW: Payment Status Filter -->
@@ -217,6 +216,7 @@
                     </thead>
                     <tbody>
                         {% for order in orders %}
+                        {% if order.status != 'CANCELLED' %}
                         <tr>
                             <td data-label="Order #">
                                 <a href="{% url 'orders:order_detail' order.pk %}" class="order-number">
@@ -296,6 +296,7 @@
                                 </a>
                             </td>
                         </tr>
+                        {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>

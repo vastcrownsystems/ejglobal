@@ -185,7 +185,7 @@ def _manager_dashboard(request):
 
     # ── 7. Recent Orders ─────────────────────────────────────────────────
     recent_orders = Order.objects.filter(
-        status__in=['CONFIRMED', 'COMPLETED', 'CANCELLED'],
+        status__in=['CONFIRMED', 'COMPLETED'],
     ).select_related('customer', 'created_by', 'cashier_session__register').prefetch_related('items').order_by(
         '-completed_at', '-created_at')[:5]
 
@@ -395,7 +395,7 @@ def _user_dashboard(request):
     # ── 7. Recent Orders - Personal ──────────────────────────────────────
     recent_orders = Order.objects.filter(
         user_orders_filter,
-        status__in=['CONFIRMED', 'COMPLETED', 'CANCELLED'],
+        status__in=['CONFIRMED', 'COMPLETED'],
     ).select_related('customer', 'created_by', 'cashier_session__register').prefetch_related('items').order_by(
         '-completed_at', '-created_at')[:5]
 

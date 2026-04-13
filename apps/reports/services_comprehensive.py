@@ -263,12 +263,32 @@ class ComprehensiveReportService:
     # ── Inventory Data ────────────────────────────────────────────────────────
     @staticmethod
     def _inventory_data(date_from: date, date_to: date) -> dict:
+        """
+        Inventory reconciliation for the report period.
+
+        Opening stock is derived from the stock_before of the earliest
+        StockMovement in the period. If there are no movements at all,
+        we reconstruct opening = actual_closing + sales_in_period
+        (i.e. nothing was restocked or adjusted, only sold).
+
+        Adj (+): non-sale increases in the period (restocks, positive corrections).
+        Adj (-): non-sale decreases in the period (damages, negative corrections).
+        Sales:   units sold via completed orders in the period.
+
+        Expected closing = opening + adj_inc - adj_dec - sales
+        Actual closing   = variant.stock_quantity  (live value from DB)
+        Variance         = actual_closing - expected_closing
+        """
+        from django.db.models import F, Min
+
         variants = ProductVariant.objects.select_related(
             "product", "product__category"
         ).filter(product__is_active=True, is_active=True)
 
         products = []
         for variant in variants:
+
+            # ── Units sold via completed orders in period ──────────────────
             sales = (
                 OrderItem.objects.filter(
                     order__status="COMPLETED",
@@ -277,6 +297,8 @@ class ComprehensiveReportService:
                 ).aggregate(q=Coalesce(Sum("quantity"), 0))["q"] or 0
             )
 
+            # ── Non-sale stock increases (restocks, positive adjustments) ──
+            # quantity > 0 means stock went up (RESTOCK, CORRECTION up, etc.)
             adj_inc = (
                 StockMovement.objects.filter(
                     variant=variant,
@@ -284,21 +306,42 @@ class ComprehensiveReportService:
                     quantity__gt=0,
                 ).aggregate(q=Coalesce(Sum("quantity"), 0))["q"] or 0
             )
+
+            # ── Non-sale stock decreases (damage, negative adjustment) ────
+            # quantity < 0 and NOT a SALE movement type
             adj_dec = abs(
                 StockMovement.objects.filter(
                     variant=variant,
                     created_at__date__range=(date_from, date_to),
                     quantity__lt=0,
+                ).exclude(
+                    movement_type="SALE"
                 ).aggregate(q=Coalesce(Sum("quantity"), 0))["q"] or 0
             )
 
-            actual_closing   = variant.stock_quantity
-            opening_stock    = actual_closing - adj_inc + adj_dec + sales
+            # ── Opening stock: stock_before of earliest movement in period ─
+            # This is the most accurate source; avoids deriving from live stock.
+            first_movement = (
+                StockMovement.objects.filter(
+                    variant=variant,
+                    created_at__date__range=(date_from, date_to),
+                ).order_by("created_at").values("stock_before").first()
+            )
+
+            actual_closing = variant.stock_quantity
+
+            if first_movement is not None:
+                # We have movement records — use stock_before of first event
+                opening_stock = first_movement["stock_before"]
+            else:
+                # No movements at all in this period.
+                # Opening = closing + sales (only thing that changed stock)
+                opening_stock = actual_closing + sales
+
             expected_closing = opening_stock + adj_inc - adj_dec - sales
             variance         = actual_closing - expected_closing
             stock_value      = Decimal(str(actual_closing)) * variant.cost_price
 
-            # Standard unit price — try common field names in order
             unit_price = (
                 getattr(variant, "price", None)
                 or getattr(variant, "selling_price", None)
@@ -316,19 +359,21 @@ class ComprehensiveReportService:
                 "adjustments_decrease":  adj_dec,
                 "sales":                 sales,
                 "expected_closing":      expected_closing,
-                "unit_price":            _dec(unit_price),
+                "actual_closing":        actual_closing,
                 "variance":              variance,
+                "unit_price":            _dec(unit_price),
                 "stock_value":           stock_value,
             })
 
         return {
             "total_products":              len(products),
             "total_opening_stock":         sum(p["opening_stock"] for p in products),
-            "total_stock_added":           0,
+            "total_stock_added":           sum(p["adjustments_increase"] for p in products),
             "total_adjustments_increase":  sum(p["adjustments_increase"] for p in products),
             "total_adjustments_decrease":  sum(p["adjustments_decrease"] for p in products),
             "total_quantity_sold":         sum(p["sales"] for p in products),
             "total_expected_closing":      sum(p["expected_closing"] for p in products),
+            "total_actual_closing":        sum(p["actual_closing"] for p in products),
             "total_variance":              sum(p["variance"] for p in products),
             "total_stock_value":           sum((p["stock_value"] for p in products), Decimal("0.00")),
             "products":                    products,

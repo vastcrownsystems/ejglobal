@@ -156,11 +156,11 @@ class ComprehensiveExcelExporter:
         widths = {
             "A": 20, "B": 10, "C": 22, "D": 12,
             "E": 14, "F": 10, "G": 10, "H": 10, "I": 14,
-            "J": 10, "K": 16,            # K = Stock Value
-            "L": 4,  "M": 4,             # two free spacer columns
-            "N": 26, "O": 14, "P": 16, "Q": 22,
-            "R": 14, "S": 16, "T": 20, "U": 16,
-            "V": 12, "W": 10, "X": 14, "Y": 14,
+            "J": 14, "K": 14, "L": 16,  # J=Actual Closing, K=Unit Price, L=Stock Value
+            "M": 4,  "N": 4,             # two free spacer columns
+            "O": 26, "P": 14, "Q": 16, "R": 22,
+            "S": 14, "T": 16, "U": 20, "V": 16,
+            "W": 12, "X": 10, "Y": 14, "Z": 14,
         }
         for col, w in widths.items():
             ws.column_dimensions[col].width = w
@@ -178,6 +178,7 @@ class ComprehensiveExcelExporter:
             ("Adjustments Decrease",    inv.get("total_adjustments_decrease", 0)),
             ("Total Quantity Sold",     inv.get("total_quantity_sold", 0)),
             ("Expected Closing",        inv.get("total_expected_closing", 0)),
+            ("Actual Closing",          inv.get("total_actual_closing", 0)),
             ("Total Variance",          inv.get("total_variance", 0)),
             ("Total Stock Value",       inv.get("total_stock_value", Decimal("0.00"))),
         ]
@@ -195,8 +196,8 @@ class ComprehensiveExcelExporter:
         inv_hdr_row = 14
         inv_hdrs = ["Product Name", "Variant", "SKU", "Category",
                     "Opening Stock", "Adj (+)", "Adj (-)", "Sales",
-                    "Expected Closing", "Unit Price (₦)", "Stock Value (₦)"]
-        # use cols A-K for inventory table (expand to 11 cols)
+                    "Expected Closing", "Actual Closing", "Unit Price (₦)", "Stock Value (₦)"]
+        # Inventory table: cols A-L (12 columns)
         _hdr_row(ws, inv_hdr_row, inv_hdrs, start_col=1)
 
         products = inv.get("products", [])
@@ -213,6 +214,7 @@ class ComprehensiveExcelExporter:
                 p.get("adjustments_decrease", 0),
                 p.get("sales", 0),
                 p.get("expected_closing", 0),
+                p.get("actual_closing", 0),
                 p.get("unit_price", Decimal("0.00")),
                 p.get("stock_value", Decimal("0.00")),
             ]
@@ -226,7 +228,7 @@ class ComprehensiveExcelExporter:
                 ["", "", "", "",
                  "total_opening_stock", None, None,
                  "total_quantity_sold", "total_expected_closing",
-                 None, "total_stock_value"],
+                 "total_actual_closing", None, "total_stock_value"],
                 start=1
             ):
                 if key and key in inv:
@@ -238,7 +240,7 @@ class ComprehensiveExcelExporter:
 
         # ── SALES DETAILS section (cols L-W) ──
         # L=12, M=13, N=14, O=15, P=16, Q=17, R=18, S=19, T=20, U=21, V=22, W=23
-        SALES_START = 14   # column N (2 free spacer cols L & M before sales)
+        SALES_START = 15   # column O (2 free spacer cols M & N)
         _title_cell(ws, 1, SALES_START, "Sales Details", span_end=SALES_START + 11, size=13)
         ws.cell(row=2, column=SALES_START, value=f"Period: {period}").font = Font(name="Arial", size=9, italic=True)
 
@@ -305,7 +307,7 @@ class ComprehensiveExcelExporter:
             c_qty.font = _total_font()
             c_qty.fill = _total_fill()
 
-        ws.freeze_panes = "N3"
+        ws.freeze_panes = "O3"
 
     # ══════════════════════════════════════════════════════════════════════════
     # SHEET 2: Sales Summary

@@ -184,6 +184,7 @@
         </thead>
         <tbody>
             {% for order in recent_orders %}
+            {% if order.status != 'CANCELLED' %}
             <tr>
                 <td>{{ order.order_number }}</td>
                 <td>{{ order.customer_name }}</td>
@@ -208,6 +209,7 @@
                     </a>
                 </td>
             </tr>
+            {% endif %}
             {% empty %}
             <tr>
                 <td colspan="8" style="text-align: center; padding: 2rem; color: #999;">

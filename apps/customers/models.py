@@ -79,7 +79,6 @@ class Customer(TimeStampedModel):
     """
 
     CUSTOMER_TYPES = [
-        ('INDIVIDUAL', 'Individual'),
         ('RETAILER', 'Retailer'),
         ('DISTRIBUTOR', 'Distributor'),
     ]
