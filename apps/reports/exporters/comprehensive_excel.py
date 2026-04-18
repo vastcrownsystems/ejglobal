@@ -307,7 +307,7 @@ class ComprehensiveExcelExporter:
             c_qty.font = _total_font()
             c_qty.fill = _total_fill()
 
-        ws.freeze_panes = "O3"
+        ws.freeze_panes = None
 
     # ══════════════════════════════════════════════════════════════════════════
     # SHEET 2: Sales Summary
