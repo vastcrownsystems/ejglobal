@@ -89,7 +89,8 @@ def fetch_cart(cart_id) -> Order:
 def cart_context(cart: Order):
     cart = fetch_cart(cart.pk)
     items = cart.items.all()
-    return {"order": cart, "items": items}
+    customer_type = cart.customer.customer_type if cart.customer else None
+    return {"order": cart, "items": items, "customer_type": customer_type}
 
 
 # -----------------------------
@@ -252,7 +253,7 @@ def cart_add(request, variant_id):
         except PV.DoesNotExist:
             pass
 
-    customer_type = cart.customer.customer_type if cart.customer else 'INDIVIDUAL'
+    customer_type = cart.customer.customer_type if cart.customer else None
 
     try:
         OrderService.add_item(cart, variant_id, quantity=1, unit_price=unit_price)
@@ -1525,9 +1526,9 @@ def _render_cart(request, message=None, message_type='success'):
         except Order.DoesNotExist:
             pass
 
-    customer_type = 'INDIVIDUAL'
+    customer_type = None
     if order and order.customer:
-        customer_type = order.customer.customer_type or 'INDIVIDUAL'
+        customer_type = order.customer.customer_type or None
 
     return render(request, 'orders/partials/cart_panel.html', {
         'order': order,
@@ -1643,7 +1644,7 @@ def cart_remove_customer(request):
         order = get_object_or_404(Order, pk=order_id, status='DRAFT', created_by=request.user)
         order.customer = None
         order.save(update_fields=['customer'])
-        _reprice_order_items(order, 'INDIVIDUAL')
+        _reprice_order_items(order, None)  # None = standard price (variant.price)
 
         logger.info(f"Customer removed from order {order.pk}")
         return _render_cart(request, 'Customer removed', 'success')
@@ -1713,9 +1714,9 @@ def cart_quick_add_customer(request):
     full_name     = request.POST.get('full_name', '').strip()
     phone         = request.POST.get('phone', '').strip()
     email         = request.POST.get('email', '').strip()
-    customer_type = request.POST.get('customer_type', 'INDIVIDUAL').strip()
-    if customer_type not in ('INDIVIDUAL', 'RETAILER', 'DISTRIBUTOR'):
-        customer_type = 'INDIVIDUAL'
+    customer_type = request.POST.get('customer_type', 'RETAILER').strip()
+    if customer_type not in ('RETAILER', 'DISTRIBUTOR', 'STAFF'):
+        customer_type = 'RETAILER'
 
     if not full_name:
         return _render_cart(request, 'Customer name is required', 'error')

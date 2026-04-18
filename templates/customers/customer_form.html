@@ -59,6 +59,7 @@
                     <select name="customer_type" id="customer_type" class="form-select" required>
                         <option value="RETAILER" {% if edit_mode and customer.customer_type == 'RETAILER' %}selected{% endif %}>Retailer</option>
                         <option value="DISTRIBUTOR" {% if edit_mode and customer.customer_type == 'DISTRIBUTOR' %}selected{% endif %}>Distributor</option>
+                        <option value="STAFF" {% if edit_mode and customer.customer_type == 'STAFF' %}selected{% endif %}>Staff</option>
                     </select>
                 </div>
 
@@ -102,7 +103,7 @@
                         id="phone"
                         class="form-input"
                         value="{% if edit_mode %}{{ customer.phone }}{% endif %}"
-                        placeholder="+234-XXX-XXX-XXXX"
+                        placeholder=""
                     >
                 </div>
 
@@ -115,7 +116,7 @@
                         id="email"
                         class="form-input"
                         value="{% if edit_mode %}{{ customer.email }}{% endif %}"
-                        placeholder="customer@example.com"
+                        placeholder=""
                     >
                 </div>
             </div>
@@ -138,7 +139,7 @@
                         id="address_line1"
                         class="form-input"
                         value="{% if edit_mode %}{{ customer.address_line }}{% endif %}"
-                        placeholder="Street address, P.O. box, company name, c/o"
+                        placeholder=""
                     >
                 </div>
 
@@ -151,7 +152,7 @@
                         id="city"
                         class="form-input"
                         value="{% if edit_mode %}{{ customer.city }}{% endif %}"
-                        placeholder="e.g., Lagos"
+                        placeholder=""
                     >
                 </div>
 
@@ -164,7 +165,7 @@
                         id="state"
                         class="form-input"
                         value="{% if edit_mode %}{{ customer.state }}{% endif %}"
-                        placeholder="e.g., Lagos"
+                        placeholder=""
                     >
                 </div>
             </div>

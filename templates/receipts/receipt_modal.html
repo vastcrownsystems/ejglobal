@@ -24,7 +24,7 @@
         </div>
 
         <!-- Scrollable Body -->
-        <div class="receipt-modal-body">
+        <div class="receipt-modal-body" style="margin-bottom: 100px;">
 
             <!-- ========================================
                  PRINT AREA — mirrors receipt_detail.html
@@ -75,10 +75,22 @@
                 {% if not c.is_walk_in %}
                 <div class="rp-section">
                     <div class="rp-items-hdr">CUSTOMER</div>
+<!--                    {% if c.name %}-->
+<!--                    <div class="rp-row">-->
+<!--                        <span class="rp-lbl">Name:</span>-->
+<!--                        <span>{{ c.name }}</span>-->
+<!--                    </div>-->
+<!--                    {% endif %}-->
                     {% if c.customer_number %}
                     <div class="rp-row">
                         <span class="rp-lbl">Customer #:</span>
                         <span>{{ c.customer_number }}</span>
+                    </div>
+                    {% endif %}
+                    {% if receipt.order.customer %}
+                    <div class="rp-row">
+                        <span class="rp-lbl">Type:</span>
+                        <span>{{ receipt.order.customer.get_customer_type_display }}</span>
                     </div>
                     {% endif %}
                 </div>
@@ -99,7 +111,9 @@
                     <div class="rp-items-hdr">ITEMS</div>
                     {% for item in receipt.payload.items %}
                     <div class="rp-item">
-                        <div class="rp-item-name">{{ item.display_name }}</div>
+                        <div class="rp-item-name">
+                            {% if item.variant_name %}{{ item.variant_name }}{% else %}{{ item.product_name }}{% endif %}
+                        </div>
                         <div class="rp-item-line">
                             <span class="rp-item-qty">
                                 {{ item.quantity|floatformat:0 }} x ₦{{ item.unit_price|floatformat:2 }}

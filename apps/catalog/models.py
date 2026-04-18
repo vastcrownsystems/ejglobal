@@ -1,3 +1,4 @@
+from decimal import Decimal
 # apps/catalog/models.py
 
 from django.db import models
@@ -135,6 +136,11 @@ class Product(TimeStampedModel):
         Return the appropriate product-level price for a given customer type.
         Falls back to base_price if the specific price is not set (0).
         """
+        if not customer_type:
+            return self.base_price  # no customer / walk-in → standard price
+
+        if customer_type == 'STAFF':
+            return Decimal('0.00')
         if customer_type == 'RETAILER' and self.retailer_price:
             return self.retailer_price
         if customer_type == 'DISTRIBUTOR' and self.distributor_price:
@@ -303,15 +309,21 @@ class ProductVariant(TimeStampedModel):
         Priority (variant only — no product-level fallback):
           DISTRIBUTOR → variant.distributor_price if set, else variant.price
           RETAILER    → variant.retailer_price    if set, else variant.price
-          INDIVIDUAL  → variant.price
+          Default     → variant.price
         """
+        if not customer_type:
+            return self.price  # no customer / walk-in → standard price
+
+        if customer_type == 'STAFF':
+            return Decimal('0.00')
+
         if customer_type == 'DISTRIBUTOR':
             return self.distributor_price if self.distributor_price else self.price
 
         if customer_type == 'RETAILER':
             return self.retailer_price if self.retailer_price else self.price
 
-        return self.price  # INDIVIDUAL or unrecognised
+        return self.price  # unrecognised type → standard price
 
     def get_attribute_display(self):
         attrs = self.attribute_values.all()

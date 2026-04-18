@@ -81,6 +81,7 @@ class Customer(TimeStampedModel):
     CUSTOMER_TYPES = [
         ('RETAILER', 'Retailer'),
         ('DISTRIBUTOR', 'Distributor'),
+        ('STAFF', 'Staff'),
     ]
 
     credit_limit = models.DecimalField(
@@ -145,7 +146,7 @@ class Customer(TimeStampedModel):
     customer_type = models.CharField(
         max_length=20,
         choices=CUSTOMER_TYPES,
-        default='INDIVIDUAL',
+        default='RETAILER',
         db_index=True
     )
 
@@ -222,9 +223,10 @@ class Customer(TimeStampedModel):
     def is_retailer(self):
         return self.customer_type == 'RETAILER'
 
+
     @property
-    def is_individual(self):
-        return self.customer_type == 'INDIVIDUAL'
+    def is_staff_customer(self):
+        return self.customer_type == 'STAFF'
 
     @property
     def outstanding_balance(self):

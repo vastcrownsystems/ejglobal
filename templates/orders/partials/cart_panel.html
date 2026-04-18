@@ -45,15 +45,20 @@
                                     <i class="fas fa-store"></i> Retailer
                                 {% elif order.customer.customer_type == 'DISTRIBUTOR' %}
                                     <i class="fas fa-truck"></i> Distributor
-                                {% else %}
-                                    <i class="fas fa-user"></i> Individual
+                                {% elif order.customer.customer_type == 'STAFF' %}
+                                    <i class="fas fa-id-badge"></i> Staff
                                 {% endif %}
                             </span>
                         </div>
                         {% if order.customer.phone %}
                             <span class="customer-linked-phone">{{ order.customer.phone }}</span>
                         {% endif %}
-                        {% if order.customer.customer_type != 'INDIVIDUAL' %}
+                        {% if order.customer.customer_type == 'STAFF' %}
+                            <span class="customer-price-notice" style="color:#6D28D9;">
+                                <i class="fas fa-gift"></i>
+                                Staff — all items free (₦0)
+                            </span>
+                        {% else %}
                             <span class="customer-price-notice">
                                 <i class="fas fa-tag"></i>
                                 {{ order.customer.get_customer_type_display }} prices applied
@@ -175,7 +180,7 @@
                                 </div>
                                 <div class="cart-item-meta">
                                     <span class="cart-item-price">₦{{ item.unit_price|floatformat:2 }} each</span>
-                                    {% if customer_type and customer_type != 'INDIVIDUAL' %}
+                                    {% if customer_type %}
                                         <span class="cart-item-price-type cart-item-price-type-{{ customer_type|lower }}">
                                             {{ customer_type|capfirst }}
                                         </span>
@@ -546,12 +551,13 @@
         flex-shrink: 0;
     }
 
-    .customer-type-individual  { background: #E0E7FF; color: #3730A3; }
     .customer-type-retailer    { background: #FEF3C7; color: #92400E; }
     .customer-type-distributor { background: #EDE9FE; color: #5B21B6; }
+    .customer-type-staff       { background: #D1FAE5; color: #065F46; }
 
     .customer-avatar-retailer    { background: #D97706 !important; }
     .customer-avatar-distributor { background: #6D28D9 !important; }
+    .customer-avatar-staff       { background: #059669 !important; }
 
     .customer-price-notice {
         font-size: 0.7rem;
@@ -573,6 +579,7 @@
     }
     .cart-item-price-type-retailer    { background: #FEF3C7; color: #92400E; }
     .cart-item-price-type-distributor { background: #EDE9FE; color: #5B21B6; }
+    .cart-item-price-type-staff       { background: #D1FAE5; color: #065F46; }
 </style>
 
 <script>
