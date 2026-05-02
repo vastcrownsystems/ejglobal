@@ -2,16 +2,20 @@
 """
 Inventory views - Stock management and adjustments
 """
+from datetime import datetime, timedelta
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q, F
+from django.db.models import Q, F, Sum
+from django.db.models.functions import Coalesce
 from django.core.paginator import Paginator
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
 from apps.catalog.models import ProductVariant
+from apps.orders.models import OrderItem
 from .models import StockMovement, PendingStockAdjustment
 from .forms import StockAdjustmentForm, StockSearchForm
 from .services import InventoryService
@@ -97,12 +101,112 @@ def inventory_dashboard(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Recent movements
-    recent_movements = StockMovement.objects.select_related(
-        'variant',
-        'variant__product',
-        'user'
-    )[:20]
+    # ── Inventory Summary (replaces recent movements) ────────────────────────
+    # Date range from GET params (default: today)
+    today = timezone.now().date()
+    summary_from_str = request.GET.get('summary_from', '')
+    summary_to_str   = request.GET.get('summary_to', '')
+
+    try:
+        summary_from = datetime.strptime(summary_from_str, '%Y-%m-%d').date() if summary_from_str else today.replace(day=1)
+    except ValueError:
+        summary_from = today.replace(day=1)
+
+    try:
+        summary_to = datetime.strptime(summary_to_str, '%Y-%m-%d').date() if summary_to_str else today
+    except ValueError:
+        summary_to = today
+
+    # Column header search
+    col_product  = request.GET.get('col_product', '').strip()
+    col_variant  = request.GET.get('col_variant', '').strip()
+    col_category = request.GET.get('col_category', '').strip()
+
+    # Build summary rows
+    summary_variants = ProductVariant.objects.select_related(
+        'product', 'product__category'
+    ).filter(is_active=True, product__is_active=True, product__track_inventory=True)
+
+    if col_product:
+        summary_variants = summary_variants.filter(product__name__icontains=col_product)
+    if col_variant:
+        summary_variants = summary_variants.filter(name__icontains=col_variant)
+    if col_category:
+        summary_variants = summary_variants.filter(product__category__name__icontains=col_category)
+
+    inventory_summary = []
+    for v in summary_variants.order_by('product__name', 'name'):
+        sales = (
+            OrderItem.objects.filter(
+                order__status='COMPLETED',
+                order__completed_at__date__range=(summary_from, summary_to),
+                variant=v,
+            ).aggregate(q=Coalesce(Sum('quantity'), 0))['q']
+        )
+        # Adj (+): only genuine increases — restocks, corrections up
+        # Exclude SALE/OUT (sold) and IN (order restoration) — those go to sales column
+        SALE_TYPES = ('SALE', 'OUT', 'IN')
+        adj_inc = (
+            StockMovement.objects.filter(
+                variant=v,
+                created_at__date__range=(summary_from, summary_to),
+                quantity__gt=0,
+            ).exclude(movement_type__in=SALE_TYPES)
+            .aggregate(q=Coalesce(Sum('quantity'), 0))['q']
+        )
+        # Adj (-): only genuine decreases — damage, correction down
+        # Exclude SALE/OUT (already in sales column)
+        adj_dec = abs(
+            StockMovement.objects.filter(
+                variant=v,
+                created_at__date__range=(summary_from, summary_to),
+                quantity__lt=0,
+            ).exclude(movement_type__in=SALE_TYPES)
+            .aggregate(q=Coalesce(Sum('quantity'), 0))['q'] or 0
+        )
+
+        first_movement = (
+            StockMovement.objects.filter(
+                variant=v,
+                created_at__date__range=(summary_from, summary_to),
+            ).order_by('created_at').values('stock_before').first()
+        )
+
+        actual_closing = v.stock_quantity
+        if first_movement:
+            opening = first_movement['stock_before']
+        else:
+            opening = actual_closing + sales
+
+        expected_closing = opening + adj_inc - adj_dec - sales
+        variance = actual_closing - expected_closing
+
+        inventory_summary.append({
+            'product_name':  v.product.name,
+            'variant_name':  v.name or '—',
+            'category':      v.product.category.name if v.product.category else '—',
+            'opening_stock': opening,
+            'adj_inc':       adj_inc,
+            'adj_dec':       adj_dec,
+            'sales':         sales,
+            'expected_closing': expected_closing,
+            'actual_closing':   actual_closing,
+            'variance':         variance,
+        })
+
+    # Totals row
+    def _tot(key):
+        return sum(r[key] for r in inventory_summary)
+
+    summary_totals = {
+        'opening_stock':    _tot('opening_stock'),
+        'adj_inc':          _tot('adj_inc'),
+        'adj_dec':          _tot('adj_dec'),
+        'sales':            _tot('sales'),
+        'expected_closing': _tot('expected_closing'),
+        'actual_closing':   _tot('actual_closing'),
+        'variance':         _tot('variance'),
+    }
 
     # Stock statistics
     total_variants = variants.count()
@@ -115,7 +219,13 @@ def inventory_dashboard(request):
     context = {
         'variants': page_obj,
         'search_form': search_form,
-        'recent_movements': recent_movements,
+        'inventory_summary': inventory_summary,
+        'summary_totals': summary_totals,
+        'summary_from': summary_from,
+        'summary_to': summary_to,
+        'col_product': col_product,
+        'col_variant': col_variant,
+        'col_category': col_category,
 
         # Individual stat variables for template
         'total_variants': total_variants,

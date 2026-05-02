@@ -85,16 +85,23 @@
         background: var(--bg-card);
         border: 1px solid var(--border);
         border-radius: 16px;
-        overflow: hidden;
+        overflow: visible;    /* allow inner tables to scroll */
+        min-width: 0;
     }
+    /* Clip rounded corners on first/last children instead */
+    .stock-section > *:first-child { border-radius: 16px 16px 0 0; }
+    .stock-section > *:last-child  { border-radius: 0 0 16px 16px; overflow: hidden; }
 
-    /* Movements Section */
+    /* Inventory Summary Section */
     .movements-section {
         background: var(--bg-card);
         border: 1px solid var(--border);
         border-radius: 16px;
-        overflow: hidden;
+        overflow: visible;    /* allow inner tables to scroll */
+        min-width: 0;
     }
+    .movements-section > *:first-child { border-radius: 16px 16px 0 0; }
+    .movements-section > *:last-child  { border-radius: 0 0 16px 16px; overflow: hidden; }
 
     .section-header {
         padding: 1.5rem;
@@ -223,6 +230,9 @@
     /* Stock Table */
     .stock-table-container {
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        min-width: 0;
     }
 
     .stock-table {
@@ -325,58 +335,186 @@
     }
 
 
-    /* Recent Movements */
-    .movements-list {
-        padding: 1.5rem;
-        max-height: 600px;
-        overflow-y: auto;
-    }
+    /* Inventory Summary Table */
+    .inv-summary-section { margin-top: 2rem; }
 
-    .movement-item {
-        padding: 1rem;
-        background: var(--bg-main);
-        border-radius: 12px;
-        margin-bottom: 0.75rem;
-    }
-
-    .movement-header {
+    .inv-summary-filters {
         display: flex;
-        justify-content: space-between;
-        align-items: start;
-        margin-bottom: 0.5rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 1rem 1.5rem;
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border);
+        align-items: flex-end;
     }
-
-    .movement-product {
+    .inv-summary-filters label {
+        font-size: 0.75rem;
         font-weight: 600;
+        color: var(--text-secondary);
+        display: block;
+        margin-bottom: 0.2rem;
+    }
+    .inv-filter-group { display: flex; flex-direction: column; }
+    .inv-filter-input {
+        padding: 0.45rem 0.75rem;
+        border: 1.5px solid var(--border);
+        border-radius: 7px;
+        font-size: 0.8125rem;
+        background: var(--bg-main);
         color: var(--text-primary);
+        min-width: 110px;
+        transition: border-color 0.18s;
     }
-
-    .movement-qty {
-        font-family: 'JetBrains Mono', monospace;
+    .inv-filter-input:focus { outline: none; border-color: var(--primary); }
+    .inv-filter-btn {
+        padding: 0.5rem 1.1rem;
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        border-radius: 7px;
         font-weight: 700;
-        font-size: 1.1rem;
+        font-size: 0.8125rem;
+        cursor: pointer;
+        align-self: flex-end;
+        transition: opacity 0.18s;
+    }
+    .inv-filter-btn:hover { opacity: 0.88; }
+    .inv-filter-reset {
+        padding: 0.5rem 0.875rem;
+        background: #f3f4f6;
+        color: #555;
+        border: 1px solid #e5e7eb;
+        border-radius: 7px;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        cursor: pointer;
+        align-self: flex-end;
+        text-decoration: none;
     }
 
-    .movement-qty.increase {
-        color: var(--accent-green);
+    .inv-summary-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        min-width: 0;
     }
-
-    .movement-qty.decrease {
-        color: var(--danger);
+    .inv-summary-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
     }
-
-    .movement-meta {
-        display: flex;
-        gap: 1rem;
-        font-size: 0.85rem;
-        color: var(--text-muted);
+    .inv-summary-table thead tr { background: #0D47A1; }
+    .inv-summary-table thead th {
+        padding: 0.75rem 1rem;
+        color: #fff;
+        font-weight: 700;
+        text-align: left;
+        white-space: nowrap;
+        border: none;
     }
+    .inv-summary-table thead th.num { text-align: right; }
+    .inv-summary-table tbody tr:nth-child(even) { background: #F8FAFC; }
+    .inv-summary-table tbody tr:hover { background: #EEF2FF; }
+    .inv-summary-table tbody td {
+        padding: 0.6rem 1rem;
+        border-bottom: 1px solid #E5E7EB;
+        color: var(--text-primary);
+        white-space: nowrap;
+    }
+    .inv-summary-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .inv-summary-table tfoot tr { background: #E3F2FD; }
+    .inv-summary-table tfoot td {
+        padding: 0.7rem 1rem;
+        font-weight: 800;
+        border-top: 2px solid #90CAF9;
+        white-space: nowrap;
+    }
+    .inv-summary-table tfoot td.num { text-align: right; }
+    .variance-neg { color: #DC2626; font-weight: 700; }
+    .variance-pos { color: #16A34A; font-weight: 700; }
 
     /* Responsive */
     @media (max-width: 1200px) {
         .content-grid {
             grid-template-columns: 1fr;
         }
+    }
+
+    /* ── Responsive tables (card layout on mobile) ── */
+    @media (max-width: 768px) {
+
+        /* Stock Levels table */
+        .stock-table thead { display: none; }
+        .stock-table tbody tr {
+            display: block;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            padding: 0.75rem 1rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .stock-table tbody td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.875rem;
+        }
+        .stock-table tbody td:last-child { border-bottom: none; }
+        .stock-table tbody td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+            flex-shrink: 0;
+            margin-right: 1rem;
+        }
+
+        /* Inventory Summary table */
+        .inv-summary-table thead { display: none; }
+        .inv-summary-table tbody tr {
+            display: block;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            padding: 0.75rem 1rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .inv-summary-table tbody td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.45rem 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.875rem;
+            text-align: right;
+        }
+        .inv-summary-table tbody td:last-child { border-bottom: none; }
+        .inv-summary-table tbody td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+            flex-shrink: 0;
+            margin-right: 1rem;
+            text-align: left;
+        }
+        .inv-summary-table tfoot { display: none; }
+
+        /* Summary filter stacks vertically */
+        .inv-summary-filters {
+            flex-direction: column;
+        }
+        .inv-filter-group { width: 100%; }
+        .inv-filter-input { width: 100%; }
+        .inv-filter-btn, .inv-filter-reset { width: 100%; text-align: center; justify-content: center; }
     }
 
     @media (max-width: 768px) {
@@ -842,7 +980,7 @@
             </form>
 
             <!-- Stock Table -->
-            <div class="stock-table-container">
+            <div class="stock-table-container" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
                 <table class="stock-table">
                     <thead>
                         <tr>
@@ -857,7 +995,7 @@
                     <tbody>
                         {% for variant in variants %}
                         <tr>
-                            <td>
+                            <td data-label="Product">
                                 <div class="product-cell">
                                     {% if variant.image %}
                                         <img src="{{ variant.image.url }}" alt="{{ variant.product.name }}" class="product-image">
@@ -874,22 +1012,22 @@
                                     </div>
                                 </div>
                             </td>
-                            <td>
+                            <td data-label="SKU">
                                 <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">
                                     {{ variant.sku }}
                                 </span>
                             </td>
-                            <td>
+                            <td data-label="Current Stock">
                                 <strong style="font-family: 'JetBrains Mono', monospace; font-size: 1.1rem;">
                                     {{ variant.stock_quantity }}
                                 </strong>
                             </td>
-                            <td>
+                            <td data-label="Threshold">
                                 <span style="color: var(--text-muted);">
                                     {{ variant.low_stock_threshold }}
                                 </span>
                             </td>
-                            <td>
+                            <td data-label="Status">
                                 {% if variant.stock_quantity == 0 %}
                                     <span class="stock-badge out">
                                         <i class="fas fa-times-circle"></i> Out of Stock
@@ -904,7 +1042,7 @@
                                     </span>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td data-label="Actions">
                                 <a href="{% url 'inventory:variant_detail' variant.pk %}" class="btn-action">
                                     <i class="fas fa-eye"></i> View
                                 </a>
@@ -936,43 +1074,104 @@
             {% endif %}
         </div>
 
-        <!-- Recent Movements -->
-        <div class="movements-section">
-            <div class="section-header">
-                <h2 class="section-title">Recent Movements</h2>
+        <!-- Inventory Summary Table -->
+        <div class="inv-summary-section">
+            <div class="section-header" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);">
+                <h2 class="section-title">Inventory Summary</h2>
                 <a href="{% url 'inventory:movement_log' %}" class="btn-action">
-                    <i class="fas fa-history"></i> View All
+                    <i class="fas fa-history"></i> Movement Log
                 </a>
             </div>
 
-            <div class="movements-list">
-                {% for movement in recent_movements %}
-                <div class="movement-item">
-                    <div class="movement-header">
-                        <div>
-                            <div class="movement-product">{{ movement.variant.product.name }} - {{ movement.variant.name }}</div>
-                            <div class="product-sku">{{ movement.variant.sku }}</div>
-                        </div>
-                        <div class="movement-qty {% if movement.quantity >= 0 %}increase{% else %}decrease{% endif %}">
-                            {{ movement.quantity_display }}
-                        </div>
-                    </div>
-                    <div class="movement-meta">
-                        <span><i class="fas fa-tag"></i> {{ movement.get_movement_type_display }}</span>
-                        <span><i class="fas fa-user"></i> {{ movement.user.get_full_name|default:movement.user.username }}</span>
-                        <span><i class="fas fa-clock"></i> {{ movement.created_at|timesince }} ago</span>
-                    </div>
-                    {% if movement.notes %}
-                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
-                            {{ movement.notes }}
-                        </div>
+            <!-- Filters -->
+            <form method="get" class="inv-summary-filters">
+                <!-- preserve existing stock list filters -->
+                {% if request.GET.search %}<input type="hidden" name="search" value="{{ request.GET.search }}">{% endif %}
+                {% if request.GET.stock_status %}<input type="hidden" name="stock_status" value="{{ request.GET.stock_status }}">{% endif %}
+                {% if request.GET.category %}<input type="hidden" name="category" value="{{ request.GET.category }}">{% endif %}
+
+                <div class="inv-filter-group">
+                    <label>Date From</label>
+                    <input type="date" name="summary_from" value="{{ summary_from|date:'Y-m-d' }}" class="inv-filter-input">
+                </div>
+                <div class="inv-filter-group">
+                    <label>Date To</label>
+                    <input type="date" name="summary_to" value="{{ summary_to|date:'Y-m-d' }}" class="inv-filter-input">
+                </div>
+                <div class="inv-filter-group">
+                    <label>Product</label>
+                    <input type="text" name="col_product" value="{{ col_product }}" placeholder="Filter product…" class="inv-filter-input">
+                </div>
+                <div class="inv-filter-group">
+                    <label>Variant</label>
+                    <input type="text" name="col_variant" value="{{ col_variant }}" placeholder="Filter variant…" class="inv-filter-input">
+                </div>
+                <div class="inv-filter-group">
+                    <label>Category</label>
+                    <input type="text" name="col_category" value="{{ col_category }}" placeholder="Filter category…" class="inv-filter-input">
+                </div>
+                <button type="submit" class="inv-filter-btn"><i class="fas fa-filter"></i> Apply</button>
+                <a href="{% url 'inventory:inv_dashboard' %}" class="inv-filter-reset"><i class="fas fa-times"></i> Reset</a>
+            </form>
+
+            <!-- Table -->
+            <div class="inv-summary-table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+                <table class="inv-summary-table">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Variant</th>
+                            <th>Category</th>
+                            <th class="num">Opening Stock</th>
+                            <th class="num">Adj (+)</th>
+                            <th class="num">Adj (-)</th>
+                            <th class="num">Sales</th>
+                            <th class="num">Expected Closing</th>
+                            <th class="num">Actual Closing</th>
+                            <th class="num">Variance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in inventory_summary %}
+                        <tr>
+                            <td data-label="Product">{{ row.product_name }}</td>
+                            <td data-label="Variant">{{ row.variant_name }}</td>
+                            <td data-label="Category">{{ row.category }}</td>
+                            <td data-label="Opening Stock" class="num">{{ row.opening_stock }}</td>
+                            <td data-label="Adj (+)" class="num">{% if row.adj_inc %}+{{ row.adj_inc }}{% else %}0{% endif %}</td>
+                            <td data-label="Adj (-)" class="num">{% if row.adj_dec %}-{{ row.adj_dec }}{% else %}0{% endif %}</td>
+                            <td data-label="Sales" class="num">{{ row.sales }}</td>
+                            <td data-label="Exp. Closing" class="num">{{ row.expected_closing }}</td>
+                            <td data-label="Actual Closing" class="num">{{ row.actual_closing }}</td>
+                            <td data-label="Variance" class="num {% if row.variance < 0 %}variance-neg{% elif row.variance > 0 %}variance-pos{% endif %}">
+                                {% if row.variance > 0 %}+{% endif %}{{ row.variance }}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10" style="text-align:center; padding:2rem; color:#888;">
+                                No inventory data for this period.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if inventory_summary %}
+                    <tfoot>
+                        <tr>
+                            <td colspan="3"><strong>TOTALS</strong></td>
+                            <td class="num">{{ summary_totals.opening_stock }}</td>
+                            <td class="num">+{{ summary_totals.adj_inc }}</td>
+                            <td class="num">-{{ summary_totals.adj_dec }}</td>
+                            <td class="num">{{ summary_totals.sales }}</td>
+                            <td class="num">{{ summary_totals.expected_closing }}</td>
+                            <td class="num">{{ summary_totals.actual_closing }}</td>
+                            <td class="num {% if summary_totals.variance < 0 %}variance-neg{% elif summary_totals.variance > 0 %}variance-pos{% endif %}">
+                                {% if summary_totals.variance > 0 %}+{% endif %}{{ summary_totals.variance }}
+                            </td>
+                        </tr>
+                    </tfoot>
                     {% endif %}
-                </div>
-                {% empty %}
-                <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
-                    <p>No recent movements</p>
-                </div>
-                {% endfor %}
+                </table>
             </div>
         </div>
     </div>
