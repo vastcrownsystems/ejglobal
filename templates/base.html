@@ -34,6 +34,164 @@
     {% endblock %}
     </title>
     {% block extra_css %}{% endblock %}
+
+    <style>
+    /* ═══════════════════════════════════════════════════
+       ACCORDION SIDEBAR  — colours match base.css vars
+    ═══════════════════════════════════════════════════ */
+
+    /* Standalone item (Dashboard) */
+    .nav-standalone {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1.25rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        text-decoration: none;
+        position: relative;
+        transition: background 0.15s, color 0.15s, transform 0.15s;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    .nav-standalone i { width: 18px; text-align: center; font-size: 0.95rem; flex-shrink: 0; }
+    .nav-standalone:hover {
+        background: var(--bg-card-hover);
+        color: var(--primary);
+        transform: translateX(4px);
+    }
+    .nav-standalone.active {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        box-shadow: var(--shadow-primary);
+    }
+    .nav-standalone.active i { color: white; }
+    .nav-standalone.active::before {
+        content: '';
+        position: absolute;
+        left: 0; top: 50%;
+        transform: translateY(-50%);
+        width: 4px; height: 60%;
+        background: var(--accent-green);
+        border-radius: 0 4px 4px 0;
+    }
+
+    /* Accordion group */
+    .acc-group { border-bottom: 1px solid var(--border-light); }
+
+    /* Accordion header — open state gets primary colour */
+    .acc-header {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.8rem 1.25rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        text-align: left;
+        transition: background 0.15s, color 0.15s;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    .acc-header:hover { background: var(--bg-card-hover); color: var(--primary); }
+    .acc-group.open > .acc-header { color: var(--primary); }
+    .acc-header-inner { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+
+    .acc-icon {
+        width: 18px; text-align: center; font-size: 0.95rem;
+        color: var(--text-muted);
+        flex-shrink: 0;
+        transition: color 0.15s;
+    }
+    .acc-header:hover .acc-icon,
+    .acc-group.open > .acc-header .acc-icon { color: var(--primary); }
+
+    .acc-chevron {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        transition: transform 0.25s ease;
+        flex-shrink: 0;
+    }
+    .acc-group.open .acc-chevron { transform: rotate(180deg); color: var(--primary); }
+
+    /* Accordion body */
+    .acc-body {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.28s ease;
+        background: var(--bg-main);
+    }
+    .acc-group.open .acc-body { max-height: 500px; }
+
+    /* Accordion sub-items */
+    .acc-item {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 0.55rem 1.25rem 0.55rem 2.875rem;
+        font-size: 0.8375rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        text-decoration: none;
+        position: relative;
+        transition: background 0.15s, color 0.15s, transform 0.15s;
+        white-space: nowrap;
+        overflow: hidden;
+        width: 100%;
+        background: none;
+        border: none;
+        cursor: pointer;
+        text-align: left;
+    }
+    .acc-item i.fa-circle-dot { font-size: 0.45rem; color: var(--text-muted); flex-shrink: 0; transition: color 0.15s; }
+    .acc-item:hover {
+        background: var(--bg-card-hover);
+        color: var(--primary);
+        transform: translateX(4px);
+    }
+    .acc-item:hover i.fa-circle-dot { color: var(--primary); }
+
+    /* Active sub-item — full blue gradient like nav-item.active */
+    .acc-item.active {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+        font-weight: 700;
+        box-shadow: var(--shadow-primary);
+        transform: none;
+    }
+    .acc-item.active i.fa-circle-dot { color: var(--accent-green); }
+    .acc-item.active::before {
+        content: '';
+        position: absolute;
+        left: 0; top: 50%;
+        transform: translateY(-50%);
+        width: 4px; height: 60%;
+        background: var(--accent-green);
+        border-radius: 0 4px 4px 0;
+    }
+
+    /* Logout */
+    .acc-logout { color: var(--danger) !important; }
+    .acc-logout:hover { background: #fef2f2 !important; }
+
+    /* Collapsed sidebar */
+    .sidebar.collapsed .nav-standalone span,
+    .sidebar.collapsed .acc-header span,
+    .sidebar.collapsed .acc-chevron,
+    .sidebar.collapsed .acc-body { display: none; }
+    .sidebar.collapsed .acc-group.open .acc-body { display: none; }
+    .sidebar.collapsed .acc-header { justify-content: center; padding: 0.8rem; }
+    .sidebar.collapsed .acc-header-inner { gap: 0; }
+    .sidebar.collapsed .nav-standalone { justify-content: center; padding: 0.75rem; }
+    .sidebar.collapsed .nav-standalone.active::before,
+    .sidebar.collapsed .acc-item.active::before,
+    .sidebar.collapsed .nav-standalone::before { display: none; }
+    </style>
 </head>
 <body>
 {% if user.is_authenticated %}
@@ -49,267 +207,254 @@
 
         <nav class="nav-menu">
             {% block sidebar_nav %}
-            <!-- Main Section (Everyone) -->
-            <div class="nav-section">
-                <div class="nav-section-title">
-                    <i class="fas fa-home"></i> Main
-                </div>
-                <a href="{% url 'dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' and not request.resolver_match.namespace %}active{% endif %}" data-title="Dashboard">
-                    <i class="fas fa-gauge"></i>
-                    <span>Dashboard</span>
-                </a>
-                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
+            {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name vn=request.resolver_match.view_name %}
+
+            {# ── Standalone: Dashboard ── #}
+            <a href="{% url 'dashboard' %}"
+               class="nav-item nav-standalone {% if vn == 'dashboard' and not ns %}active{% endif %}">
+                <i class="fas fa-gauge"></i>
+                <span>Dashboard</span>
+            </a>
+
+            {# ══════════════════════════════════════════════════════════ #}
+            {# SALES accordion #}
+            {# ══════════════════════════════════════════════════════════ #}
+            <div class="acc-group {% if ns == 'orders' or ns == 'sales' %}open{% endif %}">
+                <button class="acc-header" type="button">
+                    <span class="acc-header-inner">
+                        <i class="fas fa-cash-register acc-icon"></i>
+                        <span>Sales</span>
+                    </span>
+                    <i class="fas fa-chevron-down acc-chevron"></i>
+                </button>
+                <div class="acc-body">
                     <a href="{% url 'sales:session_dashboard' %}"
-                       class="nav-item {% if ns == 'sales' and 'session' in name %}active{% endif %}"
-                       data-title="My Session">
-                        <i class="fas fa-dollar-sign"></i>
-                        <span>My Session</span>
+                       class="acc-item {% if ns == 'sales' and 'session' in name %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> My Session
                     </a>
-                {% endwith %}
-                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
                     <a href="{% url 'orders:pos' %}"
-                       class="nav-item
-                       {% if ns == 'orders' and name == 'pos' %}
-                           active
-                       {% elif ns == 'orders' and 'cart_' in name %}
-                           active
-                       {% elif ns == 'orders' and name == 'checkout' %}
-                           active
-                       {% endif %}"
-                       data-title="POS">
-                        <i class="fas fa-cash-register"></i>
-                        <span>POS</span>
+                       class="acc-item {% if ns == 'orders' and name == 'pos' or ns == 'orders' and 'cart_' in name %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> POS
                     </a>
-                {% endwith %}
-                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
                     <a href="{% url 'orders:order_list' %}"
-                       class="nav-item
-                       {% if ns == 'orders' and 'order_' in name and name != 'pos' %}
-                           active
-                       {% elif ns == 'orders' and 'draft' in name %}
-                           active
-                       {% endif %}"
-                       data-title="Orders">
-                        <i class="fas fa-receipt"></i>
-                        <span>Orders</span>
+                       class="acc-item {% if ns == 'orders' and 'order_' in name and name != 'pos' or ns == 'orders' and 'draft' in name %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Orders
                     </a>
-                {% endwith %}
-
-                <!-- Customers (Everyone can see) -->
-                <a href="{% url 'customers:customer_dashboard' %}" class="nav-item {% if request.resolver_match.namespace == 'customers' %}active{% endif %}" data-title="Customers">
-                    <i class="fas fa-users"></i>
-                    <span>Customers</span>
-                </a>
+                </div>
             </div>
 
-            <div class="nav-section">
-                <div class="nav-section-title">
-                    <i class="fas fa-money-bill-transfer"></i> Credit
+            {# ══════════════════════════════════════════════════════════ #}
+            {# CUSTOMERS accordion #}
+            {# ══════════════════════════════════════════════════════════ #}
+            <div class="acc-group {% if ns == 'customers' %}open{% endif %}">
+                <button class="acc-header" type="button">
+                    <span class="acc-header-inner">
+                        <i class="fas fa-users acc-icon"></i>
+                        <span>Customers</span>
+                    </span>
+                    <i class="fas fa-chevron-down acc-chevron"></i>
+                </button>
+                <div class="acc-body">
+                    <a href="{% url 'customers:customer_dashboard' %}"
+                       class="acc-item {% if ns == 'customers' %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> All Customers
+                    </a>
                 </div>
-                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
+            </div>
+
+            {# ══════════════════════════════════════════════════════════ #}
+            {# CREDIT accordion #}
+            {# ══════════════════════════════════════════════════════════ #}
+            <div class="acc-group {% if ns == 'credit' %}open{% endif %}">
+                <button class="acc-header" type="button">
+                    <span class="acc-header-inner">
+                        <i class="fas fa-money-bill-transfer acc-icon"></i>
+                        <span>Credit</span>
+                    </span>
+                    <i class="fas fa-chevron-down acc-chevron"></i>
+                </button>
+                <div class="acc-body">
                     <a href="{% url 'credit:customers_list' %}"
-                       class="nav-item
-                       {% if ns == 'credit' and 'customer' in name %}
-                           active
-                       {% endif %}"
-                       data-title="Credit Customers">
-                        <i class="fas fa-user-tag"></i>
-                        <span>Credit Customers</span>
+                       class="acc-item {% if ns == 'credit' and 'customer' in name %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Credit Customers
                     </a>
-                {% endwith %}
-                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
                     <a href="{% url 'credit:ledger_list' %}"
-                       class="nav-item
-                       {% if ns == 'credit' and 'ledger' and 'pay' in name %}
-                           active
-                       {% endif %}"
-                       data-title="Credit Ledger">
-                        <i class="fas fa-book"></i>
-                        <span>Credit Ledger</span>
+                       class="acc-item {% if ns == 'credit' and 'ledger' in name %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Ledger
                     </a>
-                {% endwith %}
-                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
                     <a href="{% url 'credit:aging_report' %}"
-                       class="nav-item
-                       {% if ns == 'credit' and 'aging' in name %}
-                           active
-                       {% endif %}"
-                       data-title="AR Aging">
-                        <i class="fas fa-clock"></i>
-                        <span>AR Aging</span>
+                       class="acc-item {% if ns == 'credit' and 'aging' in name %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> AR Aging
                     </a>
-                {% endwith %}
-                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
                     <a href="{% url 'credit:collection_report' %}"
-                       class="nav-item
-                       {% if ns == 'credit' and 'collection' in name %}
-                           active
-                       {% endif %}"
-                       data-title="Collections">
-                        <i class="fas fa-hand-holding-dollar"></i>
-                        <span>Collections</span>
+                       class="acc-item {% if ns == 'credit' and 'collection' in name %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Collections
                     </a>
-                {% endwith %}
-            </div>
-
-
-            <!-- Manager/Admin Only Sections -->
-            {% if user.is_superuser or user.groups.all.0.name == 'Admin' or user.groups.all.0.name == 'Manager' %}
-
-            <!-- Catalog Section (Manager+) -->
-            <div class="nav-section">
-                <div class="nav-section-title">
-                    <i class="fas fa-box"></i> Catalog
                 </div>
-                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
-                    <a href="{% url 'catalog:category_list' %}"
-                       class="nav-item
-                       {% if ns == 'catalog' and 'category_' in name or 'categories' in name %}
-                           active
-                       {% endif %}"
-                       data-title="Categories">
-                        <i class="fas fa-tags"></i>
-                        <span>Categories</span>
-                    </a>
-                {% endwith %}
-                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
-                    <a href="{% url 'catalog:product_list' %}"
-                       class="nav-item
-                       {% if ns == 'catalog' and 'product_' in name %}
-                           active
-                       {% endif %}"
-                       data-title="Products">
-                        <i class="fas fa-box-open"></i>
-                        <span>Products</span>
-                    </a>
-                {% endwith %}
-                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
-                    <a href="{% url 'catalog:variant_list' %}"
-                       class="nav-item
-                       {% if ns == 'catalog' and 'variant_' in name and 'attribute_' not in name and 'attribute_value_' not in name %}
-                           active
-                       {% endif %}"
-                       data-title="Variants">
-                        <i class="fas fa-layer-group"></i>
-                        <span>Variants</span>
-                    </a>
-                {% endwith %}
             </div>
 
-            <!-- Operations Section (Manager+ only) -->
-            <div class="nav-section">
-                <div class="nav-section-title">
-                    <i class="fas fa-building"></i> Operations
-                </div>
-                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
-                    <a href="{% url 'sales:store_list' %}"
-                       class="nav-item
-                       {% if ns == 'sales' and 'store' in name %}
-                           active
-                       {% endif %}"
-                       data-title="Stores">
-                        <i class="fas fa-store"></i>
-                        <span>Stores</span>
-                    </a>
-                {% endwith %}
-                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
-                    <a href="{% url 'sales:register_list' %}"
-                       class="nav-item
-                       {% if ns == 'sales' and 'register' in name %}
-                           active
-                       {% endif %}"
-                       data-title="Registers">
-                        <i class="fas fa-desktop"></i>
-                        <span>Registers</span>
-                    </a>
-                {% endwith %}
-            </div>
-
-            <!-- Analytics Section (Manager+) -->
-            <div class="nav-section">
-                <div class="nav-section-title">
-                    <i class="fas fa-chart-line"></i> Analytics
-                </div>
-                <a href="{% url 'reports:dashboard' %}" class="nav-item {% if request.resolver_match.namespace == 'reports' %}active{% endif %}" data-title="Reports">
-                    <i class="fas fa-chart-bar"></i>
-                    <span>Reports</span>
-                </a>
-            </div>
-
-            {% endif %}
-
-            <!-- Inventory Section (Manager+ OR Inventory users) -->
+            {# ══════════════════════════════════════════════════════════ #}
+            {# INVENTORY (Manager+ or Inventory group) #}
+            {# ══════════════════════════════════════════════════════════ #}
             {% if user.is_superuser or user.groups.all.0.name == 'Admin' or user.groups.all.0.name == 'Manager' or user.groups.all.0.name == 'Inventory' %}
-            <div class="nav-section">
-                <div class="nav-section-title">
-                    <i class="fas fa-warehouse"></i> Inventory
+            <div class="acc-group {% if ns == 'inventory' %}open{% endif %}">
+                <button class="acc-header" type="button">
+                    <span class="acc-header-inner">
+                        <i class="fas fa-warehouse acc-icon"></i>
+                        <span>Inventory</span>
+                    </span>
+                    <i class="fas fa-chevron-down acc-chevron"></i>
+                </button>
+                <div class="acc-body">
+                    <a href="{% url 'inventory:inv_dashboard' %}"
+                       class="acc-item {% if ns == 'inventory' and 'dashboard' in name or ns == 'inventory' and name == 'inv_dashboard' %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Stock Levels
+                    </a>
+                    <a href="{% url 'inventory:movement_log' %}"
+                       class="acc-item {% if ns == 'inventory' and 'movement' in name %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Movement Log
+                    </a>
+                    <a href="{% url 'inventory:pending_adjustments' %}"
+                       class="acc-item {% if ns == 'inventory' and 'pending' in name or ns == 'inventory' and 'adjust' in name %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Adjustments
+                    </a>
                 </div>
-                <a href="{% url 'inventory:inv_dashboard' %}" class="nav-item {% if request.resolver_match.namespace == 'inventory' %}active{% endif %}" data-title="Inventory">
-                    <i class="fas fa-warehouse"></i>
-                    <span>Inventory</span>
-                </a>
             </div>
             {% endif %}
 
-            <!-- Settings Section (Admin+ only) -->
+            {# Manager/Admin Only #}
             {% if user.is_superuser or user.groups.all.0.name == 'Admin' or user.groups.all.0.name == 'Manager' %}
-            <div class="nav-section">
-                <div class="nav-section-title">
-                    <i class="fas fa-cog"></i> Settings
-                </div>
-                {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
-                    <a href="{% url 'catalog:attribute_list' %}"
-                       class="nav-item
-                       {% if ns == 'catalog' and 'attribute_' in name %}
-                           active
-                       {% elif ns == 'catalog' and 'attribute_value_' in name %}
-                           active
-                       {% endif %}"
-                       data-title="Attributes">
-                        <i class="fas fa-tags"></i>
-                        <span>Attributes</span>
-                    </a>
-                {% endwith %}
-                {% with vn=request.resolver_match.view_name %}
-                    <a class="nav-item {% if vn == 'accounts:user_list' or vn == 'accounts:user_create' %}active{% endif %}"
-                       href="{% url 'accounts:user_list' %}"
-                       data-title="Accounts">
-                        <i class="fas fa-user-shield"></i>
-                        <span>Accounts</span>
-                    </a>
-                {% endwith %}
-                {% if user.is_superuser %}
-                    {% with vn=request.resolver_match.view_name %}
-                        <a class="nav-item {% if vn == 'accounts:group_list' or vn == 'accounts:group_create' %}active{% endif %}"
-                           href="{% url 'accounts:group_list' %}"
-                           data-title="Groups">
-                            <i class="fas fa-user-group"></i>
-                            <span>Groups</span>
-                        </a>
-                    {% endwith %}
-                {% endif %}
-            </div>
-            {% endif %}
 
-            <!-- Account Section (Everyone) -->
-            <div class="nav-section">
-                <div class="nav-section-title">
-                    <i class="fas fa-user"></i> Account
-                </div>
-                 {% with vn=request.resolver_match.view_name %}
-                    <a href="{% url 'accounts:profile' %}" class="nav-item {% if vn == 'accounts:profile' or vn == 'accounts:profile_edit' %}active{% endif %}" data-title="Profile">
-                        <i class="fas fa-user"></i>
-                        <span>Profile</span>
+            {# ══════════════════════════════════════════════════════════ #}
+            {# CATALOG accordion #}
+            {# ══════════════════════════════════════════════════════════ #}
+            <div class="acc-group {% if ns == 'catalog' %}open{% endif %}">
+                <button class="acc-header" type="button">
+                    <span class="acc-header-inner">
+                        <i class="fas fa-box acc-icon"></i>
+                        <span>Catalog</span>
+                    </span>
+                    <i class="fas fa-chevron-down acc-chevron"></i>
+                </button>
+                <div class="acc-body">
+                    <a href="{% url 'catalog:category_list' %}"
+                       class="acc-item {% if ns == 'catalog' and 'category' in name %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Categories
                     </a>
-                {% endwith %}
-                <form method="POST" action="{% url 'accounts:logout' %}">
-                    {% csrf_token %}
-                    <button class="nav-item dashboard-logout-button" data-title="Logout">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>Logout</span>
-                    </button>
-                </form>
+                    <a href="{% url 'catalog:product_list' %}"
+                       class="acc-item {% if ns == 'catalog' and 'product_' in name %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Products
+                    </a>
+                    <a href="{% url 'catalog:variant_list' %}"
+                       class="acc-item {% if ns == 'catalog' and 'variant_' in name and 'attribute' not in name %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Variants
+                    </a>
+                </div>
             </div>
+
+            {# ══════════════════════════════════════════════════════════ #}
+            {# OPERATIONS accordion #}
+            {# ══════════════════════════════════════════════════════════ #}
+            <div class="acc-group {% if ns == 'sales' and 'store' in name or ns == 'sales' and 'register' in name %}open{% endif %}">
+                <button class="acc-header" type="button">
+                    <span class="acc-header-inner">
+                        <i class="fas fa-building acc-icon"></i>
+                        <span>Operations</span>
+                    </span>
+                    <i class="fas fa-chevron-down acc-chevron"></i>
+                </button>
+                <div class="acc-body">
+                    <a href="{% url 'sales:store_list' %}"
+                       class="acc-item {% if ns == 'sales' and 'store' in name %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Stores
+                    </a>
+                    <a href="{% url 'sales:register_list' %}"
+                       class="acc-item {% if ns == 'sales' and 'register' in name %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Registers
+                    </a>
+                </div>
+            </div>
+
+            {# ══════════════════════════════════════════════════════════ #}
+            {# ANALYTICS accordion #}
+            {# ══════════════════════════════════════════════════════════ #}
+            <div class="acc-group {% if ns == 'reports' %}open{% endif %}">
+                <button class="acc-header" type="button">
+                    <span class="acc-header-inner">
+                        <i class="fas fa-chart-line acc-icon"></i>
+                        <span>Analytics</span>
+                    </span>
+                    <i class="fas fa-chevron-down acc-chevron"></i>
+                </button>
+                <div class="acc-body">
+                    <a href="{% url 'reports:dashboard' %}"
+                       class="acc-item {% if ns == 'reports' and name == 'dashboard' %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Reports Dashboard
+                    </a>
+                    <a href="{% url 'reports:comprehensive_report' %}"
+                       class="acc-item {% if ns == 'reports' and 'comprehensive' in name %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Comprehensive Report
+                    </a>
+                </div>
+            </div>
+
+            {# ══════════════════════════════════════════════════════════ #}
+            {# SETTINGS accordion #}
+            {# ══════════════════════════════════════════════════════════ #}
+            <div class="acc-group {% if ns == 'accounts' or ns == 'catalog' and 'attribute' in name %}open{% endif %}">
+                <button class="acc-header" type="button">
+                    <span class="acc-header-inner">
+                        <i class="fas fa-cog acc-icon"></i>
+                        <span>Settings</span>
+                    </span>
+                    <i class="fas fa-chevron-down acc-chevron"></i>
+                </button>
+                <div class="acc-body">
+                    <a href="{% url 'catalog:attribute_list' %}"
+                       class="acc-item {% if ns == 'catalog' and 'attribute' in name %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Attributes
+                    </a>
+                    <a href="{% url 'accounts:user_list' %}"
+                       class="acc-item {% if vn == 'accounts:user_list' or vn == 'accounts:user_create' %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Accounts
+                    </a>
+                    {% if user.is_superuser %}
+                    <a href="{% url 'accounts:group_list' %}"
+                       class="acc-item {% if vn == 'accounts:group_list' or vn == 'accounts:group_create' %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Groups
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% endif %}{# end manager/admin #}
+
+            {# ══════════════════════════════════════════════════════════ #}
+            {# ACCOUNT accordion #}
+            {# ══════════════════════════════════════════════════════════ #}
+            <div class="acc-group {% if vn == 'accounts:profile' or vn == 'accounts:profile_edit' %}open{% endif %}">
+                <button class="acc-header" type="button">
+                    <span class="acc-header-inner">
+                        <i class="fas fa-user acc-icon"></i>
+                        <span>Account</span>
+                    </span>
+                    <i class="fas fa-chevron-down acc-chevron"></i>
+                </button>
+                <div class="acc-body">
+                    <a href="{% url 'accounts:profile' %}"
+                       class="acc-item {% if vn == 'accounts:profile' or vn == 'accounts:profile_edit' %}active{% endif %}">
+                        <i class="fas fa-circle-dot"></i> Profile
+                    </a>
+                    <form method="POST" action="{% url 'accounts:logout' %}" style="margin:0;">
+                        {% csrf_token %}
+                        <button type="submit" class="acc-item acc-logout">
+                            <i class="fas fa-circle-dot"></i> Logout
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            {% endwith %}
             {% endblock %}
         </nav>
     </aside>
@@ -466,6 +611,34 @@
                 }
             });
         }
+
+
+        // ── Accordion sidebar ─────────────────────────────────────────────
+        (function() {
+            function initAccordions() {
+                document.querySelectorAll('.acc-header').forEach(function(btn) {
+                    // Remove old listeners by cloning
+                    var fresh = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(fresh, btn);
+                    fresh.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var group = fresh.closest('.acc-group');
+                        var isOpen = group.classList.contains('open');
+                        // Close others (comment out for multi-open)
+                        document.querySelectorAll('.acc-group.open').forEach(function(g) {
+                            if (g !== group) g.classList.remove('open');
+                        });
+                        group.classList.toggle('open', !isOpen);
+                    });
+                });
+            }
+            // Run on DOM ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initAccordions);
+            } else {
+                initAccordions();
+            }
+        })();
 
         // Close sidebar when clicking outside on mobile
         document.addEventListener('click', function(event) {

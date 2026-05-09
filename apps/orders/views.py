@@ -1424,10 +1424,17 @@ def order_detail(request, pk):
     items = order.items.select_related('variant', 'variant__product').all()
     payments = order.order_payments.all()
 
+    is_manager = (
+        request.user.is_superuser
+        or (hasattr(request.user, 'role') and request.user.role in ['MANAGER', 'ADMIN'])
+        or request.user.groups.filter(name__in=['Admin', 'Manager']).exists()
+    )
+
     context = {
         'order': order,
         'items': items,
         'payments': payments,
+        'is_manager': is_manager,
     }
 
     return render(request, 'orders/order_detail.html', context)
@@ -1464,23 +1471,44 @@ def order_create(request):
 @require_http_methods(["POST"])
 def order_cancel(request, pk):
     """
-    Cancel order
+    Cancel order — managers and admins only.
+    Completed orders can also be cancelled (stock is restored automatically).
 
     URL: POST /orders/<pk>/cancel/
     Returns: Redirect to order detail
     """
     order = get_object_or_404(Order, pk=pk)
 
-    try:
-        reason = request.POST.get('reason', '').strip()
-        OrderService.cancel_order(order, reason=reason, user=request.user)
+    # Permission: only manager/admin/superuser
+    is_manager = (
+        request.user.is_superuser
+        or (hasattr(request.user, 'role') and request.user.role in ['MANAGER', 'ADMIN'])
+        or request.user.groups.filter(name__in=['Admin', 'Manager']).exists()
+    )
+    if not is_manager:
+        messages.error(request, 'Only managers can cancel orders.')
+        return redirect('orders:order_detail', pk=order.id)
 
-        messages.success(request, f'Order {order.order_number} cancelled')
+    if request.method != 'POST':
+        return redirect('orders:order_detail', pk=order.id)
+
+    reason = request.POST.get('reason', '').strip()
+    if not reason:
+        messages.error(request, 'A cancellation reason is required.')
+        return redirect('orders:order_detail', pk=order.id)
+
+    try:
+        OrderService.cancel_order(order, reason=reason, user=request.user)
+        messages.success(
+            request,
+            f'Order {order.order_number} has been cancelled. '
+            f'{"Stock has been restored." if order.status != "DRAFT" else ""}'
+        )
         return redirect('orders:order_detail', pk=order.id)
 
     except Exception as e:
-        logger.exception(f"Error cancelling order: {e}")
-        messages.error(request, f'Error: {str(e)}')
+        logger.exception(f"Error cancelling order {order.pk}: {e}")
+        messages.error(request, f'Cancellation failed: {str(e)}')
         return redirect('orders:order_detail', pk=order.id)
 
 

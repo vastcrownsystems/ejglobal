@@ -489,44 +489,49 @@ class OrderService:
     @transaction.atomic
     def cancel_order(order, reason='', user=None):
         """
-        Cancel order and restore stock
+        Cancel order, restore stock, and record the cancellation audit trail.
+
+        Managers/admins may cancel COMPLETED orders (stock is restored).
+        Regular users may only cancel non-completed orders.
 
         Args:
             order: Order instance
-            reason: Cancellation reason
-            user: User cancelling order
+            reason: Cancellation reason (required for audit)
+            user: User performing the cancellation
 
         Raises:
-            ValidationError: If order cannot be cancelled
+            ValidationError: If order is already cancelled
         """
-        logger.info(f"Cancelling order {order.order_number}")
+        from django.utils import timezone as tz
+        logger.info(f"Cancelling order {order.order_number} (status={order.status}) by {user}")
 
-        # Validate can cancel
-        if order.status in ['COMPLETED', 'CANCELLED']:
-            raise ValidationError(
-                f"Cannot cancel {order.get_status_display()} order"
-            )
+        # Already cancelled — nothing to do
+        if order.status == 'CANCELLED':
+            raise ValidationError("Order is already cancelled.")
 
-        # If order was confirmed, restore stock
-        if order.status in ['CONFIRMED', 'PROCESSING']:
+        # Restore stock for any order that had confirmed/processed/completed stock movements
+        if order.status in ['CONFIRMED', 'PROCESSING', 'COMPLETED']:
             from apps.inventory.services import InventoryService
-            InventoryService.restore_order_stock(order)
+            try:
+                InventoryService.restore_order_stock(order)
+                logger.info(f"Stock restored for order {order.order_number}")
+            except Exception as e:
+                logger.warning(f"Stock restoration issue for {order.order_number}: {e}")
 
-        # Cancel order
-        order.cancel()
+        # Mark as cancelled
+        order.status = 'CANCELLED'
+        cancelled_at = tz.now()
 
-        # Add cancellation note
-        if reason:
-            order.notes = f"CANCELLED: {reason}\n{order.notes or ''}"
-            order.save(update_fields=['notes'])
+        # Build a structured audit note
+        user_name = (user.get_full_name() or user.username) if user else "System"
+        audit = (
+            f"CANCELLED by {user_name} at {cancelled_at.strftime('%Y-%m-%d %H:%M')}\n"
+            f"Previous status: {order.get_status_display()}\n"
+            f"Reason: {reason or 'No reason provided'}\n"
+            f"{'─' * 40}\n"
+        )
+        order.notes = audit + (order.notes or '')
+        order.save(update_fields=['status', 'notes'])
 
-        logger.info(f"Order {order.order_number} cancelled")
-
+        logger.info(f"Order {order.order_number} cancelled by {user_name}")
         return order
-
-
-
-
-
-
-

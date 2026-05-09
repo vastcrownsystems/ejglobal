@@ -147,112 +147,272 @@ class ComprehensiveExcelExporter:
     # SHEET 1: Inventory (cols A-J) + Sales Details (cols L-W)
     # ══════════════════════════════════════════════════════════════════════════
     def _sheet_inventory_sales(self):
-        ws = self.wb.create_sheet("Inventory & Sales")
-        inv  = self.data.get("inventory", {})
-        sales_rows = self.data.get("sales_detail_rows", [])
-        period = self.data.get("period_label", "")
+        """
+        Single comprehensive sheet organised exactly like the manual Excel:
 
-        # ── Column widths ──
-        widths = {
-            "A": 20, "B": 10, "C": 22, "D": 12,
-            "E": 14, "F": 10, "G": 10, "H": 10, "I": 14,
-            "J": 14, "K": 14, "L": 16,  # J=Actual Closing, K=Unit Price, L=Stock Value
-            "M": 4,  "N": 4,             # two free spacer columns
-            "O": 26, "P": 14, "Q": 16, "R": 22,
-            "S": 14, "T": 16, "U": 20, "V": 16,
-            "W": 12, "X": 10, "Y": 14, "Z": 14,
+        SECTION 1  (rows 1-onwards): Inventory reconciliation per product/variant
+          Cols A-N: Type | Prev Bal | Curr Prod | Total | Walk-in Qty | Amt |
+                    Retailer Qty | Amt | Distributor Qty | Amt | Staff |
+                    Balance | On Shelves | Discrepancy
+          Cols P-R: Walk-in Price | Retailer Price | Distributor Price
+
+        SECTION 2  (gap row): Credit Sales summary
+          Name | Amount | Salesman | Date … Total | Amount Received
+
+        SECTION 3 (gap row): Revenue / Payment summary
+          Total Sold Walk-in | Total Sold Retailer | Total Sold Distributor |
+          Total Staff | Total Revenue | Total Credit | POS Total | Cash Total
+
+        SECTION 4 (gap row): Sales Detail rows
+          Order # | Date | Cashier | Customer | Type | Salesperson |
+          Product | Variant | Unit Price | Qty | Sub-Total | Payment Type
+        """
+        ws = self.wb.create_sheet("Inventory & Sales")
+        inv       = self.data.get("inventory", {})
+        ss        = self.data.get("sales_summary", {})
+        sales_rows= self.data.get("sales_detail_rows", [])
+        period    = self.data.get("period_label", "")
+        products  = inv.get("products", [])
+
+        # ── Column widths ──────────────────────────────────────────────────
+        cw = {
+            "A": 24, "B": 13, "C": 14, "D": 12,
+            "E": 10, "F": 14, "G": 10, "H": 14,
+            "I": 10, "J": 14, "K": 10,
+            "L": 13, "M": 13, "N": 13,
+            "O": 4,
+            "P": 14, "Q": 14, "R": 14,
         }
-        for col, w in widths.items():
+        for col, w in cw.items():
             ws.column_dimensions[col].width = w
 
-        # ── INVENTORY section title (cols A-I) ──
-        _title_cell(ws, 1, 1, "INVENTORY REPORT", span_end=9, size=13)
-        ws.cell(row=2, column=1, value=f"Period: {period}").font = Font(name="Arial", size=9, italic=True)
+        # helper: write a section title
+        def sec_title(row, text, col=1, span=14):
+            _title_cell(ws, row, col, text, span_end=col + span - 1, size=11)
 
-        # inventory summary labels (rows 3-9)
-        inv_summary = [
-            ("Total Products",          inv.get("total_products", 0)),
-            ("Total Opening Stock",     inv.get("total_opening_stock", 0)),
-            ("Total Stock Added",       inv.get("total_stock_added", 0)),
-            ("Adjustments Increase",    inv.get("total_adjustments_increase", 0)),
-            ("Adjustments Decrease",    inv.get("total_adjustments_decrease", 0)),
-            ("Total Quantity Sold",     inv.get("total_quantity_sold", 0)),
-            ("Expected Closing",        inv.get("total_expected_closing", 0)),
-            ("Actual Closing",          inv.get("total_actual_closing", 0)),
-            ("Total Variance",          inv.get("total_variance", 0)),
-            ("Total Stock Value",       inv.get("total_stock_value", Decimal("0.00"))),
+        # ══════════════════════════════════════════════════════════════════
+        # SECTION 1 — INVENTORY TABLE
+        # ══════════════════════════════════════════════════════════════════
+        ROW = 1
+        sec_title(ROW, f"INVENTORY REPORT   |   Period: {period}", span=17)
+        ROW += 1
+
+        # Main header row
+        inv_hdrs = [
+            "Type",
+            "Prev Day Bal", "Current Day Prod", "Total",
+            "Sold Walk-in", "Amount",
+            "Sold Retailer", "Amount",
+            "Sold Distributor", "Amount",
+            "Staff Collected",
+            "Balance Stock", "On Shelves", "Discrepancy",
         ]
-        for i, (label, val) in enumerate(inv_summary):
-            r = 3 + i
-            lc = ws.cell(row=r, column=1, value=label)
-            lc.font = Font(name="Arial", size=9)
-            vc = ws.cell(row=r, column=2, value=val)
-            vc.font = Font(name="Arial", bold=True, size=9)
-            if isinstance(val, Decimal):
-                vc.number_format = NAIRA_FMT
-                vc.alignment = _right()
+        _hdr_row(ws, ROW, inv_hdrs, start_col=1)
 
-        # inventory product table header
-        inv_hdr_row = 14
-        inv_hdrs = ["Product Name", "Variant", "SKU", "Category",
-                    "Opening Stock", "Adj (+)", "Adj (-)", "Sales",
-                    "Expected Closing", "Actual Closing", "Unit Price (₦)", "Stock Value (₦)"]
-        # Inventory table: cols A-L (12 columns)
-        _hdr_row(ws, inv_hdr_row, inv_hdrs, start_col=1)
+        # Price sub-header cols P-R
+        for c_off, lbl in enumerate(["Walk-in Price", "Retailer Price", "Distributor Price"]):
+            c = ws.cell(row=ROW, column=16 + c_off, value=lbl)
+            c.font = _hdr_font()
+            c.fill = PatternFill("solid", fgColor="1565C0")
+            c.alignment = _center()
+            c.border = _thin_border()
+        ROW += 1
 
-        products = inv.get("products", [])
+        inv_data_start = ROW
         for idx, p in enumerate(products):
-            r = inv_hdr_row + 1 + idx
             alt = idx % 2 == 1
-            row_data = [
-                p.get("product_name", ""),
-                p.get("variant_name", ""),
-                p.get("sku", ""),
-                p.get("category", ""),
+            label = f"{p['product_name']} – {p['variant_name']}"
+            row_vals = [
+                label,
                 p.get("opening_stock", 0),
-                p.get("adjustments_increase", 0),
-                p.get("adjustments_decrease", 0),
-                p.get("sales", 0),
+                p.get("adj_inc", 0),
+                p.get("total_available", 0),
+                p.get("sold_walkin", 0),
+                p.get("amount_walkin", Decimal("0.00")),
+                p.get("sold_retailer", 0),
+                p.get("amount_retailer", Decimal("0.00")),
+                p.get("sold_distributor", 0),
+                p.get("amount_distributor", Decimal("0.00")),
+                p.get("sold_staff", 0),
                 p.get("expected_closing", 0),
                 p.get("actual_closing", 0),
-                p.get("unit_price", Decimal("0.00")),
-                p.get("stock_value", Decimal("0.00")),
+                p.get("variance", 0),
             ]
-            _data_row(ws, r, row_data, start_col=1, alt=alt)
+            _data_row(ws, ROW, row_vals, start_col=1, alt=alt)
 
-        # totals row
+            # Colour variance
+            var = p.get("variance", 0)
+            vc = ws.cell(row=ROW, column=14)
+            if var < 0:
+                vc.font = Font(name="Arial", size=9, color="DC2626", bold=True)
+            elif var > 0:
+                vc.font = Font(name="Arial", size=9, color="16A34A", bold=True)
+
+            # Price cols P-R
+            for off, key in enumerate(["unit_price", "retailer_price", "distributor_price"]):
+                c = ws.cell(row=ROW, column=16 + off, value=p.get(key, Decimal("0.00")))
+                c.font = _body_font()
+                c.number_format = NAIRA_FMT
+                c.alignment = _right()
+                c.border = _thin_border()
+                if alt:
+                    c.fill = _alt_fill()
+
+            ROW += 1
+
+        # Inventory totals row
         if products:
-            tr = inv_hdr_row + 1 + len(products)
-            ws.cell(row=tr, column=1, value="TOTALS").font = _total_font()
-            for col_idx, key in enumerate(
-                ["", "", "", "",
-                 "total_opening_stock", None, None,
-                 "total_quantity_sold", "total_expected_closing",
-                 "total_actual_closing", None, "total_stock_value"],
-                start=1
-            ):
-                if key and key in inv:
-                    c = ws.cell(row=tr, column=col_idx, value=inv[key])
-                    c.font = _total_font()
-                    c.fill = _total_fill()
-                    if isinstance(inv[key], Decimal):
-                        c.number_format = NAIRA_FMT
+            ws.cell(row=ROW, column=1, value="TOTALS").font = _total_font()
+            ws.cell(row=ROW, column=1).fill = _total_fill()
+            tot_map = {
+                2: "opening_stock", 3: "adj_inc", 4: "total_available",
+                5: "sold_walkin", 6: "amount_walkin",
+                7: "sold_retailer", 8: "amount_retailer",
+                9: "sold_distributor", 10: "amount_distributor",
+                11: "sold_staff",
+                12: "expected_closing", 13: "actual_closing", 14: "variance",
+            }
+            for col_i, key in tot_map.items():
+                init = Decimal("0.00") if key.startswith("amount") else 0
+                val = sum((p.get(key, 0) for p in products), init)
+                c = ws.cell(row=ROW, column=col_i, value=val)
+                c.font = _total_font()
+                c.fill = _total_fill()
+                if isinstance(val, Decimal):
+                    c.number_format = NAIRA_FMT
+                    c.alignment = _right()
+                else:
+                    c.alignment = _right()
+            ROW += 1
 
-        # ── SALES DETAILS section (cols L-W) ──
-        # L=12, M=13, N=14, O=15, P=16, Q=17, R=18, S=19, T=20, U=21, V=22, W=23
-        SALES_START = 15   # column O (2 free spacer cols M & N)
-        _title_cell(ws, 1, SALES_START, "Sales Details", span_end=SALES_START + 11, size=13)
-        ws.cell(row=2, column=SALES_START, value=f"Period: {period}").font = Font(name="Arial", size=9, italic=True)
+        # ══════════════════════════════════════════════════════════════════
+        # SECTION 2 — CREDIT SALES
+        # ══════════════════════════════════════════════════════════════════
+        ROW += 1  # gap row
+        sec_title(ROW, "CREDIT SALES", span=10)
+        ROW += 1
+        _hdr_row(ws, ROW, ["Customer", "Credit Amount", "Salesperson", "Date",
+                            "Total Amount Received"], start_col=1)
+        ROW += 1
 
-        sales_hdrs = [
+        credit_rows = []
+        for sr in sales_rows:
+            if sr.get("payment_type", "").lower() == "credit":
+                credit_rows.append(sr)
+
+        for idx, cr in enumerate(credit_rows):
+            alt = idx % 2 == 1
+            _data_row(ws, ROW, [
+                cr.get("customer", ""),
+                cr.get("line_total", Decimal("0.00")),
+                cr.get("sales_person", "—"),
+                _make_naive(cr.get("date")),
+                "",
+            ], start_col=1, alt=alt)
+            ROW += 1
+
+        # Credit totals
+        credit_total = ss.get("credit_sales", Decimal("0.00"))
+        ws.cell(row=ROW, column=1, value="Total Credit").font = _total_font()
+        c = ws.cell(row=ROW, column=2, value=credit_total)
+        c.font = _total_font()
+        c.fill = _total_fill()
+        c.number_format = NAIRA_FMT
+        c.alignment = _right()
+        ROW += 1
+
+        # ══════════════════════════════════════════════════════════════════
+        # SECTION 3 — REVENUE SUMMARY
+        # ══════════════════════════════════════════════════════════════════
+        ROW += 1  # gap
+        sec_title(ROW, "REVENUE SUMMARY", span=10)
+        ROW += 1
+
+        # Compute totals from products
+        def _sum(key):
+            return sum((p.get(key, 0) for p in products),
+                       Decimal("0.00") if "amount" in key else 0)
+
+        total_walkin_qty   = _sum("sold_walkin")
+        total_walkin_amt   = _sum("amount_walkin")
+        total_retailer_qty = _sum("sold_retailer")
+        total_retailer_amt = _sum("amount_retailer")
+        total_distrib_qty  = _sum("sold_distributor")
+        total_distrib_amt  = _sum("amount_distributor")
+        total_staff_qty    = _sum("sold_staff")
+        total_staff_amt    = _sum("amount_staff")
+        total_revenue      = ss.get("total_sales", Decimal("0.00"))
+        total_credit       = ss.get("credit_sales", Decimal("0.00"))
+        cash_sales         = ss.get("cash_sales", Decimal("0.00"))
+        card_sales         = ss.get("card_sales", Decimal("0.00"))
+        transfer_sales     = ss.get("transfer_sales", Decimal("0.00"))
+        pos_total          = total_revenue - total_credit
+        total_orders       = ss.get("total_orders", 0)
+        total_items        = ss.get("total_items_sold", 0)
+
+        # Header for revenue section: Label | Qty | Amount
+        for col_i, hdr in [(1, "Description"), (2, "Qty"), (3, "Amount")]:
+            c = ws.cell(row=ROW, column=col_i, value=hdr)
+            c.font = _hdr_font()
+            c.fill = _hdr_fill()
+            c.alignment = _center()
+            c.border = _thin_border()
+        ROW += 1
+
+        # rev_rows: (label, qty_or_None, amount, is_currency)
+        rev_rows = [
+            ("Total Walk-in Sales",      total_walkin_qty,   total_walkin_amt,   True),
+            ("Total Retailer Sales",     total_retailer_qty, total_retailer_amt, True),
+            ("Total Distributor Sales",  total_distrib_qty,  total_distrib_amt,  True),
+            ("Total Staff (Free)",       total_staff_qty,    total_staff_amt,    True),
+            ("", None, None, False),
+            ("Total Revenue",            None,               total_revenue,      True),
+            ("Total Credit Sales",       None,               total_credit,       True),
+            ("Total POS (Cash+Card+TRF)",None,               pos_total,          True),
+            ("", None, None, False),
+            ("Cash Received",            None,               cash_sales,         True),
+            ("Card Received",            None,               card_sales,         True),
+            ("Transfer Received",        None,               transfer_sales,     True),
+            ("", None, None, False),
+            ("Total Orders",             total_orders,       None,               False),
+            ("Total Items Sold",         total_items,        None,               False),
+        ]
+
+        for lbl, qty, amt, is_currency in rev_rows:
+            if not lbl:
+                ROW += 1
+                continue
+            lc = ws.cell(row=ROW, column=1, value=lbl)
+            lc.font = Font(name="Arial", size=9, bold=True)
+            if qty is not None:
+                qc = ws.cell(row=ROW, column=2, value=qty)
+                qc.font = Font(name="Arial", size=9, bold=True)
+                qc.alignment = _right()
+            if amt is not None:
+                ac = ws.cell(row=ROW, column=3, value=amt)
+                ac.font = Font(name="Arial", size=10, bold=True)
+                if is_currency:
+                    ac.number_format = NAIRA_FMT
+                    ac.alignment = _right()
+            ROW += 1
+
+        # ══════════════════════════════════════════════════════════════════
+        # SECTION 4 — SALES DETAIL
+        # ══════════════════════════════════════════════════════════════════
+        ROW += 1  # gap
+        sec_title(ROW, "SALES DETAIL", span=12)
+        ROW += 1
+
+        det_hdrs = [
             "Order Number", "Date", "Cashier", "Customer",
             "Customer Type", "Sales Person", "Product", "Variant",
-            "Unit Price (₦)", "Quantity", "Sub-Total (₦)", "Payment Type"
+            "Unit Price (₦)", "Qty", "Sub-Total (₦)", "Payment Type",
         ]
-        _hdr_row(ws, 2, sales_hdrs, start_col=SALES_START)
+        _hdr_row(ws, ROW, det_hdrs, start_col=1)
+        det_data_start = ROW + 1
+        ROW += 1
 
         for idx, row in enumerate(sales_rows):
-            r = 3 + idx
             alt = idx % 2 == 1
             date_val = _make_naive(row.get("date"))
             row_data = [
@@ -270,7 +430,7 @@ class ComprehensiveExcelExporter:
                 row.get("payment_type", ""),
             ]
             for i, val in enumerate(row_data):
-                c = ws.cell(row=r, column=SALES_START + i, value=val)
+                c = ws.cell(row=ROW, column=1 + i, value=val)
                 c.font = _body_font()
                 c.border = _thin_border()
                 if alt:
@@ -285,29 +445,23 @@ class ComprehensiveExcelExporter:
                     c.alignment = _right()
                 else:
                     c.alignment = _left()
+            ROW += 1
 
-        # totals row for sales
+        # Sales detail totals
         if sales_rows:
-            tr = 3 + len(sales_rows)
-            ws.cell(row=tr, column=SALES_START, value="TOTALS").font = _total_font()
-            # sub-total formula
-            stcol = SALES_START + 10   # column V
-            qty_col = SALES_START + 9  # column U
-            first_data = 3
-            last_data = 3 + len(sales_rows) - 1
-            stcol_l = get_column_letter(stcol)
-            qtycol_l = get_column_letter(qty_col)
-            c_st = ws.cell(row=tr, column=stcol,
-                           value=f"=SUM({stcol_l}{first_data}:{stcol_l}{last_data})")
-            c_st.font = _total_font()
-            c_st.fill = _total_fill()
-            c_st.number_format = NAIRA_FMT
-            c_qty = ws.cell(row=tr, column=qty_col,
-                            value=f"=SUM({qtycol_l}{first_data}:{qtycol_l}{last_data})")
-            c_qty.font = _total_font()
-            c_qty.fill = _total_fill()
+            ws.cell(row=ROW, column=1, value="TOTALS").font = _total_font()
+            last_d = ROW - 1
+            for col_i, key in [(9, "unit_price"), (10, "quantity"), (11, "line_total")]:
+                col_l = get_column_letter(col_i)
+                c = ws.cell(row=ROW, column=col_i,
+                            value=f"=SUM({col_l}{det_data_start}:{col_l}{last_d})")
+                c.font = _total_font()
+                c.fill = _total_fill()
+                if key != "quantity":
+                    c.number_format = NAIRA_FMT
 
         ws.freeze_panes = None
+
 
     # ══════════════════════════════════════════════════════════════════════════
     # SHEET 2: Sales Summary

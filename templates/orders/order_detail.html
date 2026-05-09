@@ -36,13 +36,14 @@
                     View Receipt
                 </a>
             {% endif %}
-            {% if order.status not in 'COMPLETED,CANCELLED' %}
+            {% if order.status != 'CANCELLED' and is_manager %}
                 <button
                     class="btn-cancel"
                     onclick="showCancelModal()"
+                    title="{% if order.status == 'COMPLETED' %}Cancel &amp; restore stock{% else %}Cancel order{% endif %}"
                 >
                     <i class="fas fa-ban"></i>
-                    Cancel Order
+                    {% if order.status == 'COMPLETED' %}Cancel &amp; Restore Stock{% else %}Cancel Order{% endif %}
                 </button>
             {% endif %}
         </div>
@@ -761,7 +762,15 @@
 </style>
 
 <script>
+function toggleCancelBtn(checkbox) {
+    document.getElementById('cancelSubmitBtn').disabled = !checkbox.checked;
+}
+
 function showCancelModal() {
+    const cb = document.getElementById('confirmCancel');
+    const btn = document.getElementById('cancelSubmitBtn');
+    if (cb) cb.checked = false;
+    if (btn) btn.disabled = true;
     document.getElementById('cancelModal').style.display = 'flex';
 }
 

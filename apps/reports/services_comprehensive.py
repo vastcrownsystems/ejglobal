@@ -289,34 +289,45 @@ class ComprehensiveReportService:
         for variant in variants:
 
             # ── Units sold via completed orders in period ──────────────────
-            sales = (
-                OrderItem.objects.filter(
-                    order__status="COMPLETED",
-                    order__completed_at__date__range=(date_from, date_to),
-                    variant=variant,
-                ).aggregate(q=Coalesce(Sum("quantity"), 0))["q"] or 0
+            oi_qs = OrderItem.objects.filter(
+                order__status="COMPLETED",
+                order__completed_at__date__range=(date_from, date_to),
+                variant=variant,
             )
+            sales = oi_qs.aggregate(q=Coalesce(Sum("quantity"), 0))["q"] or 0
 
-            # ── Non-sale stock increases (restocks, positive adjustments) ──
-            # quantity > 0 means stock went up (RESTOCK, CORRECTION up, etc.)
+            def _type_agg(ctype):
+                qs = oi_qs.filter(order__customer__isnull=True) if ctype is None                      else oi_qs.filter(order__customer__customer_type=ctype)
+                return qs.aggregate(
+                    q=Coalesce(Sum("quantity"), 0),
+                    a=Coalesce(Sum("line_total"), Decimal("0.00")),
+                )
+
+            walkin   = _type_agg(None)
+            retailer = _type_agg("RETAILER")
+            distrib  = _type_agg("DISTRIBUTOR")
+            staff_ag = _type_agg("STAFF")
+
+            # ── Non-sale stock increases (restocks, corrections up) ──────
+            # Exclude SALE/OUT/IN movement types — only true restocks count
+            _SALE_TYPES = ("SALE", "OUT", "IN")
             adj_inc = (
                 StockMovement.objects.filter(
                     variant=variant,
                     created_at__date__range=(date_from, date_to),
                     quantity__gt=0,
-                ).aggregate(q=Coalesce(Sum("quantity"), 0))["q"] or 0
+                ).exclude(movement_type__in=_SALE_TYPES)
+                .aggregate(q=Coalesce(Sum("quantity"), 0))["q"] or 0
             )
 
-            # ── Non-sale stock decreases (damage, negative adjustment) ────
-            # quantity < 0 and NOT a SALE movement type
+            # ── Non-sale stock decreases (damage, corrections down) ────────
             adj_dec = abs(
                 StockMovement.objects.filter(
                     variant=variant,
                     created_at__date__range=(date_from, date_to),
                     quantity__lt=0,
-                ).exclude(
-                    movement_type="SALE"
-                ).aggregate(q=Coalesce(Sum("quantity"), 0))["q"] or 0
+                ).exclude(movement_type__in=_SALE_TYPES)
+                .aggregate(q=Coalesce(Sum("quantity"), 0))["q"] or 0
             )
 
             # ── Opening stock: stock_before of earliest movement in period ─
@@ -349,28 +360,43 @@ class ComprehensiveReportService:
                 or Decimal("0.00")
             )
 
+            # ── Filter: only include rows with stock>0 OR adj>0 OR sales>0 ──
+            if actual_closing == 0 and adj_inc == 0 and adj_dec == 0 and sales == 0:
+                continue
+
             products.append({
-                "product_name":          variant.product.name,
-                "variant_name":          variant.name or "Standard",
-                "sku":                   variant.sku or "",
-                "category":              variant.product.category.name if variant.product.category else "",
-                "opening_stock":         opening_stock,
-                "adjustments_increase":  adj_inc,
-                "adjustments_decrease":  adj_dec,
-                "sales":                 sales,
-                "expected_closing":      expected_closing,
-                "actual_closing":        actual_closing,
-                "variance":              variance,
-                "unit_price":            _dec(unit_price),
-                "stock_value":           stock_value,
+                "product_name":      variant.product.name,
+                "variant_name":      variant.name or "Standard",
+                "sku":               variant.sku or "",
+                "category":          variant.product.category.name if variant.product.category else "",
+                "opening_stock":     opening_stock,
+                "adj_inc":           adj_inc,
+                "adj_dec":           adj_dec,
+                "total_available":   opening_stock + adj_inc,
+                "sales":             sales,
+                "sold_walkin":       walkin["q"],
+                "amount_walkin":     walkin["a"],
+                "sold_retailer":     retailer["q"],
+                "amount_retailer":   retailer["a"],
+                "sold_distributor":  distrib["q"],
+                "amount_distributor": distrib["a"],
+                "sold_staff":        staff_ag["q"],
+                "amount_staff":      staff_ag["a"],
+                "expected_closing":  expected_closing,
+                "actual_closing":    actual_closing,
+                "variance":          variance,
+                "unit_price":        _dec(unit_price),
+                "retailer_price":    _dec(getattr(variant, "retailer_price", 0) or 0),
+                "distributor_price": _dec(getattr(variant, "distributor_price", 0) or 0),
+                "stock_value":       stock_value,
             })
 
         return {
             "total_products":              len(products),
             "total_opening_stock":         sum(p["opening_stock"] for p in products),
-            "total_stock_added":           sum(p["adjustments_increase"] for p in products),
-            "total_adjustments_increase":  sum(p["adjustments_increase"] for p in products),
-            "total_adjustments_decrease":  sum(p["adjustments_decrease"] for p in products),
+            "total_stock_added":           sum(p["adj_inc"] for p in products),
+            "total_adjustments_increase":  sum(p["adj_inc"] for p in products),
+            "total_adjustments_decrease":  sum(p["adj_dec"] for p in products),
             "total_quantity_sold":         sum(p["sales"] for p in products),
             "total_expected_closing":      sum(p["expected_closing"] for p in products),
             "total_actual_closing":        sum(p["actual_closing"] for p in products),
