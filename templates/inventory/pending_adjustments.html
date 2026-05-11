@@ -278,6 +278,52 @@
         opacity: 0.3;
     }
 
+    /* Pagination */
+    .pagination-bar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.375rem;
+        padding: 1rem;
+        border-top: 1px solid var(--pending-border);
+    }
+    .page-btn {
+        min-width: 36px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.5rem;
+        border: 1.5px solid var(--pending-border);
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--pending-text);
+        text-decoration: none;
+        transition: all 0.18s;
+        background: var(--pending-white);
+    }
+    .page-btn:hover:not(.disabled):not(.active):not(.ellipsis) {
+        background: var(--pending-primary);
+        color: white;
+        border-color: var(--pending-primary);
+    }
+    .page-btn.active {
+        background: var(--pending-primary);
+        color: white;
+        border-color: var(--pending-primary);
+        cursor: default;
+    }
+    .page-btn.disabled {
+        opacity: 0.35;
+        cursor: default;
+    }
+    .page-btn.ellipsis {
+        border: none;
+        background: none;
+        cursor: default;
+    }
+
     @media (max-width: 768px) {
         .stats-grid {
             grid-template-columns: 1fr;
@@ -414,7 +460,12 @@
 
     <!-- Recently Reviewed -->
     {% if recent_reviewed %}
-    <h2 class="section-title">Recently Reviewed</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+        <h2 class="section-title" style="margin:0;">Recently Reviewed</h2>
+        <span style="font-size:0.875rem;color:var(--pending-text-muted);">
+            {{ reviewed_page_obj.paginator.count }} total record{{ reviewed_page_obj.paginator.count|pluralize }}
+        </span>
+    </div>
     <div class="adjustments-table">
         <table>
             <thead>
@@ -461,6 +512,43 @@
                 {% endfor %}
             </tbody>
         </table>
+
+        <!-- Pagination -->
+        {% if reviewed_page_obj.has_other_pages %}
+        <div class="pagination-bar">
+            {% if reviewed_page_obj.has_previous %}
+                <a href="?reviewed_page={{ reviewed_page_obj.previous_page_number }}" class="page-btn">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            {% else %}
+                <span class="page-btn disabled"><i class="fas fa-chevron-left"></i></span>
+            {% endif %}
+
+            {% for num in reviewed_page_obj.paginator.page_range %}
+                {% if reviewed_page_obj.number == num %}
+                    <span class="page-btn active">{{ num }}</span>
+                {% elif num >= reviewed_page_obj.number|add:"-2" and num <= reviewed_page_obj.number|add:"2" %}
+                    <a href="?reviewed_page={{ num }}" class="page-btn">{{ num }}</a>
+                {% elif num == 1 or num == reviewed_page_obj.paginator.num_pages %}
+                    <a href="?reviewed_page={{ num }}" class="page-btn">{{ num }}</a>
+                {% elif num == reviewed_page_obj.number|add:"-3" or num == reviewed_page_obj.number|add:"3" %}
+                    <span class="page-btn ellipsis">…</span>
+                {% endif %}
+            {% endfor %}
+
+            {% if reviewed_page_obj.has_next %}
+                <a href="?reviewed_page={{ reviewed_page_obj.next_page_number }}" class="page-btn">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            {% else %}
+                <span class="page-btn disabled"><i class="fas fa-chevron-right"></i></span>
+            {% endif %}
+        </div>
+        {% else %}
+        <div style="padding:0.75rem 1rem;font-size:0.8125rem;color:var(--pending-text-muted);text-align:right;">
+            Showing all {{ reviewed_page_obj.paginator.count }} record{{ reviewed_page_obj.paginator.count|pluralize }}
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 </div>

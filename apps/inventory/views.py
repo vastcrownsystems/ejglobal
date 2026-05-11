@@ -422,35 +422,39 @@ def movement_log(request):
 def pending_adjustments(request):
     """
     List all pending adjustments
-    Managers see all, regular users see only their requests
+    Managers see all, regular users see only their requests.
+    'Recently Reviewed' is paginated by 10.
     """
     is_manager = user_is_manager(request.user)
 
     if is_manager:
-        # Managers see all pending adjustments
         pending = PendingStockAdjustment.objects.filter(
             status='PENDING'
         ).select_related('variant', 'variant__product', 'requested_by').order_by('-requested_at')
 
-        # Also get recently reviewed
-        recent_reviewed = PendingStockAdjustment.objects.filter(
+        reviewed_qs = PendingStockAdjustment.objects.filter(
             status__in=['APPROVED', 'REJECTED']
-        ).select_related('variant', 'variant__product', 'requested_by', 'reviewed_by').order_by('-reviewed_at')[:10]
+        ).select_related('variant', 'variant__product', 'requested_by', 'reviewed_by').order_by('-reviewed_at')
     else:
-        # Regular users see only their requests
         pending = PendingStockAdjustment.objects.filter(
             requested_by=request.user,
             status='PENDING'
         ).select_related('variant', 'variant__product').order_by('-requested_at')
 
-        recent_reviewed = PendingStockAdjustment.objects.filter(
+        reviewed_qs = PendingStockAdjustment.objects.filter(
             requested_by=request.user,
             status__in=['APPROVED', 'REJECTED']
-        ).select_related('variant', 'variant__product', 'reviewed_by').order_by('-reviewed_at')[:10]
+        ).select_related('variant', 'variant__product', 'reviewed_by').order_by('-reviewed_at')
+
+    # Paginate reviewed — 10 per page
+    reviewed_paginator = Paginator(reviewed_qs, 10)
+    reviewed_page = request.GET.get('reviewed_page', 1)
+    reviewed_page_obj = reviewed_paginator.get_page(reviewed_page)
 
     context = {
         'pending_adjustments': pending,
-        'recent_reviewed': recent_reviewed,
+        'recent_reviewed': reviewed_page_obj,
+        'reviewed_page_obj': reviewed_page_obj,
         'is_manager': is_manager,
     }
 
