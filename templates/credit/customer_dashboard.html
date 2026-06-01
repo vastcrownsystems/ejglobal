@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block title %}{{ customer.full_name }} - Credit Account{% endblock %}
-
+{% block page_title %}Credit Management{% endblock %}
 {% block content %}
 <div class="content-wrapper">
     
@@ -150,10 +150,14 @@
                         </td>
                         <td data-label="Actions">
                             {% if entry.balance_outstanding > 0 %}
+                                {% if user.is_superuser or user.groups.all|length and user.groups.all.0.name in "Admin,Manager" %}
                                 <a href="{% url 'credit:record_payment' entry.ledger_id %}" class="btn-sm btn-success">
-                                    <i class="fas fa-dollar-sign"></i>
+                                    <i class="fas fa-naira-sign"></i>
                                     Pay
                                 </a>
+                                {% else %}
+                                <span class="text-muted" title="Contact a manager to record payment">Outstanding</span>
+                                {% endif %}
                             {% else %}
                                 <span class="text-muted">Paid</span>
                             {% endif %}

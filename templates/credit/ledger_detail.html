@@ -2,14 +2,14 @@
 {% load static %}
 
 {% block title %}{{ ledger.ledger_id }} - Ledger Detail{% endblock %}
-
+{% block page_title %}Credit Management{% endblock %}
 {% block content %}
 <div class="content-wrapper">
     
     <!-- Header -->
     <div class="page-header">
         <div class="header-left">
-            <button onclick="window.history.back()" class="btn-back">
+            <button onclick="window.history.back()" class="btn-back" style="cursor: pointer;">
                 <i class="fas fa-arrow-left"></i>
             </button>
             <div>

@@ -1,6 +1,7 @@
 # apps/customers/views.py - Complete Customer Views with Credit Management
 
 from django.shortcuts import render, redirect, get_object_or_404
+from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse, HttpResponse
@@ -277,7 +278,18 @@ def customer_list(request):
 
     URL: GET /customers/
     """
-    customers = Customer.objects.filter(is_active=True)
+    show_terminated = request.GET.get('show_terminated')
+    is_manager = (
+            request.user.is_superuser
+            or request.user.groups.filter(name__in=['Admin', 'Manager']).exists()
+    )
+
+    if show_terminated and is_manager:
+        # Show only terminated customers
+        customers = Customer.objects.filter(is_active=False)
+    else:
+        # Default: active customers only
+        customers = Customer.objects.filter(is_active=True)
 
     # Apply search
     search = request.GET.get('search')
@@ -900,3 +912,56 @@ def salesperson_search_api(request):
     ]
 
     return JsonResponse({'results': data})
+
+
+def _is_manager(user):
+    return (
+            user.is_superuser
+            or user.groups.filter(name__in=['Admin', 'Manager']).exists()
+    )
+
+
+@login_required
+@require_POST
+def customer_terminate(request, pk):
+    """
+    Deactivate (terminate) a customer account.
+    Admin / Manager only.
+    """
+    if not _is_manager(request.user):
+        messages.error(request, "You do not have permission to terminate customers.")
+        return redirect('customers:customer_list')
+
+    customer = get_object_or_404(Customer, pk=pk)
+
+    if not customer.is_active:
+        messages.warning(request, f"'{customer.full_name}' is already inactive.")
+        return redirect('customers:customer_list')
+
+    customer.is_active = False
+    customer.save(update_fields=['is_active'])
+    messages.success(request, f"Customer '{customer.full_name}' has been terminated.")
+    return redirect('customers:customer_list')
+
+
+@login_required
+@require_POST
+def customer_reactivate(request, pk):
+    """
+    Reactivate a previously terminated customer.
+    Admin / Manager only.
+    """
+    if not _is_manager(request.user):
+        messages.error(request, "You do not have permission to reactivate customers.")
+        return redirect('customers:customer_list')
+
+    customer = get_object_or_404(Customer, pk=pk)
+
+    if customer.is_active:
+        messages.warning(request, f"'{customer.full_name}' is already active.")
+        return redirect('customers:customer_list')
+
+    customer.is_active = True
+    customer.save(update_fields=['is_active'])
+    messages.success(request, f"Customer '{customer.full_name}' has been reactivated.")
+    return redirect('customers:customer_list')

@@ -324,6 +324,28 @@
         cursor: default;
     }
 
+    .reason-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+    .reason-label {
+        font-weight: 600;
+        color: var(--pending-text);
+        font-size: 0.875rem;
+    }
+    .adj-notes {
+        font-size: 0.8rem;
+        color: var(--pending-text-muted);
+        font-style: italic;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.3rem;
+        line-height: 1.4;
+        max-width: 220px;
+    }
+    .adj-notes i { margin-top: 2px; flex-shrink: 0; font-size: 0.7rem; }
+
     @media (max-width: 768px) {
         .stats-grid {
             grid-template-columns: 1fr;
@@ -391,7 +413,7 @@
                 <tr>
                     <th>Product</th>
                     <th>Adjustment</th>
-                    <th>Reason</th>
+                    <th>Reason & Notes</th>
                     <th>Requested By</th>
                     <th>Requested At</th>
                     <th>Stock</th>
@@ -420,7 +442,14 @@
                             {% endif %}
                         </span>
                     </td>
-                    <td>{{ adjustment.get_reason_display }}</td>
+                    <td>
+                        <div class="reason-cell">
+                            <span class="reason-label">{{ adjustment.get_reason_display }}</span>
+                            {% if adjustment.notes %}
+                            <span class="adj-notes"><i class="fas fa-comment-alt"></i> {{ adjustment.notes }}</span>
+                            {% endif %}
+                        </div>
+                    </td>
                     <td>{{ adjustment.requested_by.get_full_name|default:adjustment.requested_by.username }}</td>
                     <td>{{ adjustment.requested_at|date:"M d, Y h:i A" }}</td>
                     <td>{{ adjustment.stock_at_request }}</td>
@@ -472,8 +501,10 @@
                 <tr>
                     <th>Product</th>
                     <th>Adjustment</th>
+                    <th>Reason & Notes</th>
                     <th>Requested By</th>
                     <th>Reviewed By</th>
+                    <th>Review Notes</th>
                     <th>Reviewed At</th>
                     <th>Status</th>
                 </tr>
@@ -496,8 +527,23 @@
                             {% endif %}
                         </span>
                     </td>
+                    <td>
+                        <div class="reason-cell">
+                            <span class="reason-label">{{ adjustment.get_reason_display }}</span>
+                            {% if adjustment.notes %}
+                            <span class="adj-notes"><i class="fas fa-comment-alt"></i> {{ adjustment.notes }}</span>
+                            {% endif %}
+                        </div>
+                    </td>
                     <td>{{ adjustment.requested_by.get_full_name|default:adjustment.requested_by.username }}</td>
                     <td>{{ adjustment.reviewed_by.get_full_name|default:adjustment.reviewed_by.username }}</td>
+                    <td>
+                        {% if adjustment.review_notes %}
+                            <span class="adj-notes">{{ adjustment.review_notes }}</span>
+                        {% else %}
+                            <span style="color:#bbb;font-size:0.8rem;">—</span>
+                        {% endif %}
+                    </td>
                     <td>{{ adjustment.reviewed_at|date:"M d, Y h:i A" }}</td>
                     <td>
                         <span class="status-badge {{ adjustment.status|lower }}">

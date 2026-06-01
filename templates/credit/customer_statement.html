@@ -2,14 +2,14 @@
 {% load static %}
 
 {% block title %}Statement - {{ customer.full_name }}{% endblock %}
-
+{% block page_title %}Credit Management{% endblock %}
 {% block content %}
 <div class="content-wrapper">
     
     <!-- Header -->
     <div class="page-header">
         <div class="header-left">
-            <a href="{% url 'credit:customer_dashboard' customer.id %}" class="btn-back">
+            <a href="{% url 'credit:customers_list'%}" class="btn-back">
                 <i class="fas fa-arrow-left"></i>
             </a>
             <div>

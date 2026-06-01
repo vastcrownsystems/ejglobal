@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block title %}Credit Customers{% endblock %}
-
+{% block page_title %}Credit Management{% endblock %}
 {% block content %}
 <div class="content-wrapper">
     
@@ -25,94 +25,94 @@
     <!-- Customers Grid/Table -->
     <div class="customers-container">
 
-        <div class="view-toggle">
-            <button onclick="setView('grid')" id="btnGrid" class="view-btn active">
-                <i class="fas fa-th"></i>
-                Grid
-            </button>
-            <button onclick="setView('table')" id="btnTable" class="view-btn">
-                <i class="fas fa-list"></i>
-                Table
-            </button>
-        </div>
+<!--        <div class="view-toggle">-->
+<!--            <button onclick="setView('grid')" id="btnGrid" class="view-btn active">-->
+<!--                <i class="fas fa-th"></i>-->
+<!--                Grid-->
+<!--            </button>-->
+<!--            <button onclick="setView('table')" id="btnTable" class="view-btn">-->
+<!--                <i class="fas fa-list"></i>-->
+<!--                Table-->
+<!--            </button>-->
+<!--        </div>-->
 
-        <!-- Grid View -->
-        <div id="gridView" class="customers-grid">
-            {% for customer in customers %}
-            <div class="customer-card">
-                <div class="customer-header">
-                    <div class="customer-avatar">
-                        {{ customer.full_name|first }}
-                    </div>
-                    <div class="customer-info">
-                        <h3>{{ customer.full_name }}</h3>
-                        <p>{{ customer.customer_number }}</p>
-                    </div>
-                    <div class="customer-status">
-                        {% if customer.total_outstanding > 0 %}
-                            <span class="status-badge overdue">Has Balance</span>
-                        {% else %}
-                            <span class="status-badge clear">Clear</span>
-                        {% endif %}
-                    </div>
-                </div>
+<!--        &lt;!&ndash; Grid View &ndash;&gt;-->
+<!--        <div id="gridView" class="customers-grid">-->
+<!--            {% for customer in customers %}-->
+<!--            <div class="customer-card">-->
+<!--                <div class="customer-header">-->
+<!--                    <div class="customer-avatar">-->
+<!--                        {{ customer.full_name|first }}-->
+<!--                    </div>-->
+<!--                    <div class="customer-info">-->
+<!--                        <h3>{{ customer.full_name }}</h3>-->
+<!--                        <p>{{ customer.customer_number }}</p>-->
+<!--                    </div>-->
+<!--                    <div class="customer-status">-->
+<!--                        {% if customer.total_outstanding > 0 %}-->
+<!--                            <span class="status-badge overdue">Has Balance</span>-->
+<!--                        {% else %}-->
+<!--                            <span class="status-badge clear">Clear</span>-->
+<!--                        {% endif %}-->
+<!--                    </div>-->
+<!--                </div>-->
 
-                <div class="customer-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">Credit Limit</span>
-                        <strong>₦{{ customer.credit_limit|floatformat:2 }}</strong>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Outstanding</span>
-                        <strong class="{% if customer.total_outstanding > 0 %}text-danger{% else %}text-success{% endif %}">
-                            ₦{{ customer.total_outstanding|default:0|floatformat:2 }}
-                        </strong>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Credit Orders</span>
-                        <strong>{{ customer.credit_count|default:0 }}</strong>
-                    </div>
-                </div>
+<!--                <div class="customer-stats">-->
+<!--                    <div class="stat-item">-->
+<!--                        <span class="stat-label">Credit Limit</span>-->
+<!--                        <strong>₦{{ customer.credit_limit|floatformat:2 }}</strong>-->
+<!--                    </div>-->
+<!--                    <div class="stat-item">-->
+<!--                        <span class="stat-label">Outstanding</span>-->
+<!--                        <strong class="{% if customer.total_outstanding > 0 %}text-danger{% else %}text-success{% endif %}">-->
+<!--                            ₦{{ customer.total_outstanding|default:0|floatformat:2 }}-->
+<!--                        </strong>-->
+<!--                    </div>-->
+<!--                    <div class="stat-item">-->
+<!--                        <span class="stat-label">Credit Orders</span>-->
+<!--                        <strong>{{ customer.credit_count|default:0 }}</strong>-->
+<!--                    </div>-->
+<!--                </div>-->
 
-                <div class="utilization-section">
-                    <div class="utilization-header">
-                        <span>Credit Utilization</span>
-                        {% with util=customer.utilization %}
-                            <strong class="{% if util > 80 %}text-danger{% elif util > 50 %}text-warning{% else %}text-success{% endif %}">
-                                {{ util|floatformat:0 }}%
-                            </strong>
-                        {% endwith %}
-                    </div>
-                    {% with util=customer.utilization %}
-                        <div class="utilization-bar">
-                            <div class="utilization-fill {% if util > 80 %}danger{% elif util > 50 %}warning{% endif %}"
-                                 style="width: {{ util }}%;"></div>
-                        </div>
-                    {% endwith %}
-                </div>
+<!--                <div class="utilization-section">-->
+<!--                    <div class="utilization-header">-->
+<!--                        <span>Credit Utilization</span>-->
+<!--                        {% with util=customer.utilization %}-->
+<!--                            <strong class="{% if util > 80 %}text-danger{% elif util > 50 %}text-warning{% else %}text-success{% endif %}">-->
+<!--                                {{ util|floatformat:0 }}%-->
+<!--                            </strong>-->
+<!--                        {% endwith %}-->
+<!--                    </div>-->
+<!--                    {% with util=customer.utilization %}-->
+<!--                        <div class="utilization-bar">-->
+<!--                            <div class="utilization-fill {% if util > 80 %}danger{% elif util > 50 %}warning{% endif %}"-->
+<!--                                 style="width: {{ util }}%;"></div>-->
+<!--                        </div>-->
+<!--                    {% endwith %}-->
+<!--                </div>-->
 
-                <div class="customer-actions">
-                    <a href="{% url 'credit:customer_dashboard' customer.id %}" class="btn-card btn-primary">
-                        <i class="fas fa-chart-line"></i>
-                        View Account
-                    </a>
-                    <a href="{% url 'credit:customer_statement' customer.id %}" class="btn-card btn-secondary">
-                        <i class="fas fa-file-invoice"></i>
-                        Statement
-                    </a>
-                </div>
-            </div>
-            {% empty %}
-            <div class="empty-state-full">
-                <i class="fas fa-users-slash"></i>
-                <h3>No Credit Customers</h3>
-                <p>No customers have been set up with credit accounts yet.</p>
-            </div>
-            {% endfor %}
-        </div>
+<!--                <div class="customer-actions">-->
+<!--                    <a href="{% url 'credit:customer_dashboard' customer.id %}" class="btn-card btn-primary">-->
+<!--                        <i class="fas fa-chart-line"></i>-->
+<!--                        View Account-->
+<!--                    </a>-->
+<!--                    <a href="{% url 'credit:customer_statement' customer.id %}" class="btn-card btn-secondary">-->
+<!--                        <i class="fas fa-file-invoice"></i>-->
+<!--                        Statement-->
+<!--                    </a>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--            {% empty %}-->
+<!--            <div class="empty-state-full">-->
+<!--                <i class="fas fa-users-slash"></i>-->
+<!--                <h3>No Credit Customers</h3>-->
+<!--                <p>No customers have been set up with credit accounts yet.</p>-->
+<!--            </div>-->
+<!--            {% endfor %}-->
+<!--        </div>-->
 
         <!-- Table View -->
-        <div id="tableView" class="customers-table" style="display: none;">
+        <div id="tableView" class="customers-table">
             <div class="table-responsive">
                 <table class="data-table">
                     <thead>

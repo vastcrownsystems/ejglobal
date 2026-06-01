@@ -44,8 +44,18 @@ def customer_credit_dashboard(request, customer_id):
 @login_required
 def record_credit_payment(request, ledger_id):
     """
-    Record payment against a credit ledger entry
+    Record payment against a credit ledger entry.
+    Restricted to Admin and Manager only.
     """
+    # Permission check
+    is_manager = (
+        request.user.is_superuser
+        or request.user.groups.filter(name__in=['Admin', 'Manager']).exists()
+    )
+    if not is_manager:
+        messages.error(request, "Only managers can record credit payments.")
+        return redirect('credit:ledger_list')
+
     ledger = get_object_or_404(CreditLedger, ledger_id=ledger_id)
 
     if request.method == 'POST':

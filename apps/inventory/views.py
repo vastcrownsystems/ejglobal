@@ -268,13 +268,31 @@ def adjust_stock(request):
                 notes = form.cleaned_data['notes']
 
                 if is_manager:
-                    # Managers can adjust directly
+                    # Managers adjust directly — also create an auto-approved
+                    # PendingStockAdjustment record so it shows in Recently Reviewed
+                    stock_before = variant.stock_quantity
                     movement = InventoryService.adjust_stock(
                         variant_id=variant.id,
                         quantity_change=quantity_change,
                         user=request.user,
                         reason=reason,
                         notes=notes
+                    )
+
+                    from django.utils import timezone as _tz
+                    PendingStockAdjustment.objects.create(
+                        variant=variant,
+                        adjustment_type='increase' if quantity_change > 0 else 'decrease',
+                        quantity=abs(quantity_change),
+                        quantity_change=quantity_change,
+                        reason=reason,
+                        notes=notes,
+                        requested_by=request.user,
+                        stock_at_request=stock_before,
+                        status='APPROVED',
+                        reviewed_by=request.user,
+                        reviewed_at=_tz.now(),
+                        review_notes='Direct adjustment by manager',
                     )
 
                     action = "increased" if quantity_change > 0 else "decreased"

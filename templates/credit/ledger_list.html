@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block title %}Credit Ledger{% endblock %}
-
+{% block page_title %}Credit Management{% endblock %}
 {% block content %}
 <div class="content-wrapper">
     
@@ -115,9 +115,11 @@
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 {% if entry.balance_outstanding > 0 %}
+                                    {% if user.is_superuser or user.groups.all|length and user.groups.all.0.name in "Admin,Manager" %}
                                     <a href="{% url 'credit:record_payment' entry.ledger_id %}" class="btn-sm btn-success" title="Record Payment">
                                         <i class="fa-solid fa-naira-sign"></i>
                                     </a>
+                                    {% endif %}
                                 {% endif %}
                             </div>
                         </td>
