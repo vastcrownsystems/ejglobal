@@ -44,18 +44,8 @@ def customer_credit_dashboard(request, customer_id):
 @login_required
 def record_credit_payment(request, ledger_id):
     """
-    Record payment against a credit ledger entry.
-    Restricted to Admin and Manager only.
+    Record payment against a credit ledger entry
     """
-    # Permission check
-    is_manager = (
-        request.user.is_superuser
-        or request.user.groups.filter(name__in=['Admin', 'Manager']).exists()
-    )
-    if not is_manager:
-        messages.error(request, "Only managers can record credit payments.")
-        return redirect('credit:ledger_list')
-
     ledger = get_object_or_404(CreditLedger, ledger_id=ledger_id)
 
     if request.method == 'POST':
@@ -85,7 +75,7 @@ def record_credit_payment(request, ledger_id):
                 f"Remaining balance: ₦{ledger.balance_outstanding:,.2f}"
             )
 
-            return redirect('credit:ledger_detail', ledger_id=ledger_id)
+            return redirect('credit:customer_dashboard', customer_id=ledger.customer.id)
 
         except Exception as e:
             messages.error(request, f"❌ Error: {str(e)}")
@@ -296,10 +286,18 @@ def credit_ledger_list(request):
 @login_required
 def credit_customers_list(request):
     """
-    List all customers with credit accounts
+    List all customers with credit accounts.
+    Supports filters: search, status (has_balance/clear/overdue), customer_type, sort.
     """
     from django.db.models import Sum, Count, Q
 
+    # ── Query params ────────────────────────────────────────────────────────
+    search        = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '')
+    type_filter   = request.GET.get('customer_type', '')
+    sort          = request.GET.get('sort', '-total_outstanding')
+
+    # ── Base queryset ────────────────────────────────────────────────────────
     customers = Customer.objects.filter(
         credit_limit__gt=0
     ).annotate(
@@ -310,13 +308,58 @@ def credit_customers_list(request):
         credit_count=Count('credit_ledger_entries')
     )
 
+    # ── Search by name, phone, customer number ────────────────────────────────
+    if search:
+        customers = customers.filter(
+            Q(full_name__icontains=search) |
+            Q(phone__icontains=search) |
+            Q(customer_number__icontains=search)
+        )
+
+    # ── Customer type filter ──────────────────────────────────────────────────
+    if type_filter:
+        customers = customers.filter(customer_type=type_filter)
+
+    # ── Sort ──────────────────────────────────────────────────────────────────
+    valid_sorts = {
+        '-total_outstanding': '-total_outstanding',
+        'total_outstanding':  'total_outstanding',
+        'full_name':          'full_name',
+        '-credit_limit':      '-credit_limit',
+        'credit_limit':       'credit_limit',
+    }
+    customers = customers.order_by(valid_sorts.get(sort, '-total_outstanding'))
+
+    # ── Compute utilization + apply status filter in Python ──────────────────
+    result = []
     for c in customers:
-        outstanding = c.total_outstanding or 0
-        limit = c.credit_limit or 1
-        c.utilization = (outstanding / limit) * 100 if limit else 0
+        outstanding = float(c.total_outstanding or 0)
+        limit = float(c.credit_limit or 1)
+        c.utilization = (outstanding / limit * 100) if limit else 0
+
+        if status_filter == 'has_balance' and outstanding <= 0:
+            continue
+        if status_filter == 'clear' and outstanding > 0:
+            continue
+        if status_filter == 'overdue':
+            if not c.credit_ledger_entries.filter(status='OVERDUE').exists():
+                continue
+        result.append(c)
+
+    # ── Summary stats ────────────────────────────────────────────────────────
+    from decimal import Decimal
+    total_outstanding = sum((float(c.total_outstanding or 0) for c in result), 0.0)
+    total_limit       = sum((float(c.credit_limit or 0) for c in result), 0.0)
 
     context = {
-        'customers': customers,
+        'customers':         result,
+        'search':            search,
+        'status_filter':     status_filter,
+        'type_filter':       type_filter,
+        'sort':              sort,
+        'total_outstanding': total_outstanding,
+        'total_limit':       total_limit,
+        'customer_count':    len(result),
     }
 
     return render(request, 'credit/customers_list.html', context)
