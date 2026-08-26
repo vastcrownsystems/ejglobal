@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load humanize %}
 {% block title %}Dashboard - EJ Global Services POS{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
 
@@ -31,7 +32,7 @@
 <!--            </div>-->
         </div>
         <div class="stat-body">
-            <h3>₦{{ today_revenue|floatformat:0 }}</h3>
+            <h3>₦{{ today_revenue|floatformat:0|intcomma }}</h3>
             {% if is_manager %}
             <p class="stat-label">Total Revenue (Today)</p>
             {% else %}
