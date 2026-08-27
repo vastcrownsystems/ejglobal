@@ -664,14 +664,22 @@ class ComprehensiveExcelExporter:
         _hdr_row(ws, r_tbl + 1, [
             "Customer", "Phone", "Customer Type", "Sales Person",
             "Orders", "Items", "Revenue (₦)", "Avg Order (₦)",
-            "First Purchase", "Last Purchase"
+            "First Purchase", "Last Purchase", "Days Since Last Purchase"
         ])
-        for col, w in {"G": 18, "H": 16, "I": 18, "J": 18}.items():
+        for col, w in {"G": 18, "H": 16, "I": 18, "J": 18, "K": 22}.items():
             ws.column_dimensions[col].width = w
 
         customers = data.get("customers", [])
         for idx, c in enumerate(customers):
             r = r_tbl + 2 + idx
+            from datetime import date as _date
+            last_p = _make_naive(c.get("last_purchase"))
+            days_since = None
+            if last_p and hasattr(last_p, 'date'):
+                days_since = (date.today() - last_p.date()).days
+            elif last_p and isinstance(last_p, _date):
+                days_since = (date.today() - last_p).days
+
             _data_row(ws, r, [
                 c.get("customer", ""),
                 c.get("phone", ""),
@@ -682,7 +690,8 @@ class ComprehensiveExcelExporter:
                 c.get("revenue", Decimal("0")),
                 c.get("avg_order", Decimal("0")),
                 _make_naive(c.get("first_purchase")),
-                _make_naive(c.get("first_purchase"))
+                last_p,
+                days_since,
             ], alt=idx % 2 == 1)
 
         # totals

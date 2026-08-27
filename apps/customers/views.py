@@ -305,9 +305,54 @@ def customer_list(request):
     if customer_type:
         customers = customers.filter(customer_type=customer_type)
 
-    # Apply sorting
+    # Sales person filter
+    sp_id = request.GET.get('sales_person')
+    if sp_id:
+        customers = customers.filter(sales_person_id=sp_id)
+
+    # Last purchase date range filter
+    from datetime import datetime as _dt
+    lp_from = request.GET.get('last_purchase_from', '').strip()
+    lp_to   = request.GET.get('last_purchase_to', '').strip()
+    if lp_from:
+        try:
+            customers = customers.filter(
+                last_purchase_date__date__gte=_dt.strptime(lp_from, '%Y-%m-%d').date()
+            )
+        except ValueError:
+            pass
+    if lp_to:
+        try:
+            customers = customers.filter(
+                last_purchase_date__date__lte=_dt.strptime(lp_to, '%Y-%m-%d').date()
+            )
+        except ValueError:
+            pass
+
+    # Inactive since N days filter
+    inactive_days = request.GET.get('inactive_days', '').strip()
+    if inactive_days:
+        try:
+            cutoff = timezone.now() - timedelta(days=int(inactive_days))
+            customers = customers.filter(
+                Q(last_purchase_date__lt=cutoff) | Q(last_purchase_date__isnull=True)
+            )
+        except ValueError:
+            pass
+
+    # Apply sorting — include last_purchase_date as valid option
+    valid_sorts = {
+        '-created_at':           '-created_at',
+        'created_at':            'created_at',
+        '-total_spent':          '-total_spent',
+        'total_spent':           'total_spent',
+        '-last_purchase_date':   '-last_purchase_date',
+        'last_purchase_date':    'last_purchase_date',
+        'full_name':             'full_name',
+        '-full_name':            '-full_name',
+    }
     sort = request.GET.get('sort', '-created_at')
-    customers = customers.order_by(sort)
+    customers = customers.order_by(valid_sorts.get(sort, '-created_at'))
 
     # Calculate stats
     total_customers = customers.count()
@@ -331,6 +376,11 @@ def customer_list(request):
         'active_customers_count': active_count,
         'total_value': total_value,
         'can_manage_credit': user_can_manage_credit(request.user),
+        'sales_persons': SalesPerson.objects.filter(is_active=True).order_by('full_name'),
+        'selected_sp': sp_id,
+        'sort': sort,
+        'show_terminated': show_terminated,
+        'is_manager': is_manager,
     }
 
     return render(request, 'customers/customer_list.html', context)

@@ -77,55 +77,79 @@
     <!-- Filters & Search -->
     <div class="filters-section">
         <form method="get" class="filters-form">
-            <!-- Search Box -->
-            <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input
-                    type="text"
-                    name="search"
-                    value="{{ request.GET.search }}"
-                    placeholder="Search by name, phone, or email..."
-                    class="search-input"
-                >
+
+            <!-- ROW 1: Search + dropdowns -->
+            <div class="filters-row">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" name="search"
+                           value="{{ request.GET.search }}"
+                           placeholder="Search by name, phone, or email..."
+                           class="search-input">
+                </div>
+
+                <select name="type" class="filter-select" onchange="this.form.submit()">
+                    <option value="">All Types</option>
+                    <option value="INDIVIDUAL"  {% if request.GET.type == 'INDIVIDUAL' %}selected{% endif %}>Individual</option>
+                    <option value="RETAILER"    {% if request.GET.type == 'RETAILER' %}selected{% endif %}>Retailer</option>
+                    <option value="DISTRIBUTOR" {% if request.GET.type == 'DISTRIBUTOR' %}selected{% endif %}>Distributor</option>
+                </select>
+
+                <select name="sales_person" class="filter-select" onchange="this.form.submit()">
+                    <option value="">All Sales Persons</option>
+                    {% for sp in sales_persons %}
+                    <option value="{{ sp.pk }}" {% if request.GET.sales_person == sp.pk|stringformat:"s" %}selected{% endif %}>{{ sp.full_name }}</option>
+                    {% endfor %}
+                </select>
+
+                <select name="sort" class="filter-select" onchange="this.form.submit()">
+                    <option value="-total_spent"        {% if request.GET.sort == '-total_spent' %}selected{% endif %}>Highest Spending</option>
+                    <option value="-created_at"         {% if request.GET.sort == '-created_at' or not request.GET.sort %}selected{% endif %}>Newest First</option>
+                    <option value="full_name"           {% if request.GET.sort == 'full_name' %}selected{% endif %}>Name (A-Z)</option>
+                    <option value="-total_orders"       {% if request.GET.sort == '-total_orders' %}selected{% endif %}>Most Orders</option>
+                    <option value="-last_purchase_date" {% if request.GET.sort == '-last_purchase_date' %}selected{% endif %}>Recent Purchase (Newest)</option>
+                    <option value="last_purchase_date"  {% if request.GET.sort == 'last_purchase_date' %}selected{% endif %}>Last Purchase (Oldest First)</option>
+                </select>
             </div>
 
-            <!-- Filter: Customer Type -->
-            <select name="type" class="filter-select" onchange="this.form.submit()">
-                <option value="">All Types</option>
-                <option value="INDIVIDUAL" {% if request.GET.type == 'INDIVIDUAL' %}selected{% endif %}>Individual</option>
-                <option value="RETAILER" {% if request.GET.type == 'RETAILER' %}selected{% endif %}>Retailer</option>
-                <option value="DISTRIBUTOR" {% if request.GET.type == 'DISTRIBUTOR' %}selected{% endif %}>Distributor</option>
-            </select>
+            <!-- ROW 2: Last Purchase range + inactive + actions -->
+            <div class="filters-row filters-row-2">
+                <div class="lp-filter-group">
+                    <label class="lp-label">Last Purchase</label>
+                    <div class="lp-inputs">
+                        <input type="date" name="last_purchase_from"
+                               value="{{ request.GET.last_purchase_from }}"
+                               class="filter-select lp-date"
+                               title="Last purchase from">
+                        <span class="lp-sep">–</span>
+                        <input type="date" name="last_purchase_to"
+                               value="{{ request.GET.last_purchase_to }}"
+                               class="filter-select lp-date"
+                               title="Last purchase to">
+                    </div>
+                </div>
 
-            <!-- Filter: Sales Person -->
-            <select name="sales_person" class="filter-select" onchange="this.form.submit()">
-                <option value="">All Sales Persons</option>
-                {% for sp in sales_persons %}
-                <option value="{{ sp.pk }}" {% if request.GET.sales_person == sp.pk|stringformat:"s" %}selected{% endif %}>{{ sp.full_name }}</option>
-                {% endfor %}
-            </select>
+                <select name="inactive_days" class="filter-select" onchange="this.form.submit()">
+                    <option value="">All Activity</option>
+                    <option value="30"  {% if request.GET.inactive_days == '30' %}selected{% endif %}>Inactive 30+ days</option>
+                    <option value="60"  {% if request.GET.inactive_days == '60' %}selected{% endif %}>Inactive 60+ days</option>
+                    <option value="90"  {% if request.GET.inactive_days == '90' %}selected{% endif %}>Inactive 90+ days</option>
+                    <option value="180" {% if request.GET.inactive_days == '180' %}selected{% endif %}>Inactive 180+ days</option>
+                    <option value="365" {% if request.GET.inactive_days == '365' %}selected{% endif %}>Inactive 1+ year</option>
+                </select>
 
-            <!-- Sort -->
-            <select name="sort" class="filter-select" onchange="this.form.submit()">
-                <option value="-total_spent" {% if request.GET.sort == '-total_spent' %}selected{% endif %}>Highest Spending</option>
-                <option value="-created_at" {% if request.GET.sort == '-created_at' or not request.GET.sort %}selected{% endif %}>Newest First</option>
-                <option value="full_name" {% if request.GET.sort == 'name' %}selected{% endif %}>Name (A-Z)</option>
-                <option value="-total_orders" {% if request.GET.sort == '-total_orders' %}selected{% endif %}>Most Orders</option>
-                <option value="-last_purchase_date" {% if request.GET.sort == '-last_purchase_date' %}selected{% endif %}>Recent Activity</option>
-            </select>
+                {% if user.is_superuser or user.groups.all|length and user.groups.all.0.name in "Admin,Manager" %}
+                <a href="?{% if request.GET.show_terminated %}{% else %}show_terminated=1{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.sales_person %}&sales_person={{ request.GET.sales_person }}{% endif %}"
+                   class="btn-terminated-toggle {% if request.GET.show_terminated %}active{% endif %}">
+                    <i class="fas fa-user-slash"></i>
+                    {% if request.GET.show_terminated %}Hide Terminated{% else %}Show Terminated{% endif %}
+                </a>
+                {% endif %}
 
-            {% if user.is_superuser or user.groups.all|length and user.groups.all.0.name in "Admin,Manager" %}
-            <a href="?{% if request.GET.show_terminated %}{% else %}show_terminated=1{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.sales_person %}&sales_person={{ request.GET.sales_person }}{% endif %}"
-               class="btn-terminated-toggle {% if request.GET.show_terminated %}active{% endif %}">
-                <i class="fas fa-user-slash"></i>
-                {% if request.GET.show_terminated %}Hide Terminated{% else %}Show Terminated{% endif %}
-            </a>
-            {% endif %}
-
-            <button type="submit" class="btn-filter">
-                <i class="fas fa-filter"></i>
-                Apply
-            </button>
+                <div class="filter-actions">
+                    <button type="submit" class="btn-filter">
+                        <i class="fas fa-filter"></i> Apply
+                    </button>
 
             {% if request.GET %}
                 <a href="{% url 'customers:customer_list' %}" class="btn-clear">
@@ -143,12 +167,12 @@
                 <thead>
                     <tr>
                         <th>Customer</th>
-                        <th>Contact</th>
+                        <th class="col-contact">Contact</th>
                         <th class="text-center">Type</th>
-                        <th class="text-center">Orders</th>
-                        <th class="text-right">Total Spent</th>
+                        <th class="text-center col-orders">Orders</th>
+                        <th class="text-right col-spent">Total Spent</th>
                         <th class="text-center">Last Purchase</th>
-                        <th>Sales Person</th>
+                        <th class="col-sp">Sales Person</th>
                         <th class="text-center">Actions</th>
                     </tr>
                 </thead>
@@ -403,10 +427,25 @@
         margin-bottom: 1.5rem;
     }
 
-    .filters-form {
+.filters-form {
         display: flex;
-        gap: 1rem;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .filters-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.625rem;
         align-items: center;
+    }
+    .filters-row-2 {
+        align-items: flex-end;
+    }
+    .filter-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        margin-left: auto;
     }
 
     .search-box {
@@ -480,35 +519,83 @@
         background: white;
         border: 1px solid #E8E8E8;
         border-radius: 12px;
-        overflow-x: auto;   /* allow horizontal scroll */
-        overflow-y: hidden;
+        overflow: auto;                  /* scroll both axes */
+        max-height: calc(100vh - 320px); /* fixed viewport height */
+        -webkit-overflow-scrolling: touch;
     }
 
-    .customers-table {
-        width: 100%;
-        border-collapse: collapse;
+.customers-table {
+width: 100%;
+table-layout: auto;
+}
+
+.customers-table th,
+.customers-table td {
+white-space: nowrap;
+
+}
+
+.customers-table th {
+    background: #FAFAFA;
+}
+
+.customers-table-wrapper {
+overflow-x: auto;
+}
+
+    /* Sticky header so it stays visible while scrolling vertically */
+    .customers-table thead tr {
+        position: sticky;
+        top: 0;
+        z-index: 10;
     }
 
-    .customers-table th {
-        background: #FAFAFA;
-        padding: 1rem 1.25rem;
-        text-align: left;
-        font-weight: 700;
-        font-size: 0.8125rem;
-        color: #666;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        border-bottom: 2px solid #E8E8E8;
-    }
+    /*.customers-table th {*/
+    /*    background: #FAFAFA;*/
+    /*    padding: 0.75rem 0.875rem;*/
+    /*    text-align: left;*/
+    /*    font-weight: 700;*/
+    /*    font-size: 0.75rem;*/
+    /*    color: #666;*/
+    /*    text-transform: uppercase;*/
+    /*    letter-spacing: 0.05em;*/
+    /*    border-bottom: 2px solid #E8E8E8;*/
+    /*    white-space: nowrap;*/
+    /*}*/
 
-    .customers-table td {
-        padding: 1.25rem;
-        border-bottom: 1px solid #F5F5F5;
-    }
+    .customers-table-wrapper::-webkit-scrollbar:vertical {
+    width: 6px;
+    height: 6px;
+}
+     .customers-table-wrapper::-webkit-scrollbar:horizontal {
+    width: 8px;
+    height: 8px;
+}
 
-    .customers-table tr:hover {
-        background: #FAFAFA;
-    }
+.customers-table-wrapper::-webkit-scrollbar-thumb {
+    background: #0033A0;
+    border-radius: 20px;
+}
+
+.customers-table-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+    /*.customers-table td {*/
+    /*    padding: 0.75rem 0.875rem;*/
+    /*    border-bottom: 1px solid #F5F5F5;*/
+    /*    font-size: 0.875rem;*/
+    /*    white-space: nowrap;*/
+    /*    max-width: 200px;*/
+    /*    overflow: hidden;*/
+    /*    text-overflow: ellipsis;*/
+    /*}*/
+
+    /* Allow customer name column to be slightly wider */
+    .customers-table td:first-child,
+    .customers-table th:first-child { max-width: 240px; }
+
+    .customers-table tr:hover { background: #FAFAFA; }
 
     .customer-info {
         display: flex;
@@ -517,8 +604,9 @@
     }
 
     .customer-avatar {
-        width: 48px;
-        height: 48px;
+        width: 38px;
+        height: 38px;
+        flex-shrink: 0;
         background: linear-gradient(135deg, #0033A0 0%, #0047D1 100%);
         color: white;
         border-radius: 50%;
@@ -622,6 +710,39 @@
         display: flex;
         gap: 0.5rem;
         justify-content: center;
+    }
+
+    .lp-filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+    .lp-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #999;
+        padding-left: 2px;
+        white-space: nowrap;
+    }
+    .lp-inputs {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .lp-date {
+        width: 138px !important;
+        min-width: unset !important;
+        padding: 0.45rem 0.5rem !important;
+        font-size: 0.8rem !important;
+    }
+    .lp-sep { color: #aaa; font-weight: 600; }
+
+    @media (max-width: 768px) {
+        .lp-filter-group { width: 100%; }
+        .lp-inputs { width: 100%; }
+        .lp-date { width: calc(50% - 10px) !important; flex: 1; }
     }
 
     .btn-terminated-toggle {
@@ -774,18 +895,9 @@
     }
 
     @media (max-width: 768px) {
-        .stats-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .customers-table {
-            font-size: 0.875rem;
-        }
-
-        .customer-avatar {
-            width: 40px;
-            height: 40px;
-        }
+        .stats-grid { grid-template-columns: 1fr; }
+        .customer-avatar { width: 34px; height: 34px; font-size: 0.75rem; }
+        .customers-table-wrapper { max-height: calc(100vh - 280px); }
     }
 
     .badge-retailer { background: #FEF3C7; color: #D97706; }
@@ -808,8 +920,13 @@
         font-size: 0.65rem; font-weight: 700; flex-shrink: 0;
     }
 
-    @media (max-width: 768px) {
-        .customers-table { min-width: 1000px; }
+    /* On mobile hide less-critical columns */
+    @media (max-width: 640px) {
+        .col-contact,
+        .col-orders,
+        .col-spent,
+        .col-sp { display: none !important; }
+        .customers-table { min-width: unset; }
     }
 </style>
 <!-- Terminate Confirmation Modal -->
