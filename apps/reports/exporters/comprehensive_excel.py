@@ -16,7 +16,7 @@ from openpyxl.styles import (
 from openpyxl.utils import get_column_letter
 from decimal import Decimal
 
-from datetime import datetime
+from datetime import datetime, date
 
 def _make_naive(dt):
     if isinstance(dt, datetime) and dt.tzinfo is not None:
@@ -672,12 +672,11 @@ class ComprehensiveExcelExporter:
         customers = data.get("customers", [])
         for idx, c in enumerate(customers):
             r = r_tbl + 2 + idx
-            from datetime import date as _date
             last_p = _make_naive(c.get("last_purchase"))
             days_since = None
             if last_p and hasattr(last_p, 'date'):
                 days_since = (date.today() - last_p.date()).days
-            elif last_p and isinstance(last_p, _date):
+            elif last_p and isinstance(last_p, date):
                 days_since = (date.today() - last_p).days
 
             _data_row(ws, r, [
