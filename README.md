@@ -1,5 +1,5 @@
 # ejglobal
 
-## Contributor
-> mikearoworade (Michael Aroworade)
-> vastcrownsystems (Vastcrown Systems)
+## Contributors
+* mikearoworade (Michael Aroworade)
+* vastcrownsystems (Vastcrown Systems)
